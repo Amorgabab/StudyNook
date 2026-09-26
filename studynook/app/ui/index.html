@@ -19,9 +19,15 @@
       <span class="tb-greet" id="tb-greet"></span>
     </div>
     <div class="tb-right">
-      <div class="chip chip-streak" id="chip-streak" title="Day streak">🔥 0</div>
-      <div class="chip chip-level" id="chip-level" title="Level & title">🌱 Lv 1 · Seedling</div>
-      <div class="xpbar" title="XP to next level"><div class="xpbar-fill" id="xp-fill"></div></div>
+      <!-- one compact progression component: level + evolution title + xp bar -->
+      <div class="prog-chip" id="prog-chip" title="Level & progress to next level">
+        <span class="prog-ico" id="prog-ico">🌱</span>
+        <span class="prog-lv" id="prog-lv">Lv 1</span>
+        <span class="prog-title" id="prog-title">Seedling</span>
+        <span class="xpbar" aria-hidden="true"><span class="xpbar-fill" id="xp-fill"></span></span>
+      </div>
+      <!-- separate streak component, same visual language -->
+      <div class="streak-chip" id="streak-chip" title="Day streak">🔥<span id="chip-streak">0</span></div>
       <button class="winbtn" id="btn-min" title="Minimize">─</button>
       <button class="winbtn winbtn-close" id="btn-close" title="Hide to tray (timer & guard keep running)">✕</button>
     </div>

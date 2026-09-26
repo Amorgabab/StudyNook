@@ -138,7 +138,12 @@ function sanitizeData(d) {
   d.counters = obj(d.counters);
   for (const k of ['kills', 'pets', 'ambientMin', 'sessionsTotal', 'abandons', 'tasksDone']) d.counters[k] = num(d.counters[k], 0, 0, 1e9);
   d.achievements = obj(d.achievements);
-  d.feed = arr(d.feed).slice(0, 40);
+  d.feed = arr(d.feed).slice(0, 40).filter((r) => r && typeof r === 'object');
+  for (const r of d.feed) {
+    r.t = num(r.t, 0, 0, 8.7e15); r.emoji = str(r.emoji, '🌱', 8); r.text = str(r.text, '', 160);
+    const k = str(r.kind, '', 8); r.kind = (k === 'good' || k === 'warn') ? k : 'info';
+    r.xp = num(r.xp, 0, 0, 9999);
+  }
   d.ext = obj(d.ext);
   d.ext.token = str(d.ext.token, '', 64); d.ext.code = str(d.ext.code, '', 6);
   d.onboarded = !!d.onboarded;

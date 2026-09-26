@@ -60,7 +60,7 @@ function recoverInterruptedSession() {
     store.mutate((d) => {
       d.feed = d.feed || [];
       d.feed.unshift({
-        t: Date.now(), emoji: '⚡',
+        t: Date.now(), emoji: '⚡', kind: 'warn',
         text: iron
           ? `Previous session was interrupted (app closed mid-focus) — Iron Session: no credit for ${minutes} min`
           : `Previous session was interrupted (app closed mid-focus) — ${minutes} focused min credited`
@@ -318,7 +318,7 @@ function handlePhaseEnd(info) {
       (dd.daily[day] = dd.daily[day] || { min: 0, sessions: 0, kills: 0, tasks: 0 }).kills += killCount(info.kills);
       if (info.taskId) { const t = dd.tasks.find((t) => t.id === info.taskId); if (t) t.pomosDone = (t.pomosDone || 0) + 1; }
       dd.feed = dd.feed || [];
-      dd.feed.unshift({ t: now, emoji: '🍅', text: `Completed a ${info.minutes} min focus${info.label ? ' · ' + info.label : ''} (+${r.xpGained} XP)` });
+      dd.feed.unshift({ t: now, emoji: '🍅', kind: 'good', xp: r.xpGained, text: `Completed a ${info.minutes} min focus${info.label ? ' · ' + info.label : ''}` });
       if (dd.feed.length > 40) dd.feed.length = 40;
       return r;
     });
@@ -338,7 +338,7 @@ function handlePhaseEnd(info) {
         if (dd.sessions.length > 500) dd.sessions.length = 500;
       }
       dd.feed = dd.feed || [];
-      dd.feed.unshift({ t: now, emoji: strict ? '🌧️' : '🌤️', text: strict ? `Session ended early — strict mode, no XP this time (${info.minutes} min)` : `Session ended early after ${info.minutes} min (+${r.xpGained} XP for the time focused)` });
+      dd.feed.unshift({ t: now, emoji: strict ? '🌧️' : '🌤️', kind: strict ? 'warn' : 'good', xp: strict ? 0 : r.xpGained, text: strict ? `Session ended early — strict mode, no XP this time (${info.minutes} min)` : `Session ended early after ${info.minutes} min (XP for the time focused)` });
       if (dd.feed.length > 40) dd.feed.length = 40;
       return r;
     });
@@ -349,7 +349,7 @@ function handlePhaseEnd(info) {
     if (info.completed) {
       broadcast('session-event', { kind: 'break-end', phase: info.phase });
       notify('Break over ☀️', 'Stretch, sip water, and begin the next round when ready.');
-      store.mutate((dd) => { dd.feed = dd.feed || []; dd.feed.unshift({ t: now, emoji: '☀️', text: 'Break finished — next round is waiting' }); if (dd.feed.length > 40) dd.feed.length = 40; });
+      store.mutate((dd) => { dd.feed = dd.feed || []; dd.feed.unshift({ t: now, emoji: '☀️', kind: 'info', text: 'Break finished — next round is waiting' }); if (dd.feed.length > 40) dd.feed.length = 40; });
     } else {
       broadcast('session-event', { kind: 'break-skipped' });
     }
@@ -368,7 +368,7 @@ function handleGuardEvent(ev) {
       const day = progress.dayStr();
       (d.daily[day] = d.daily[day] || { min: 0, sessions: 0, kills: 0, tasks: 0 }).kills += ev.count;
       d.feed = d.feed || [];
-      d.feed.unshift({ t: now, emoji: '🧸', text: `Gently closed ${ev.label} (${ev.count} process${ev.count > 1 ? 'es' : ''})` });
+      d.feed.unshift({ t: now, emoji: '🧸', kind: 'info', text: `Gently closed ${ev.label} (${ev.count} process${ev.count > 1 ? 'es' : ''})` });
       if (d.feed.length > 40) d.feed.length = 40;
     });
     broadcast('guard', ev);
@@ -390,7 +390,7 @@ function grantAchievements(ctx) {
   for (const id of res) {
     const a = byId[id];
     broadcast('reward', { kind: 'achievement', id, emoji: a.emoji, name: a.name, desc: a.desc });
-    store.mutate((d) => { d.feed = d.feed || []; d.feed.unshift({ t: Date.now(), emoji: a.emoji, text: 'Achievement unlocked: ' + a.name }); if (d.feed.length > 40) d.feed.length = 40; });
+    store.mutate((d) => { d.feed = d.feed || []; d.feed.unshift({ t: Date.now(), emoji: a.emoji, kind: 'good', text: 'Achievement unlocked: ' + a.name }); if (d.feed.length > 40) d.feed.length = 40; });
   }
   return res;
 }
@@ -458,7 +458,7 @@ function registerIpc() {
     gateCleared = false;
     const task = p.taskId ? store.data.tasks.find((t) => t.id === p.taskId) : null;
     const st = session.start({ mode: p.mode || 'pomodoro', freeMin: p.freeMin || 0, taskId: p.taskId || null, label: task ? task.text : (p.label || '') });
-    store.mutate((d) => { d.feed = d.feed || []; d.feed.unshift({ t: Date.now(), emoji: '🌱', text: `Focus session started (${st.mode === 'free' ? 'free' : 'pomodoro'})${task ? ' · ' + task.text : ''}` }); if (d.feed.length > 40) d.feed.length = 40; });
+    store.mutate((d) => { d.feed = d.feed || []; d.feed.unshift({ t: Date.now(), emoji: '🌱', kind: 'info', text: `Focus session started (${st.mode === 'free' ? 'free' : 'pomodoro'})${task ? ' · ' + task.text : ''}` }); if (d.feed.length > 40) d.feed.length = 40; });
     pushSnapshot();
     return st;
   });
@@ -577,7 +577,7 @@ function registerIpc() {
       const evs = store.mutate((d) => grantXp(d, 5));
       sendRewardEvents(evs);
       grantAchievements({});
-      store.mutate((d) => { d.feed = d.feed || []; d.feed.unshift({ t: Date.now(), emoji: '✅', text: 'Task done: ' + done.text + ' (+5 XP)' }); if (d.feed.length > 40) d.feed.length = 40; });
+      store.mutate((d) => { d.feed = d.feed || []; d.feed.unshift({ t: Date.now(), emoji: '✅', kind: 'good', xp: 5, text: 'Task done: ' + done.text }); if (d.feed.length > 40) d.feed.length = 40; });
     }
     pushSnapshot();
     return true;

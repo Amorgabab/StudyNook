@@ -10,18 +10,19 @@ Views.home = function (c) {
 
   /* ---------- timer card ---------- */
   const timerCard = N.el('div', { class: 'card timer-card', id: 'timer-card' });
-  const phaseLabel = ses.active
-    ? (ses.phase === 'focus' ? 'Focus' : ses.phase === 'short' ? 'Short break' : 'Long break')
-    : 'Ready when you are';
-  const pill = N.el('div', { class: 'phase-pill' + (!ses.active ? ' idle' : ses.phase !== 'focus' ? ' break' : ''), id: 'phase-pill', text: phaseLabel + (ses.active && !ses.running ? ' · paused' : '') });
-  timerCard.appendChild(pill);
+  // status pill only carries real information (phase / paused) — no filler text when idle
+  if (ses.active) {
+    const phaseLabel = ses.phase === 'focus' ? 'Focus' : ses.phase === 'short' ? 'Short break' : 'Long break';
+    const pill = N.el('div', { class: 'phase-pill' + (ses.phase !== 'focus' ? ' break' : ''), id: 'phase-pill', text: phaseLabel + (ses.running ? '' : ' · paused') });
+    timerCard.appendChild(pill);
+  }
 
-  // ring
+  // ring — thin subtle progress ring, large readable time
   const R = 110, CIRC = 2 * Math.PI * R;
   const frac = ses.active && ses.totalSec ? ses.remainingSec / ses.totalSec : 1;
   const svg = N.svgEl('svg', { width: 250, height: 250, viewBox: '0 0 250 250' });
-  svg.appendChild(N.svgEl('circle', { class: 'ring-bg', cx: 125, cy: 125, r: R, fill: 'none', 'stroke-width': 14 }));
-  const fg = N.svgEl('circle', { class: 'ring-fg' + (ses.active && ses.phase !== 'focus' ? ' break' : ''), id: 'ring-fg', cx: 125, cy: 125, r: R, fill: 'none', 'stroke-width': 14, 'stroke-dasharray': CIRC, 'stroke-dashoffset': CIRC * (1 - frac) });
+  svg.appendChild(N.svgEl('circle', { class: 'ring-bg', cx: 125, cy: 125, r: R, fill: 'none', 'stroke-width': 8 }));
+  const fg = N.svgEl('circle', { class: 'ring-fg' + (ses.active && ses.phase !== 'focus' ? ' break' : ''), id: 'ring-fg', cx: 125, cy: 125, r: R, fill: 'none', 'stroke-width': 8, 'stroke-dasharray': CIRC, 'stroke-dashoffset': CIRC * (1 - frac) });
   svg.appendChild(fg);
   const wrap = N.el('div', { class: 'ring-wrap' });
   wrap.appendChild(svg);
@@ -34,16 +35,7 @@ Views.home = function (c) {
   wrap.appendChild(center);
   timerCard.appendChild(wrap);
 
-  // round dots (pomodoro)
-  const dots = N.el('div', { class: 'round-dots', id: 'round-dots' });
-  const rounds = ses.active && ses.mode === 'pomodoro' ? ses.rounds : t.rounds;
-  for (let i = 0; i < rounds; i++) {
-    const cls = i < ses.roundIdx ? 'dot done' : (ses.active && i === ses.roundIdx && ses.phase === 'focus' ? 'dot now' : 'dot');
-    dots.appendChild(N.el('div', { class: cls }));
-  }
-  timerCard.appendChild(dots);
-
-  // controls
+  // controls — mode selector directly under the ring (round dots removed: no useful info)
   const controls = N.el('div', { class: 'timer-controls' });
   if (!ses.active) {
     const modeSeg = N.el('div', { class: 'seg' });
@@ -51,7 +43,7 @@ Views.home = function (c) {
     const bFree = N.el('button', { class: App.freeMode ? 'on accent' : '', text: '🌙 Free focus', onclick: () => { App.freeMode = true; App.render(); } });
     modeSeg.append(bPomo, bFree);
     controls.appendChild(modeSeg);
-    const start = N.el('button', { class: 'btn btn-primary startbig', text: '▶ Start focusing', onclick: () => startSession() });
+    const start = N.el('button', { class: 'btn glass-btn startbig', text: '▶ Start focusing', onclick: () => startSession() });
     controls.appendChild(start);
   } else {
     const iron = d.settings.timer.iron && ses.phase === 'focus';
@@ -90,7 +82,8 @@ Views.home = function (c) {
       freeRow.appendChild(N.el('span', { class: 'row', style: 'gap:4px' }, custom, N.el('span', { class: 'small', text: 'min' })));
     }
     timerCard.appendChild(freeRow);
-    const taskRow = N.el('div', { class: 'row mt', style: 'justify-content:center' });
+    // task picker — compact & secondary, directly tied to the timer above
+    const taskRow = N.el('div', { class: 'task-pick' });
     const sel = N.el('select', { class: 'input', id: 'home-task' });
     sel.appendChild(N.el('option', { value: '', text: '🎯 no specific task' }));
     for (const tk of d.tasks.filter((x) => !x.done)) sel.appendChild(N.el('option', { value: tk.id, text: (tk.subject ? tk.subject + ' · ' : '') + tk.text, selected: App.lastTaskId === tk.id }));
@@ -100,8 +93,11 @@ Views.home = function (c) {
       if (tk && tk.min > 0 && App.freeMode) App.freeMin = tk.min;   // plan pre-fills free length
       App.render();
     });
-    taskRow.appendChild(N.el('span', { class: 'small', text: 'Studying:' }));
-    taskRow.appendChild(sel);
+    taskRow.append(
+      N.el('span', { class: 'tp-label', text: 'Studying' }),
+      sel,
+      N.el('span', { class: 'tp-hint', text: 'optional' })
+    );
     timerCard.appendChild(taskRow);
     // task plan → one-click session length
     const selTask = d.tasks.find((x) => x.id === App.lastTaskId);
@@ -150,33 +146,48 @@ Views.home = function (c) {
   const todayCard = N.el('div', { class: 'card' });
   todayCard.appendChild(N.el('h2', { text: '🌤️ Today' }));
   const tg = N.el('div', { class: 'today-grid' });
-  for (const [v, k] of [[N.fmtMin(today.min), 'focused'], [today.sessions, 'sessions'], [today.kills, 'closes'], [d.streak.current + '🔥', 'streak']]) {
-    tg.appendChild(N.el('div', { class: 'stat-tile' }, N.el('div', { class: 'v', text: String(v) }), N.el('div', { class: 'k', text: k })));
+  const stats = [
+    [N.fmtMin(today.min), 'Focused', ''],
+    [today.sessions, 'Sessions', ''],
+    [today.kills, 'Closes', ''],
+    [d.streak.current, 'Streak', ' streak']
+  ];
+  for (const [v, k, extra] of stats) {
+    tg.appendChild(N.el('div', { class: 'stat-tile' + (extra ? ' streak' : '') },
+      N.el('div', { class: 'v', text: String(v) + (extra ? ' 🔥' : '') }),
+      N.el('div', { class: 'k', text: k.toLowerCase() })));
   }
   todayCard.appendChild(tg);
   right.appendChild(todayCard);
 
-  /* ---------- ambience + feed ---------- */
+  /* ---------- ambience + journal ---------- */
   const bottom = N.el('div', { class: 'grid2b mt' });
-  const ambCard = N.el('div', { class: 'card' });
+  const ambCard = N.el('div', { class: 'card amb-card' });
   ambCard.appendChild(N.el('h2', { text: '🎧 Ambience' }));
-  ambCard.appendChild(N.el('div', { class: 'sub', text: 'Plays real recordings from assets/sounds when present, synthesized versions otherwise.' }));
-  const ambBar = N.el('div', { class: 'amb-bar' });
-  const AMB = [['rain', '🌧️ Rain'], ['fire', '🔥 Fireplace'], ['waves', '🌊 Waves'], ['cafe', '☕ Café'], ['off', '🔕 Off']];
+  // explanatory sentence removed — the controls speak for themselves
+  const ambRow = N.el('div', { class: 'amb-row' });
+  const AMB = [['rain', '🌧️ Rain'], ['fire', '🔥 Fireplace'], ['waves', '🌊 Waves'], ['cafe', '☕ Café']];
   for (const [id, lbl] of AMB) {
-    ambBar.appendChild(N.el('button', {
-      class: 'amb-btn' + (App.ambience === id ? ' on' : ''), text: lbl,
+    ambRow.appendChild(N.el('button', {
+      class: 'amb-btn' + (App.ambience === id ? ' on' : ''), text: lbl, 'aria-pressed': App.ambience === id ? 'true' : 'false',
       onclick: () => App.setAmbience(id)
     }));
   }
-  const vol = N.el('input', { class: 'amb-vol', type: 'range', min: 0, max: 100, value: Math.round(d.settings.sound.volume * 100) });
+  // Off reads as "disable", not as another sound source
+  ambRow.appendChild(N.el('button', {
+    class: 'amb-off' + (App.ambience === 'off' || !App.ambience ? ' on' : ''), text: '🔕 Off', title: 'Turn ambience off', 'aria-pressed': (App.ambience === 'off' || !App.ambience) ? 'true' : 'false',
+    onclick: () => App.setAmbience('off')
+  }));
+  ambCard.appendChild(ambRow);
+  const volRow = N.el('div', { class: 'amb-volrow' });
+  const vol = N.el('input', { class: 'amb-vol', type: 'range', min: 0, max: 100, value: Math.round(d.settings.sound.volume * 100), 'aria-label': 'Ambience volume' });
   vol.addEventListener('input', () => {
     Audio2.setVolume(vol.value / 100);
     nook.invoke('settings:set', { section: 'sound', values: { volume: vol.value / 100 } });
   });
-  ambBar.appendChild(vol);
-  ambCard.appendChild(ambBar);
-  const quote = N.el('div', { class: 'small mt', style: 'font-style:italic', text: '“' + NookQuotes.pick(NookQuotes.QUOTES) + '”' });
+  volRow.append(N.el('span', { class: 'small', text: 'Volume' }), vol);
+  ambCard.appendChild(volRow);
+  const quote = N.el('div', { class: 'small mt amb-quote', style: 'font-style:italic', text: '“' + NookQuotes.pick(NookQuotes.QUOTES) + '”' });
   ambCard.appendChild(quote);
   bottom.appendChild(ambCard);
 
@@ -186,7 +197,18 @@ Views.home = function (c) {
   const rows = (d.feed || []).slice(0, 9);
   if (!rows.length) feed.appendChild(N.el('div', { class: 'small', text: 'Your cozy story starts with the first session…' }));
   for (const r of rows) {
-    feed.appendChild(N.el('div', { class: 'feed-row' }, N.el('span', { text: r.text }), N.el('span', { class: 'ft', text: N.timeAgo(r.t) })));
+    const kind = r.kind === 'good' ? 'good' : r.kind === 'warn' ? 'warn' : 'info';
+    const icon = kind === 'good' ? '✓' : kind === 'warn' ? '!' : '·';
+    const entry = N.el('div', { class: 'feed-entry ' + kind },
+      N.el('div', { class: 'fe-main' },
+        N.el('span', { class: 'fe-emoji', text: r.emoji || '🌱' }),
+        N.el('span', { class: 'fe-text', text: r.text }),
+        N.el('span', { class: 'fe-icon', 'aria-hidden': 'true', text: icon }),
+        N.el('span', { class: 'ft', text: N.timeAgo(r.t) })
+      )
+    );
+    if (r.xp > 0) entry.appendChild(N.el('div', { class: 'fe-xp', text: '+' + r.xp + ' XP' }));
+    feed.appendChild(entry);
   }
   feedCard.appendChild(feed);
   bottom.appendChild(feedCard);
