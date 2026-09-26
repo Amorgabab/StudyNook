@@ -240,9 +240,14 @@ select.input { cursor: pointer; }
 body[data-theme="dark"] .glass-btn { box-shadow: 0 2px 12px rgba(0, 0, 0, .35); }
 body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, .45), 0 0 16px -4px var(--accent); }
 .startbig { font-size: 16px; padding: 13px 38px; width: 100%; }
+/* running session actions — one cohesive group on the same measured width as
+   idle mode/start/task, so the timer never sits above a scattered row */
+.running-actions { display: flex; align-items: center; justify-content: center; gap: 10px; width: min(358px, 100%); }
+.running-actions .startbig { width: auto; flex: 1 1 auto; }
+.running-actions .btn-ghost { flex: 0 0 auto; }
 /* duration controls — deliberately quiet secondary setting, visually detached
    from the primary group by a hairline so they never compete with it */
-.timer-aux { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; max-width: 358px; padding-top: 4px; border-top: 1px solid var(--line); }
+.timer-aux { display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(358px, 100%); padding-top: 4px; border-top: 1px solid var(--line); }
 .free-row { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; align-items: center; }
 .dur-chip { border: 1px solid transparent; background: transparent; border-radius: 999px; padding: 3px 10px; font-size: 11.5px; font-weight: 700; color: var(--ink-soft); cursor: pointer; transition: all .15s ease; box-shadow: none; }
 .dur-chip:hover { color: var(--ink); background: var(--card2); }
@@ -291,8 +296,8 @@ body[data-theme="dark"] .stat-tile.streak .k { color: var(--rose); opacity: .85;
 /* compact utility card — controls fill available width evenly */
 .amb-card { display: flex; flex-direction: column; }
 .amb-spacer { flex: 0 0 auto; height: 12px; }
-.amb-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: space-between; }
-.amb-btn { flex: 1 1 auto; min-width: 90px; max-width: 130px; text-align: center; border: 1.5px solid var(--line); background: var(--card2); border-radius: 999px; padding: 9px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .15s ease; box-shadow: none; }
+.amb-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-start; }
+.amb-btn { flex: 0 0 auto; min-width: 90px; max-width: 130px; text-align: center; border: 1.5px solid var(--line); background: var(--card2); border-radius: 999px; padding: 9px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .15s ease; box-shadow: none; }
 .amb-btn:hover { transform: translateY(-1px); }
 .amb-btn.on { background: var(--sky-soft); border-color: var(--sky); color: #47688A; box-shadow: 0 0 12px -6px var(--sky); }
 body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
@@ -304,24 +309,25 @@ body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
 .amb-vol-name { font-size: 11px; font-weight: 800; letter-spacing: .3px; color: var(--ink-soft); min-width: 74px; }
 .amb-vol { flex: 1; max-width: 220px; height: 4px; accent-color: var(--sky); cursor: pointer; }
 
-/* journal = high-density history surface → full-width band whose entries fill
-   the width as a responsive multi-column grid: each entry keeps a comfortable
-   reading width (never text stretched across the whole screen with a huge gap
-   before the timestamp), and the band gets a generous scroll viewport */
-.feed { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; align-content: start; overflow-y: auto; padding-right: 2px; max-height: min(46vh, 520px); }
-@media (max-width: 860px) { .feed { grid-template-columns: 1fr; } }
-.feed-entry { background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 16px 18px; }
-.fe-header { display: flex; align-items: center; gap: 10px; font-size: 13.5px; min-width: 0; }
-.fe-emoji { flex: 0 0 auto; }
-.fe-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-.ft { margin-left: auto; color: var(--ink-soft); font-size: 10.5px; flex: 0 0 auto; }
-.fe-icon { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; background: var(--line); color: var(--ink-soft); }
-.fe-reward { font-size: 11.5px; font-weight: 800; color: var(--sage); margin-top: 6px; padding-left: 30px; }
-.feed-entry.good { border-color: var(--sage); background: var(--sage-soft); }
+/* journal = chronological history → ONE vertical stream (never a column grid,
+   which made it read like a notification dashboard). The full-width card uses
+   its space by giving every entry breathing room; the stream itself is capped
+   at a comfortable reading width so text never stretches icon → gap → time. */
+.feed { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding: 2px 8px 2px 2px; max-height: min(46vh, 520px); max-width: 760px; }
+.feed-entry { display: flex; align-items: flex-start; gap: 12px; background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 13px 16px; }
+.fe-icon { flex: 0 0 auto; width: 24px; height: 24px; margin-top: 1px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; background: var(--line); color: var(--ink-soft); }
+.fe-body { flex: 1; min-width: 0; }
+.fe-text { font-size: 13.5px; font-weight: 600; line-height: 1.4; }
+.fe-emoji { margin-right: 4px; }
+.fe-reward { font-size: 11.5px; font-weight: 800; color: var(--sage); margin-top: 4px; }
+.ft { margin-left: auto; flex: 0 0 auto; align-self: flex-start; padding-top: 3px; color: var(--ink-soft); font-size: 10.5px; }
+/* three states, one design system: green done / red interrupted / gray started */
+.feed-entry.good { border-color: color-mix(in srgb, var(--sage) 55%, var(--line)); background: var(--sage-soft); }
 .feed-entry.good .fe-icon { background: var(--sage); color: #fff; }
-.feed-entry.warn { border-color: var(--rose); background: var(--rose-soft); }
+.feed-entry.warn { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); background: var(--rose-soft); }
 .feed-entry.warn .fe-icon { background: var(--danger); color: #fff; }
 .feed-entry.warn .fe-reward { color: var(--danger); }
+.feed-entry.info .fe-icon { background: var(--line); color: var(--ink-soft); }
 
 @media (max-width: 1080px) {
   /* same two-column grid — only the journal band reflows to full width;

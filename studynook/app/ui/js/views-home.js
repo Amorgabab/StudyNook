@@ -83,7 +83,10 @@ Views.home = function (c) {
       : N.el('button', {
           class: 'btn btn-ghost', text: '🌧️ End session', onclick: () => App.confirm('End this session?', ses.phase === 'focus' ? 'Focused minutes still count for XP (unless strict mode is on), but you lose the completion bonus.' : 'Your break ends and the session stops.', () => nook.invoke('session:stop', { abandon: ses.phase === 'focus' }))
         });
-    controls.append(pp, giveUp);
+    // running actions share one group row — pause stays the dominant action
+    const actions = N.el('div', { class: 'running-actions' });
+    actions.append(pp, giveUp);
+    controls.appendChild(actions);
     if (ses.phase !== 'focus') controls.appendChild(N.el('button', { class: 'btn btn-sage', text: '⏭ Skip break', onclick: () => nook.invoke('session:skip') }));
   }
   timerCard.appendChild(controls);
@@ -199,20 +202,20 @@ Views.home = function (c) {
   if (!rows.length) feed.appendChild(N.el('div', { class: 'small', text: 'Your cozy story starts with the first session…' }));
   for (const r of rows) {
     const kind = r.kind === 'good' ? 'good' : r.kind === 'warn' ? 'warn' : 'info';
-    // Entry structure: [status icon] [event text] [time] → separate line for XP reward.
+    // one chronological stream row: [icon] [event → reward underneath] [time].
     // The event's emoji rides with the text so nothing is lost from the data layer.
     const icon = kind === 'good' ? '✓' : kind === 'warn' ? '!' : '·';
-    const entry = N.el('div', { class: 'feed-entry ' + kind },
-      N.el('div', { class: 'fe-header' },
-        N.el('span', { class: 'fe-icon', 'aria-hidden': 'true', text: icon }),
-        N.el('span', { class: 'fe-text' },
-          N.el('span', { class: 'fe-emoji', text: r.emoji || '🌱' }),
-          document.createTextNode(' ' + r.text)),
-        N.el('span', { class: 'ft', text: N.timeAgo(r.t) })
-      ),
+    const body = N.el('div', { class: 'fe-body' },
+      N.el('div', { class: 'fe-text' },
+        N.el('span', { class: 'fe-emoji', text: r.emoji || '🌱' }),
+        document.createTextNode(r.text)),
       r.xp > 0 ? N.el('div', { class: 'fe-reward', text: '+' + r.xp + ' XP' }) : null
     );
-    feed.appendChild(entry);
+    feed.appendChild(N.el('div', { class: 'feed-entry ' + kind },
+      N.el('span', { class: 'fe-icon', 'aria-hidden': 'true', text: icon }),
+      body,
+      N.el('span', { class: 'ft', text: N.timeAgo(r.t) })
+    ));
   }
   feedCard.appendChild(feed);
 
