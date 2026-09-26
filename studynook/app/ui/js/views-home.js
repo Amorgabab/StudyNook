@@ -9,7 +9,7 @@ Views.home = function (c) {
   const t = d.settings.timer;
 
   /* ---------- timer card ---------- */
-  const timerCard = N.el('div', { class: 'card timer-card', id: 'timer-card' });
+  const timerCard = N.el('div', { class: 'card timer-card area-timer', id: 'timer-card' });
   // status line — quiet session metadata (phase / paused / iron), never a control
   const statusBits = [];
   if (ses.active) {
@@ -118,7 +118,7 @@ Views.home = function (c) {
   const leftCol = N.el('div', { class: 'home-col' });   // timer + ambience
   const right = N.el('div', { class: 'home-col' });     // mochi + today + journal
 
-  const petCard = N.el('div', { class: 'card pet-card' });
+  const petCard = N.el('div', { class: 'card pet-card area-pet' });
   const stage = NookProgress.PET_STAGES[d.pet.stage] || NookProgress.PET_STAGES[0];
   const next = NookProgress.PET_STAGES[d.pet.stage + 1];
   const box = N.el('div', { class: 'mochi-box', id: 'mochi-box', title: 'Pet ' + d.pet.name });
@@ -145,7 +145,7 @@ Views.home = function (c) {
 
   const todayKey = N.todayKey();
   const today = d.daily[todayKey] || { min: 0, sessions: 0, kills: 0, tasks: 0 };
-  const todayCard = N.el('div', { class: 'card' });
+  const todayCard = N.el('div', { class: 'card area-today' });
   todayCard.appendChild(N.el('h2', { class: 'sec-h', text: '🌤️ Today' }));
   const tg = N.el('div', { class: 'today-grid' });
   const stats = [
@@ -163,7 +163,7 @@ Views.home = function (c) {
   right.appendChild(todayCard);
 
   /* ---------- ambience (left, compact) + journal (right, roomy) ---------- */
-  const ambCard = N.el('div', { class: 'card amb-card' });
+  const ambCard = N.el('div', { class: 'card amb-card area-amb' });
   ambCard.appendChild(N.el('h2', { class: 'sec-h', text: '🎧 Ambience' }));
   // no explanatory text — title up top, controls grouped toward the bottom
   ambCard.appendChild(N.el('div', { class: 'amb-spacer' }));
@@ -192,7 +192,7 @@ Views.home = function (c) {
   volRow.append(N.el('span', { class: 'amb-vol-name', text: volName }), vol);
   ambCard.appendChild(volRow);
 
-  const feedCard = N.el('div', { class: 'card journal-card' });
+  const feedCard = N.el('div', { class: 'card journal-card area-journal' });
   feedCard.appendChild(N.el('h2', { class: 'sec-h', text: 'Journal' }));
   const feed = N.el('div', { class: 'feed' });
   const rows = (d.feed || []).slice(0, 9);
@@ -213,7 +213,10 @@ Views.home = function (c) {
   }
   feedCard.appendChild(feed);
 
-  /* ---------- compose the grid: left = timer + ambience, right = mochi + today + journal ---------- */
+  /* ---------- compose the grid: cards place themselves via named grid areas
+     (timer | pet / amb | today / journal band) — columns stay aligned at
+     every width. The column wrappers use display:contents, so DOM grouping
+     is preserved without breaking the single deliberate grid. ---------- */
   leftCol.append(timerCard, ambCard);
   right.append(petCard, todayCard, feedCard);
   c.appendChild(N.el('div', { class: 'home-grid' }, leftCol, right));

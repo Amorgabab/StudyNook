@@ -184,16 +184,33 @@ body[data-theme="dark"] #bg-scene { background: linear-gradient(160deg, var(--bg
 select.input { cursor: pointer; }
 
 /* ---------- 7 · home ----------
-   Composition: one deliberate two-column grid drives the whole page.
-   Left column  = Timer (primary) + Ambience (compact utility)
-   Right column = Mochi + Today + Journal (progress / history)
-   Both rows share identical column edges — no staircase. */
-.home-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .95fr); gap: 16px; align-items: start; }
-.home-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-/* space follows content density: quiet timer ring, roomy journal feed */
-.timer-card { flex: 0 0 auto; }
-.feed { flex: 1 1 auto; max-height: none; }
-.timer-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 26px 28px; }
+   Composition: ONE deliberate two-column grid drives the whole page.
+     ┌─────────────┬─────────────┐
+     │   Timer     │   Mochi     │   ← row A: equal heights (stretch)
+     ├─────────────┼─────────────┤
+     │  Ambience   │   Today     │   ← row B: compact utility tiles
+     ├─────────────┼─────────────┤
+     │   Journal (full width)    │   ← row C: high-density history surface
+     └─────────────┴─────────────┘
+   Every card edge lands on a shared column line at every viewport width —
+   no staircase, no independently positioned cards. Space follows content
+   density: ambience is compact, journal gets the room its entries need. */
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, .95fr);
+  grid-template-areas: "timer pet" "amb today" "journal journal";
+  gap: 16px;
+  align-items: stretch;
+}
+.area-timer { grid-area: timer; }
+.area-pet   { grid-area: pet; }
+.area-amb   { grid-area: amb; }
+.area-today { grid-area: today; }
+.area-journal { grid-area: journal; }
+.home-col { display: contents; }   /* legacy wrapper — keeps children on the grid */
+/* timer card fills its stretched row; the ring area absorbs leftover height
+   so breathing room above/below stays balanced (no dead empty space) */
+.timer-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 22px 28px; }
 /* iron mode — quiet session-state line, not a control */
 .iron-status { font-size: 11px; font-weight: 700; color: var(--ink-soft); background: var(--card2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; letter-spacing: .2px; }
 /* one quiet metadata row above the ring (phase / paused / iron) */
@@ -208,10 +225,10 @@ select.input { cursor: pointer; }
 .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
 .ring-time { font-size: 54px; font-weight: 800; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
 .ring-sub { font-size: 12px; color: var(--ink-soft); font-weight: 600; max-width: 170px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.timer-controls { display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(340px, 100%); }
-/* one cohesive control group — mode / start / studying share a deliberate
-   width system (full-width segmented + button, aligned picker) so the stack
-   no longer reads as wide → tiny → medium → tiny */
+/* ONE cohesive focus-control group: every direct child shares the same
+   measured width (ring width + allowance), so the stack reads as a single
+   block — never wide → tiny → medium → tiny (the old hourglass shape). */
+.timer-controls { display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: min(358px, 100%); }
 .timer-controls .seg { display: flex; width: 100%; }
 .timer-controls .seg button { flex: 1; }
 .glass-btn {
@@ -224,8 +241,9 @@ select.input { cursor: pointer; }
 body[data-theme="dark"] .glass-btn { box-shadow: 0 2px 12px rgba(0, 0, 0, .35); }
 body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, .45), 0 0 16px -4px var(--accent); }
 .startbig { font-size: 16px; padding: 13px 38px; width: 100%; }
-/* duration controls — deliberately quiet secondary setting */
-.timer-aux { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+/* duration controls — deliberately quiet secondary setting, visually detached
+   from the primary group by a hairline so they never compete with it */
+.timer-aux { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; max-width: 358px; padding-top: 4px; border-top: 1px solid var(--line); }
 .free-row { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; align-items: center; }
 .dur-chip { border: 1px solid transparent; background: transparent; border-radius: 999px; padding: 3px 10px; font-size: 11.5px; font-weight: 700; color: var(--ink-soft); cursor: pointer; transition: all .15s ease; box-shadow: none; }
 .dur-chip:hover { color: var(--ink); background: var(--card2); }
@@ -259,9 +277,9 @@ body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, 
 @keyframes heartup { from { opacity: 1; transform: translate(0, 0) scale(.7); } to { opacity: 0; transform: translate(var(--dx, 10px), -70px) scale(1.25); } }
 
 .today-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-/* proper section headers — clear separation from the content below */
-.card h2.sec-h { margin: 2px 0 14px; }
-.stat-tile { background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 16px 10px; text-align: center; min-width: 0; }
+/* proper section headers — consistent typography, clear separation from content */
+.card h2.sec-h { margin: 2px 0 16px; font-size: 15px; font-weight: 800; letter-spacing: .2px; }
+.stat-tile { background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 18px 12px; text-align: center; min-width: 0; }
 .stat-tile .v { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stat-tile .k { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; margin-top: 3px; letter-spacing: .3px; }
 /* streak tile — warm rose identity (streak, not danger) */
@@ -271,10 +289,11 @@ body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, 
 body[data-theme="dark"] .stat-tile.streak .v { color: var(--danger); }
 body[data-theme="dark"] .stat-tile.streak .k { color: var(--rose); opacity: .85; }
 
+/* compact utility card — title up top, controls grouped at the bottom.
+   The spacer is a small fixed gap only: ambience has little content, so it
+   never grows into a huge empty area (grid stretch keeps row B honest). */
 .amb-card { display: flex; flex-direction: column; }
-/* compact utility card — title up top, controls grouped at the bottom,
-   only a small intentional gap between them (no huge empty area) */
-.amb-spacer { flex: 1; min-height: 8px; max-height: 20px; }
+.amb-spacer { flex: 0 0 auto; height: 12px; }
 .amb-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .amb-btn { flex: 0 1 auto; min-width: 96px; max-width: 130px; text-align: center; border: 1.5px solid var(--line); background: var(--card2); border-radius: 999px; padding: 9px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .15s ease; box-shadow: none; }
 .amb-btn:hover { transform: translateY(-1px); }
@@ -288,10 +307,11 @@ body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
 .amb-vol-name { font-size: 11px; font-weight: 800; letter-spacing: .3px; color: var(--ink-soft); min-width: 74px; }
 .amb-vol { flex: 1; max-width: 220px; height: 4px; accent-color: var(--sky); cursor: pointer; }
 
-/* journal = high-density history surface → roomier entries and rhythm */
-.feed { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; padding-right: 2px; }
-.feed-entry { background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 14px 16px; }
-.fe-main { display: flex; align-items: center; gap: 9px; font-size: 13px; min-width: 0; }
+/* journal = high-density history surface → full-width band with roomier
+   entries and a generous scroll viewport (never a cramped notification box) */
+.feed { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; padding-right: 2px; max-height: min(46vh, 520px); }
+.feed-entry { background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 16px 18px; }
+.fe-main { display: flex; align-items: center; gap: 10px; font-size: 13.5px; min-width: 0; }
 .fe-emoji { flex: 0 0 auto; }
 .fe-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .ft { margin-left: auto; color: var(--ink-soft); font-size: 10.5px; flex: 0 0 auto; }
@@ -304,8 +324,15 @@ body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
 .feed-entry.warn .fe-xp { color: var(--danger); }
 
 @media (max-width: 1080px) {
-  .home-grid, .grid2b { grid-template-columns: 1fr; }
+  /* same two-column grid — only the journal band reflows to full width;
+     no functionality is hidden, nothing overflows */
+  .home-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "timer pet" "amb today" "journal journal"; }
+  .grid2b { grid-template-columns: 1fr; }
   .prog-title { display: none; }
+}
+@media (max-width: 860px) {
+  /* single deliberate column, reading order = priority order */
+  .home-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "timer" "pet" "today" "amb" "journal"; }
 }
 @media (max-width: 720px) {
   .today-grid { grid-template-columns: repeat(2, 1fr); }
