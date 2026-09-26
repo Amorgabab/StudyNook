@@ -237,8 +237,7 @@ window.App = (function () {
     ['🐱', 'Your study pet', 'The pet grows with total focused minutes, from egg to scholar cat. Click it anytime; it likes that.'],
     ['🧸', 'App Guardian', 'On the Apps tab, list the programs that distract you. While you focus, StudyNook warns them, then closes them. System processes are always protected.'],
     ['🌐', 'Tab Guardian', 'On the Sites tab, set blocked or allowed websites, then pair the bundled Chrome extension with the 6-letter code. Blocked tabs show a waiting page instead.'],
-    ['📊', 'Progress', 'Stats, streaks, achievements and a day-by-day garden live in the Garden tab. Notes and tasks are under their own tabs.'],
-    ['📅', 'This Week', 'Give a task a day with the “Schedule on day” picker — it appears in the This Week block under your tasks, where you can change its day or time anytime. Completing it anywhere completes it everywhere.']
+    ['📊', 'Progress', 'Stats, streaks, achievements and a day-by-day garden live in the Garden tab. Notes and tasks are under their own tabs.']
   ];
   let tourIdx = 0;
   App.startTour = function () {

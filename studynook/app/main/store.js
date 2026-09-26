@@ -10,7 +10,6 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const WeekSched = require('../shared/weeksched.js');
 const TaskDays = require('../shared/taskdays.js');
 
 function defaultData() {
@@ -114,8 +113,8 @@ function sanitizeData(d) {
     id: str(t.id, 't' + Math.random().toString(36).slice(2), 40), text: str(t.text, '', 200),
     subject: str(t.subject, '', 40), est: num(t.est, 1, 1, 99), min: num(t.min, 0, 0, 6000),
     done: !!t.done, pomosDone: num(t.pomosDone, 0, 0, 1e6),
-    date: TaskDays.normDate(t.date) || null, // Week Schedule day — a task WITH a date is a scheduled task
-    at: WeekSched.normAt(t.at),               // optional start time "HH:MM" (ordering within the day)
+    date: TaskDays.normDate(t.date) || null, // optional planned day (kept for legacy data; the schedule UI is gone)
+    at: normAt(t.at),                          // optional start time 'HH:MM' — garbage becomes null
     sources: arr(t.sources).filter((x) => x && typeof x.url === 'string').map((x) => ({ url: String(x.url).slice(0, 500), addedAt: num(x.addedAt, 0, 0, 8.64e15) }))
   }));
   migrateLegacySchedule(d);
@@ -146,19 +145,81 @@ function sanitizeData(d) {
   return d;
 }
 
-/* ---------- one-time migration: legacy recurring blocks → scheduled tasks ----------
+/* ---------- one-time migration: legacy recurring blocks → dated tasks ----------
    Older builds stored a SEPARATE Week Schedule system (d.schedule = recurring
    blocks). The unified design says d.tasks[] is the single source of truth, so
-   on first load we convert every valid block into real dated tasks (actual
-   calendar dates in the current week — never a recurrence engine), remember
+   on first load we convert every valid block into a real task planned for the
+   CURRENT week (actual calendar dates — never a recurrence engine), remember
    which block ids were converted (so re-runs can never duplicate), then delete
-   the old structure entirely. Unmappable garbage is skipped safely. */
+   the old structure entirely. Unmappable garbage is skipped safely.
+   Self-contained on purpose: the shared weeksched module was retired together
+   with the separate-schedule UI, but this migration must stay forever so no
+   existing user data is ever silently discarded. */
+const LEGACY_MAX_BLOCKS = 12; // hard cap the old grid enforced
+
+/** Optional start time 'HH:MM' → normalized string or null. A dated task never needs a time. */
+function normAt(v) {
+  if (typeof v !== 'string') return null;
+  const m = /^(\d{2}):(\d{2})$/.exec(v.trim());
+  if (!m) return null;
+  const h = +m[1], mi = +m[2];
+  if (h > 23 || mi > 59) return null;
+  return String(h).padStart(2, '0') + ':' + String(mi).padStart(2, '0');
+}
+
+/** Legacy block → safe object, or null when unusable (mirrors the old sanitizer). */
+function sanitizeLegacyBlock(b) {
+  if (!b || typeof b !== 'object') return null;
+  const subject = typeof b.subject === 'string' ? b.subject.slice(0, 40) : '';
+  const label = typeof b.label === 'string' ? b.label.slice(0, 60) : '';
+  const min = Math.max(0, Math.min(600, Math.round(Number(b.min) || 0)));
+  const at = normAt(b.at); // keep as much usable info as maps safely
+  const days = Array.isArray(b.days) ? b.days.filter((x) => Number.isInteger(x) && x >= 0 && x <= 6).slice(0, 8) : [];
+  if (!subject && !label) return null;
+  if (!days.length) return null;
+  return { id: String(b.id || '').slice(0, 40), subject, label, min, at, days };
+}
+
+/** Convert every valid legacy block into dated tasks (idempotent via migratedFrom). */
+function migrateBlocks(rawSchedule, weekOfStr) {
+  const out = [], sourceIds = [];
+  let sched = rawSchedule;
+  if (typeof sched === 'string') { try { sched = JSON.parse(sched); } catch (_) { sched = null; } }
+  if (!sched || typeof sched !== 'object' || Array.isArray(sched)) return { tasks: out, sourceIds };
+  const ref = TaskDays.normDate(weekOfStr) || TaskDays.toKey(new Date());
+  const dates = TaskDays.weekDates(TaskDays.weekStart(ref)); // Mon..Sun of the reference week
+  const ids = Object.keys(sched).slice(0, LEGACY_MAX_BLOCKS * 2);
+  for (const id of ids) {
+    const b = sanitizeLegacyBlock(sched[id]);
+    if (!b) continue; // junk / empty / day-less → skip, never crash
+    sourceIds.push(b.id || id);
+    for (const di of b.days) {
+      const key = dates[di];
+      if (!key) continue;
+      const text = ((b.subject || '') + ' ' + (b.label || '')).trim() || 'Scheduled study block';
+      out.push({
+        id: 'tms-' + String(id).replace(/[^a-zA-Z0-9_-]/g, '') + '-' + di,
+        text: text.slice(0, 200),
+        subject: b.subject.slice(0, 40),
+        est: Math.max(1, Math.min(8, Math.ceil((b.min || 25) / 25))), // honest Pomodoro estimate
+        min: b.min || 0,
+        done: false, pomosDone: 0,
+        date: key,
+        at: b.at || null, // preserve the legacy start time when it maps safely
+        sources: [], createdAt: Date.now(), completedAt: null,
+        migratedFrom: String(id).slice(0, 40)
+      });
+    }
+  }
+  return { tasks: out, sourceIds };
+}
+
 function migrateLegacySchedule(d) {
   const hasBlocks = d.schedule && typeof d.schedule === 'object' && !Array.isArray(d.schedule) && Object.keys(d.schedule).length > 0;
   if (!hasBlocks) { delete d.schedule; return false; } // no legacy data → guarantee it's gone
   const done = obj(d.migratedSchedules);
   const existing = new Set(d.tasks.map((t) => t && t.migratedFrom).filter(Boolean));
-  const { tasks, sourceIds } = WeekSched.migrateBlocks(d.schedule, TaskDays.toKey(new Date()));
+  const { tasks, sourceIds } = migrateBlocks(d.schedule, TaskDays.toKey(new Date()));
   let added = 0;
   for (const t of tasks) {
     if (done[t.migratedFrom] || existing.has(t.migratedFrom)) continue; // idempotent guards
@@ -219,4 +280,4 @@ class Store {
   }
 }
 
-module.exports = { Store, defaultData, deepMerge, sanitizeData, migrateLegacySchedule };
+module.exports = { Store, defaultData, deepMerge, sanitizeData, migrateLegacySchedule, normAt };

@@ -23,7 +23,7 @@ const { Guardian } = require('./guardian.js');
 const { SyncServer } = require('./sync-server.js');
 const processes = require('./processes.js');
 const progress = require('../shared/progress.js');
-const WeekSched = require('../shared/weeksched.js');
+
 const catalog = require('../shared/catalog.js');
 const NookRules = require('../../extension/rules.js');
 const NookLinks = require('../shared/links.js');
@@ -500,36 +500,35 @@ function registerIpc() {
   H('tasks:add', (p) => {
     const payload = (p && typeof p === 'object') ? p : {};
     const TaskDays = require('../shared/taskdays.js');
-    const t = { id: 't' + Date.now() + Math.floor(Math.random() * 999), text: String(payload.text || '').slice(0, 200), subject: String(payload.subject || '').slice(0, 40), est: Math.max(1, parseInt(payload.est, 10) || 1), min: Math.max(0, parseInt(payload.min, 10) || 0), done: false, pomosDone: 0, date: null, at: null, createdAt: Date.now(), completedAt: null };
+    const { normAt } = require('./store.js'); // sanitizer-owned time validation — one source of truth
+    const t = { id: 't' + Date.now() + Math.floor(Math.random() * 999), text: String(payload.text || '').slice(0, 200), subject: String(payload.subject || '').slice(0, 40), est: Math.max(1, parseInt(payload.est, 10) || 1), min: Math.max(0, parseInt(payload.min, 10) || 0), done: false, pomosDone: 0, date: null, createdAt: Date.now(), completedAt: null };
     if (!t.text) return null;
-    // Week Schedule is part of the task now — an optional date (+ optional start time).
+    // A planned day is part of the task now — optional, one field, no second store.
     if (payload.date != null && payload.date !== '') {
       const key = TaskDays.normDate(String(payload.date));
-      if (!key) return null; // refuse to create a half-scheduled task on a bad date
-      t.date = key;
+      if (!key) return null; // refuse to create a half-planned task on a bad date
       const planned = store.data.tasks.reduce((n, x) => n + (x.date ? 1 : 0), 0);
       if (planned >= TaskDays.MAX_PLANNED) return null; // sanity cap
-      const at = WeekSched.normAt(payload.at);
-      if (payload.at != null && payload.at !== '' && !at) return null; // bad time → reject explicitly
-      t.at = at;
+      t.date = key;
+      t.at = normAt(payload.at); // optional start time; garbage → null
     }
     store.mutate((d) => { d.tasks.unshift(t); });
     pushSnapshot();
     return t;
   });
   H('tasks:setDate', (p) => {
-    // Week Schedule: assign a task to a calendar day ('YYYY-MM-DD') with an
-    // OPTIONAL start time, or clear both with date:null ("Remove from Week Schedule").
-    // Validation is delegated to the shared pure modules + store sanitizer.
+    // Plan a task for a calendar day ('YYYY-MM-DD'), or clear the plan with
+    // date:null ("Remove from This Week" — the task itself always stays).
+    // Validation is delegated to the shared pure module + store sanitizer.
     const TaskDays = require('../shared/taskdays.js');
+    const { normAt } = require('./store.js');
     const payload = (p && typeof p === 'object') ? p : {};
-    let key = null, at = null;
+    let key = null;
     if (payload.date != null && payload.date !== '') {
       key = TaskDays.normDate(String(payload.date));
       if (!key) return false; // reject malformed dates explicitly
-      at = WeekSched.normAt(payload.at); // optional — a dated task without a time is fine
-      if (payload.at != null && payload.at !== '' && !at) return false; // reject malformed times explicitly
     }
+    const at = key ? normAt(payload.at) : null; // time only travels with a date
     let hit = false;
     store.mutate((d) => {
       const t = d.tasks.find((x) => x.id === payload.id);
@@ -539,7 +538,22 @@ function registerIpc() {
         if (planned >= TaskDays.MAX_PLANNED) return; // sanity cap
       }
       t.date = key;
-      t.at = key ? at : null; // clearing the date always clears the time too — no orphan schedules
+      t.at = at;
+      hit = true;
+    });
+    if (hit) pushSnapshot();
+    return hit;
+  });
+  H('tasks:unschedule', (p) => {
+    // "Remove from This Week": clears ONLY the scheduling fields (date + at).
+    // The task itself always stays in the list — this is not Delete.
+    const payload = (p && typeof p === 'object') ? p : {};
+    let hit = false;
+    store.mutate((d) => {
+      const t = d.tasks.find((x) => x && x.id === payload.id);
+      if (!t) return;
+      t.date = null;
+      t.at = null;
       hit = true;
     });
     if (hit) pushSnapshot();
@@ -595,29 +609,13 @@ function registerIpc() {
     return true;
   });
 
-  /* ---- Week Schedule actions on tasks (same task record — no second store) ----
+  /* ---- Week-plan actions on tasks (same task record — no second store) ----
      The old recurring-block IPC (schedule:add/update/remove/toggle) is gone:
-     scheduled items ARE tasks now. These handlers keep the two actions of the
-     Week Schedule view clearly distinct:
-       • tasks:unschedule → "Remove from Week Schedule": clears date + start
-         time only. The task itself, its title/subject/duration/completion and
-         every other field stay exactly as they were.
-       • tasks:remove     → "Delete Task": permanently deletes it (above). */
-  H('tasks:unschedule', (p) => {
-    const payload = (p && typeof p === 'object') ? p : {};
-    let hit = false;
-    store.mutate((d) => {
-      const t = d.tasks.find((x) => x.id === payload.id);
-      if (!t) return;
-      t.date = null;
-      t.at = null; // never leave an orphan start-time behind
-      hit = true;
-    });
-    if (hit) pushSnapshot();
-    return hit;
-  });
+     planned items ARE tasks now. "Remove from This Week" is simply
+     tasks:setDate with date:null — it clears the plan but keeps the task.
+     "Delete Task" remains tasks:remove, which deletes it permanently. */
   H('tasks:focusNow', (p) => {
-    // Start focusing right from a Week Schedule card. Refuses politely while a
+    // Start focusing right from a week-plan row. Refuses politely while a
     // session is already running so this can never hijack an active focus block.
     if (session.isRunning()) return false;
     const payload = (p && typeof p === 'object') ? p : {};

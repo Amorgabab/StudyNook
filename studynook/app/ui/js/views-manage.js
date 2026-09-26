@@ -16,13 +16,6 @@ Views.tasks = function (c) {
   const txt = N.el('input', { class: 'input', id: 'task-text', placeholder: 'What needs doing? e.g. "Chemistry ch.4 notes"', style: 'flex:1;min-width:200px', 'aria-label': 'Task name' });
   const f1 = N.el('div', { class: 'row' });
   f1.append(txt, Views._field('Subject', Views._taskSubjects(d)), Views._field('Planned time', Views._taskMinStepper()), Views._field('Effort', Views._taskEstSelect()));
-  const planSel = Views._taskPlanSelect();
-  f1.appendChild(Views._field('Schedule on day', planSel));
-  const atInp = N.el('input', { class: 'input', type: 'time', style: 'width:auto', 'aria-label': 'Start time (optional)' });
-  const atWrap = Views._field('Start time (optional)', atInp);
-  atWrap.style.display = 'none'; // appears only once a day is chosen — scheduling stays optional
-  f1.appendChild(atWrap);
-  planSel.addEventListener('change', () => { atWrap.style.display = planSel.value ? '' : 'none'; if (!planSel.value) atInp.value = ''; });
   const addBtn = N.el('button', { class: 'btn btn-sage task-add', text: '+ Add task', onclick: () => submit() });
   const f2 = N.el('div', { class: 'row spread' });
   f2.appendChild(N.el('div', { class: 'small', text: '⏱ planned minutes ≈ how long you\'ll spend · 🍅 Pomodoros ≈ how many focus rounds that might take (estimate only).' }));
@@ -30,13 +23,12 @@ Views.tasks = function (c) {
   form.append(f1, f2);
   txt.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
   card.appendChild(form);
-  card.appendChild(N.el('div', { class: 'small mt', text: 'Subjects are managed in Settings. "Planned time" is optional — leave it at 0 and the task stays open-ended. Pick a day and the task also shows up on your Week Schedule.' }));
+  card.appendChild(N.el('div', { class: 'small mt', text: 'Subjects are managed in Settings. "Planned time" is optional — leave it at 0 and the task stays open-ended.' }));
 
   function submit() {
     const v = txt.value.trim();
     if (!v) { txt.focus(); return; }
-    // one call — a scheduled task is created complete (date + optional start time travel together)
-    nook.invoke('tasks:add', { text: v, subject: Views._subjSel.value, min: Views._minVal, est: Views._estSel.value, date: Views._planSel.value || null, at: atInp.value || null })
+    nook.invoke('tasks:add', { text: v, subject: Views._subjSel.value, min: Views._minVal, est: Views._estSel.value })
       .then((t) => { if (!t) App.toast('Could not add task', 'Please check the name and try again.'); });
     Audio2.pop();
   }
@@ -50,111 +42,6 @@ Views.tasks = function (c) {
     N.el('div', { class: 'small', text: `${open.length} open · ${done.length} done · +5 XP each` })
   ));
 
-  /* --- THIS WEEK: a separate block under the Study Tasks card ---------------
-     Not a second data system — these are the SAME d.tasks[] records that
-     carry a date. Timed tasks sort first by start time, then untimed ones.
-     Every scheduled task gets Day / Time dropdowns right on its row, so you
-     can change when it happens without leaving this view. ------------------- */
-  const TD = window.TaskDays;
-  const WS = window.WeekSched;
-  const todayK = N.todayKey();
-  const weekDates = TD.weekDates(TD.weekStart(todayK));
-  const inWeek = (t) => !!t.date && weekDates.indexOf(t.date) >= 0;
-  const timedFirst = (a, b) => WS.dayTasks([a, b], a.date)[0] === a ? -1 : 1; // shared pure ordering
-  const thisWeekOpen = open.filter(inWeek).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : timedFirst(a, b)));
-  const pastOpen = open.filter((t) => t.date && !inWeek(t) && t.date < todayK);
-  const weekDone = done.filter(inWeek);
-
-  const wkCard = N.el('div', { class: 'card mt' });
-  wkCard.appendChild(N.el('h2', { text: '📅 This Week' }));
-  wkCard.appendChild(N.el('div', { class: 'sub', text: 'Tasks that have a day. Change the day or time right here — it updates the same task everywhere. No dates? Use the “Schedule on day” picker above.' }));
-  if (!thisWeekOpen.length && !weekDone.length) {
-    wkCard.appendChild(N.el('div', { class: 'ws-empty', text: 'No scheduled tasks this week — your calendar is clear. 🌿' }));
-  } else {
-    let lastDay = null;
-    for (const t of thisWeekOpen.concat(weekDone.sort(timedFirst)) ) {
-      if (t.date !== lastDay) {
-        lastDay = t.date;
-        wkCard.appendChild(N.el('div', { class: 'row spread wk-dayhead' },
-          N.el('b', { text: TD.fullDayName(t.date) + (t.date === todayK ? ' · Today' : '') }),
-          N.el('span', { class: 'small', text: TD.fullMonthName(t.date) + ' ' + (+t.date.slice(8, 10)) })
-        ));
-      }
-      const row = N.el('div', { class: 'list-row' + (t.done ? ' done' : '') });
-      row.appendChild(N.el('button', {
-        class: 'checkbox' + (t.done ? ' on' : ''), text: '✓',
-        title: t.done ? 'Mark as Incomplete' : 'Mark as Complete (+5 XP)',
-        'aria-label': t.done ? 'Mark task as incomplete' : 'Mark task as complete, +5 XP',
-        onclick: () => { nook.invoke('tasks:toggle', { id: t.id }); if (!t.done) Audio2.pop(); }
-      }));
-      row.appendChild(N.el('div', { class: 'grow' },
-        N.el('div', { class: 'title', text: t.text }),
-        N.el('div', { class: 'task-meta' },
-          t.subject ? N.el('span', { class: 'tag', text: t.subject }) : null,
-          t.min ? N.el('span', { class: 'meta-chip', title: 'Planned minutes — how long you expect this to take', text: N.fmtMin(t.min) }) : null
-        )
-      ));
-      // DAY control — moves the task to another day (same task record, one IPC call)
-      const daySel = N.el('select', { class: 'input wk-sel', 'aria-label': 'Scheduled day for this task' });
-      daySel.appendChild(N.el('option', { value: '', text: 'Unschedule' }));
-      for (const k of weekDates) daySel.appendChild(N.el('option', { value: k, text: TD.fullDayName(k) + (k === todayK ? ' · Today' : '') }));
-      if (t.date && weekDates.indexOf(t.date) < 0) daySel.appendChild(N.el('option', { value: t.date, text: TD.fullDayName(t.date) + ' · ' + TD.fullMonthName(t.date) + ' ' + (+t.date.slice(8, 10)), selected: true }));
-      daySel.value = t.date || '';
-      daySel.addEventListener('change', () => {
-        const v = daySel.value;
-        if (!v) {
-          App.confirm('Remove from Week Schedule?', '"' + t.text + '" will become an ordinary unscheduled task — it stays in your list.',
-            () => nook.invoke('tasks:setDate', { id: t.id, date: null }).then((hit) => {
-              if (!hit) App.toast('Could not update', 'Please try again.');
-            }));
-          return;
-        }
-        nook.invoke('tasks:setDate', { id: t.id, date: v, at: t.at || null }).then((hit) => {
-          if (!hit) App.toast('Could not move the task', 'Please try again.');
-        });
-      });
-      row.appendChild(Views._field('Day', daySel));
-      // TIME control — optional start time; empty means "Any time"
-      const atSel = N.el('select', { class: 'input wk-sel', 'aria-label': 'Start time for this task' });
-      atSel.appendChild(N.el('option', { value: '', text: 'Any time' }));
-      for (let h = 6; h <= 23; h++) for (const m of [0, 30]) {
-        const v = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
-        atSel.appendChild(N.el('option', { value: v, text: v }));
-      }
-      if (t.at && !/^\d{2}:(00|30)$/.test(t.at)) atSel.appendChild(N.el('option', { value: t.at, text: t.at, selected: true }));
-      atSel.value = t.at || '';
-      atSel.addEventListener('change', () => nook.invoke('tasks:setDate', { id: t.id, date: t.date, at: atSel.value || null }));
-      row.appendChild(Views._field('Time', atSel));
-      if (!t.done) {
-        row.appendChild(N.el('button', {
-          class: 'btn btn-sm btn-sage', text: '▶ Focus', title: 'Go to the timer with this task selected',
-          'aria-label': 'Start focusing on this task',
-          onclick: () => nook.invoke('tasks:focusNow', { id: t.id }).then((ok2) => {
-            if (!ok2) App.toast('Cannot start now', 'A session may already be running.');
-          })
-        }));
-      }
-      wkCard.appendChild(row);
-    }
-  }
-  card.appendChild(wkCard);
-  if (pastOpen.length) {
-    const od = N.el('div', { class: 'card mt' });
-    od.appendChild(N.el('div', { class: 'row spread' },
-      N.el('b', { text: '⏳ Planned earlier, still open' }),
-      N.el('span', { class: 'small', text: pastOpen.length + (pastOpen.length > 1 ? ' tasks' : ' task') })
-    ));
-    for (const t of pastOpen.slice(0, 6)) {
-      od.appendChild(N.el('div', { class: 'row', style: 'gap:8px;margin-top:6px;align-items:center' },
-        N.el('button', { class: 'domain-chip', style: 'cursor:pointer;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap', text: t.text, title: 'Click to focus on this task', onclick: () => { App.lastTaskId = t.id; App.go('home'); } }),
-        N.el('span', { class: 'small', text: TD.fullDayName(t.date) + ' ' + (+t.date.slice(8, 10)) }),
-        N.el('button', { class: 'btn btn-ghost btn-sm', text: 'Move to Today', 'aria-label': 'Reschedule to today', onclick: () => nook.invoke('tasks:setDate', { id: t.id, date: todayK, at: null }) })
-      ));
-    }
-    if (pastOpen.length > 6) od.appendChild(N.el('div', { class: 'small mt', text: '+' + (pastOpen.length - 6) + ' more in your Open list.' }));
-    card.appendChild(od);
-  }
-
   /* --- task list rows --- */
   const list = N.el('div', { class: 'list mt' });
   const rows = App.taskFilter === 'done' ? done : open;
@@ -163,12 +50,11 @@ Views.tasks = function (c) {
     const row = N.el('div', { class: 'list-row' + (t.done ? ' done' : '') });
     const cb = N.el('button', { class: 'checkbox' + (t.done ? ' on' : ''), text: '✓', title: t.done ? 'reopen' : 'complete (+5 XP)', 'aria-label': t.done ? 'Reopen task' : 'Complete task, +5 XP', onclick: () => { nook.invoke('tasks:toggle', { id: t.id }); if (!t.done) Audio2.pop(); } });
     const grow = N.el('div', { class: 'grow' }, N.el('div', { class: 'title', text: t.text }));
-    // meta line: subject / planned time / pomodoro progress / planned day — all explicit words now
+    // meta line: subject / planned time / pomodoro progress — all explicit words now
     const meta = [];
     if (t.subject) meta.push(N.el('span', { class: 'tag', text: t.subject }));
     if (t.min) meta.push(N.el('span', { class: 'meta-chip', title: 'Planned minutes — the time you expect this task to take', text: '⏱ planned ' + N.fmtMin(t.min) }));
     meta.push(N.el('span', { class: 'meta-chip', title: 'Pomodoros done out of your estimate', text: `🍅 ${t.pomosDone || 0}/${t.est} pomodoros` }));
-    if (t.date) meta.push(N.el('button', { class: 'meta-chip link', title: 'Remove from Week Schedule — keeps the task in your list', text: '📅 ' + TD.dayLabel(t.date) + (t.at ? ' · ' + t.at : ''), onclick: () => nook.invoke('tasks:unschedule', { id: t.id }) }));
     // study sources: collapsed behind a "+ Source" affordance until opened
     const srcWrap = N.el('div', { class: 'src-wrap' });
     const srcBar = N.el('div', { class: 'row', style: 'gap:5px;margin-top:6px;flex-wrap:wrap' });
@@ -220,15 +106,6 @@ Views._taskEstSelect = function () {
   for (let i = 2; i <= 8; i++) est.appendChild(N.el('option', { value: String(i), text: i + ' 🍅 Pomodoros' }));
   Views._estSel = est;
   return est;
-};
-Views._taskPlanSelect = function () {
-  const TD = window.TaskDays;
-  const sel = N.el('select', { class: 'input', 'aria-label': 'Plan for a day this week' });
-  sel.appendChild(N.el('option', { value: '', text: 'unplanned' }));
-  const dates = TD.weekDates(TD.weekStart(N.todayKey()));
-  for (const k of dates) sel.appendChild(N.el('option', { value: k, text: TD.dayLabel(k) + (k === N.todayKey() ? ' · today' : '') }));
-  Views._planSel = sel;
-  return sel;
 };
 
 /* ============================= NOTES ============================= */
