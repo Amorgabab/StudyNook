@@ -59,15 +59,21 @@ Views.schedule = function (c) {
     if (!subj.value && !lbl.value.trim()) { err.textContent = 'Pick a subject or write a short note first.'; err.style.display = 'block'; return; }
     if (!picked.size) { err.textContent = 'Choose at least one day of the week.'; err.style.display = 'block'; return; }
     err.style.display = 'none';
+    addBtn.disabled = true;                      // one flight at a time — no double-adds on fast clicks
     nook.invoke('schedule:add', { block: {
       subject: subj.value, label: lbl.value.trim(), min: minVal,
       at: at.value || null, days: [...picked].sort((a, b) => a - b)
     } }).then((res) => {
+      addBtn.disabled = false;
       if (res && res.ok) Audio2.pop();
       else if (res && res.error) { err.textContent = res.error; err.style.display = 'block'; }
+    }).catch(() => {
+      addBtn.disabled = false;
+      err.textContent = 'Could not save right now — please try again.'; err.style.display = 'block';
     });
   };
-  const addBtn = N.el('button', { class: 'btn btn-sage', text: '+ Add block', onclick: submit });
+  const addBtn = N.el('button', { class: 'btn btn-sage', text: '+ Add block' });  // onclick wired below (submit needs the button ref)
+  addBtn.addEventListener('click', submit);
   formCard.appendChild(N.el('div', { class: 'row', style: 'flex-wrap:wrap;gap:8px' }, subj, lbl, mins, N.el('span', { class: 'row', style: 'gap:4px' }, N.el('span', { class: 'small', text: 'at' }), at), addBtn));
   formCard.appendChild(N.el('div', { class: 'row mt', style: 'gap:8px;flex-wrap:wrap' }, N.el('span', { class: 'small', text: 'days:' }), dayRow));
   formCard.appendChild(err);
@@ -141,9 +147,9 @@ Views.schedule = function (c) {
       )
     ));
     row.appendChild(N.el('span', { class: 'small', text: N.fmtMin(b.min) }));
-    row.appendChild(N.el('button', { class: 'toggle' + (b.enabled !== false ? ' on' : ''), title: 'pause/resume this block', onclick: () => nook.invoke('schedule:toggle', { id }) }));
+    row.appendChild(N.el('button', { class: 'toggle' + (b.enabled !== false ? ' on' : ''), title: 'pause/resume this block', onclick: () => nook.invoke('schedule:toggle', { id }).then((ok) => { if (!ok) App.toast('Could not pause', 'Please try again.') }) }));
     row.appendChild(N.el('button', { class: 'iconbtn', text: '✎', title: 'edit', onclick: () => editModal(b) }));
-    row.appendChild(N.el('button', { class: 'iconbtn', text: '🗑', title: 'delete', onclick: () => App.confirm('Delete this block?', (b.subject || b.label) + ' · ' + N.fmtMin(b.min), () => nook.invoke('schedule:remove', { id })) }));
+    row.appendChild(N.el('button', { class: 'iconbtn', text: '🗑', title: 'delete', onclick: () => App.confirm('Delete this block?', (b.subject || b.label) + ' · ' + N.fmtMin(b.min), () => nook.invoke('schedule:remove', { id }).then((ok) => { if (!ok) App.toast('Could not delete', 'Please try again.') })) }));
     listCard.appendChild(row);
   }
   c.appendChild(listCard);
@@ -169,14 +175,15 @@ Views.schedule = function (c) {
       N.el('div', { class: 'row mt', style: 'gap:8px;align-items:center' }, N.el('span', { class: 'small', text: 'at' }), eat, emins),
       N.el('div', { class: 'mt' }, eday)
     );
+    // preselect current subject option BEFORE the modal mounts (value must match an existing option)
+    esub.value = b.subject || '';
     App.modal('Edit block', body, [
       { label: 'Save', cls: 'btn-sage', fn: () => {
         nook.invoke('schedule:update', { id: b.id, patch: { subject: esub.value, label: elbl.value.trim(), min: emin, at: eat.value || null, days: [...epick].sort((x, y) => x - y) } })
-          .then((res) => { if (res && !res.ok && res.error) App.toast('Cannot save', res.error); App.closeModal(); });
+          .then((res) => { if (!res || !res.ok) App.toast('Cannot save', (res && res.error) || 'Please try again.'); App.closeModal(); })
+          .catch(() => { App.toast('Cannot save', 'Please try again.'); });
       } },
       { label: 'Cancel', cls: 'btn-ghost', fn: () => App.closeModal() }
     ]);
-    // preselect current subject option
-    esub.value = b.subject || '';
   }
 };

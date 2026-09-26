@@ -103,7 +103,7 @@ Views.settings = function (c) {
   /* about */
   const about = N.el('div', { class: 'card' });
   about.appendChild(N.el('h2', { text: 'About' }));
-  about.appendChild(N.el('div', { class: 'sub', text: 'StudyNook v' + (window.APP_VERSION || '1.3.2') + ' · local-first: no accounts, no cloud, no telemetry.' }));
+  about.appendChild(N.el('div', { class: 'sub', text: 'StudyNook v' + (App.state.appVersion || '1.5') + ' · local-first: no accounts, no cloud, no telemetry.' }));
   const arow = N.el('div', { class: 'row' });
   arow.appendChild(N.el('button', { class: 'btn btn-sm', text: '📖 Open README', onclick: () => nook.invoke('help:readme') }));
   arow.appendChild(N.el('button', { class: 'btn btn-sm', text: '🎓 Replay welcome tour', onclick: () => App.startTour() }));
@@ -155,8 +155,9 @@ Views.help = function (c) {
     ['🧸', '2 · Block distracting apps', 'On the <b>Apps</b> tab turn the guard on and add apps (one click from the library, or scan what\'s running). <b>Blocklist</b> closes only listed apps; <b>Allowlist</b> closes everything except your safe list. <b>Gentle</b> style shows a warning card with a countdown before closing anything.'],
     ['🌐', '3 · Block distracting tabs', 'On the <b>Sites</b> tab set your lists, then load the bundled extension once (chrome://extensions → Developer mode → Load unpacked → the app\'s <b>extension/</b> folder) and pair it with the 6-letter code. After that, blocked sites redirect to a cozy napping page during focus.'],
     ['🐱', '4 · Grow Mochi & your garden', 'Every focused minute feeds your pet: egg → baby → kitten → study cat → scholar → legend. You also earn XP, levels, streaks, trophies and garden plants (🌱🌿🌷🌳) for each day you study.'],
-    ['🛟', '5 · Safety & emergency stops', 'StudyNook refuses to close system processes, and in gentle mode you always get a warning first. Need a blocked app? Click <b>"Leave it open 5 min"</b> on the warning, use <b>"let me breathe"</b> on the Apps tab, or quit from the tray — the guard stops instantly.'],
-    ['💾', '6 · Your data stays home', 'Everything is stored in <b>data/data.json</b> inside the app folder — plain, readable JSON. Export/import backups from Settings. The localhost bridge (port 47470) only talks to your paired extension.']
+    ['📅', '5 · Plan the week', 'On the <b>Schedule</b> tab add repeating study blocks ("Mon + Wed · Math · 45m at 18:00"). No checkboxes to tick — when you finish focus sessions, StudyNook fills the plan-vs-focus bars automatically, so slipping one day never means losing the whole week. You can also assign individual tasks to a day with the <b>"Plan for"</b> picker on the Tasks tab — the "This week" strip shows what to study each day.'],
+    ['🛟', '6 · Safety & emergency stops', 'StudyNook refuses to close system processes, and in gentle mode you always get a warning first. Need a blocked app? Click <b>"Leave it open 5 min"</b> on the warning, use <b>"let me breathe"</b> on the Apps tab, or quit from the tray — the guard stops instantly.'],
+    ['💾', '7 · Your data stays home', 'Everything is stored in <b>data/data.json</b> inside the app folder — plain, readable JSON. Export/import backups from Settings. The localhost bridge (port 47470) only talks to your paired extension.']
   ];
   const grid = N.el('div', { class: 'set-grid' });
   for (const [e, h, p] of cards) {

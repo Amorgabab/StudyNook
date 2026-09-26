@@ -48,21 +48,29 @@
     return out;
   }
 
+  /** Collision-safe new id (Date+counter+random — same-ms adds never collide). */
+  let _seq = 0;
+  function newId() { return 'b' + Date.now().toString(36) + (_seq++).toString(36) + Math.floor(Math.random() * 1e6).toString(36); }
+
   /** Add a block; returns {ok, id?, error?}. Never exceeds MAX_BLOCKS. */
   function addBlock(sched, block) {
-    const b = sanitizeBlock(Object.assign({}, block, { id: block && block.id }));
+    // NOTE: ids are always freshly generated here — renderer-supplied ids are
+    // ignored on purpose so a hostile payload can't overwrite an existing block.
+    const b = sanitizeBlock(block);
     if (!b) return { ok: false, error: 'Give the block a subject or a name, and pick at least one day.' };
-    const count = Object.keys(sched || {}).length;
+    if (!sched || typeof sched !== 'object') return { ok: false, error: 'Schedule is not ready yet — restart StudyNook.' };
+    const count = Object.keys(sched).length;
     if (count >= MAX_BLOCKS) return { ok: false, error: 'The week grid holds ' + MAX_BLOCKS + ' blocks — delete one first.' };
-    let id = b.id;
-    while (!id || sched[id]) id = 'b' + Date.now().toString(36) + Math.floor(Math.random() * 999);
+    let id = newId();
+    while (sched[id]) id = newId();
     b.id = id;
     sched[id] = b;
     return { ok: true, id };
   }
   function updateBlock(sched, id, patch) {
-    const cur = sched && sched[id];
-    if (!cur) return { ok: false, error: 'no such block' };
+    if (!sched || typeof sched !== 'object' || !Object.prototype.hasOwnProperty.call(sched, id)) return { ok: false, error: 'no such block' };
+    const cur = sched[id];
+    if (!cur || typeof cur !== 'object') return { ok: false, error: 'no such block' };
     const next = sanitizeBlock(Object.assign({}, cur, patch, { id: cur.id }));
     if (!next) return { ok: false, error: 'A block needs a subject or name, and at least one day.' };
     next.id = cur.id;
@@ -70,12 +78,13 @@
     return { ok: true };
   }
   function removeBlock(sched, id) {
-    if (!sched || !sched[id]) return false;
+    if (!sched || typeof sched !== 'object' || !Object.prototype.hasOwnProperty.call(sched, id)) return false;
     delete sched[id];
     return true;
   }
   function toggleBlock(sched, id) {
-    const b = sched && sched[id];
+    if (!sched || typeof sched !== 'object' || !Object.prototype.hasOwnProperty.call(sched, id)) return false;
+    const b = sched[id];
     if (!b) return false;
     b.enabled = b.enabled === false;
     return true;

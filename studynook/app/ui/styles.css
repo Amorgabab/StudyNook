@@ -354,3 +354,27 @@ input[type="number"].input { -moz-appearance: textfield; appearance: textfield; 
 .day-dot { width: 20px; height: 20px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; background: var(--card2); border: 1.5px solid var(--line); color: var(--ink-soft); }
 .day-dot.on { background: var(--sage); border-color: var(--sage); color: #fff; }
 .day-dot.today { border-color: var(--accent); }
+
+/* === Tasks: labeled creation form + weekly planner strip (v1.5) === */
+.task-form { display: flex; flex-direction: column; gap: 8px; }
+.task-form .row { flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+.tfield { display: flex; flex-direction: column; gap: 3px; }
+.tfield-lbl { font-size: 10.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--ink-soft); padding-left: 2px; }
+.task-add { align-self: flex-end; white-space: nowrap; }
+.task-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; align-items: center; }
+.meta-chip { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--card); border: 1.5px solid var(--line); color: var(--ink-soft); white-space: nowrap; }
+.meta-chip.link { cursor: pointer; font-family: inherit; }
+.meta-chip.link:hover { border-color: var(--rose); color: #A4544B; }
+.src-toggle { align-self: flex-start; margin-top: 6px; border: 1.5px dashed var(--line); background: transparent; color: var(--ink-soft); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; cursor: pointer; transition: all .15s ease; }
+.src-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.week-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.week-day { background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 7px 6px; min-height: 66px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.week-day.today { border-color: var(--accent); background: var(--accent-soft); }
+.wd-head { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; }
+.wd-head b { font-size: 11px; }
+.wd-empty { font-size: 10.5px; color: var(--ink-soft); opacity: .7; text-align: center; }
+.wd-task { display: block; width: 100%; text-align: left; font-size: 10.5px; font-weight: 700; background: var(--card); border: 1.5px solid var(--line); border-radius: 8px; padding: 4px 7px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: all .15s ease; }
+.wd-task:hover { border-color: var(--sage); transform: translateY(-1px); }
+.wd-more { font-size: 10px; font-weight: 700; color: var(--ink-soft); }
+@media (max-width: 900px) { .week-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .week-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

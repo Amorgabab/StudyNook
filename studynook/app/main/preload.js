@@ -12,7 +12,7 @@ const INVOKE = new Set([
   'get-snapshot',
   'session:start', 'session:pause', 'session:resume', 'session:skip', 'session:stop',
   'settings:set', 'profile:set', 'pet:rename', 'pet:pet',
-  'tasks:add', 'tasks:toggle', 'tasks:remove', 'tasks:addSource', 'tasks:removeSource', 'open:url',
+  'tasks:add', 'tasks:toggle', 'tasks:remove', 'tasks:addSource', 'tasks:removeSource', 'tasks:setDate', 'open:url',
   'schedule:add', 'schedule:update', 'schedule:remove', 'schedule:toggle',
   'subjects:set', 'notes:add', 'notes:save', 'notes:remove',
   'data:backupNow', 'data:openBackups', 'data:openSounds', 'sound:get',

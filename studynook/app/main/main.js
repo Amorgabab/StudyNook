@@ -419,7 +419,7 @@ function buildSnapshot() {
       v: d.v, profile: d.profile, pet: d.pet, xp: d.xp, level: d.level,
       streak: d.streak, settings: d.settings, apps: d.apps, sites: d.sites,
       subjects: d.subjects, notes: d.notes,
-      tasks: d.tasks, sessions: d.sessions.slice(0, 60), daily: d.daily,
+      tasks: d.tasks, schedule: d.schedule, sessions: d.sessions.slice(0, 60), daily: d.daily,
       counters: d.counters, achievements: d.achievements, onboarded: d.onboarded,
       feed: d.feed || []
     },
@@ -498,11 +498,31 @@ function registerIpc() {
 
   /* ---- tasks ---- */
   H('tasks:add', (p) => {
-    const t = { id: 't' + Date.now() + Math.floor(Math.random() * 999), text: String(p.text || '').slice(0, 200), subject: String(p.subject || '').slice(0, 40), est: Math.max(1, parseInt(p.est, 10) || 1), min: Math.max(0, parseInt(p.min, 10) || 0), done: false, pomosDone: 0, createdAt: Date.now(), completedAt: null };
+    const t = { id: 't' + Date.now() + Math.floor(Math.random() * 999), text: String(p.text || '').slice(0, 200), subject: String(p.subject || '').slice(0, 40), est: Math.max(1, parseInt(p.est, 10) || 1), min: Math.max(0, parseInt(p.min, 10) || 0), done: false, pomosDone: 0, date: null, createdAt: Date.now(), completedAt: null };
     if (!t.text) return null;
     store.mutate((d) => { d.tasks.unshift(t); });
     pushSnapshot();
     return t;
+  });
+  H('tasks:setDate', (p) => {
+    // weekly planner: assign a task to a day ('YYYY-MM-DD') or clear with null.
+    // Validation is delegated to the shared pure module + store sanitizer.
+    const TaskDays = require('../shared/taskdays.js');
+    const key = p && p.date == null ? null : TaskDays.normDate(String(p.date));
+    if (p && p.date != null && !key) return false; // reject malformed dates explicitly
+    let hit = false;
+    store.mutate((d) => {
+      const t = d.tasks.find((x) => x.id === (p && p.id));
+      if (!t) return;
+      if (key && !t.date) {
+        const planned = d.tasks.reduce((n, x) => n + (x.date ? 1 : 0), 0);
+        if (planned >= TaskDays.MAX_PLANNED) return; // sanity cap
+      }
+      t.date = key;
+      hit = true;
+    });
+    if (hit) pushSnapshot();
+    return hit;
   });
   H('tasks:toggle', (p) => {
     const done = store.mutate((d) => {
@@ -554,14 +574,17 @@ function registerIpc() {
     return true;
   });
 
-  /* ---- week schedule (recurring study blocks) ---- */
+  /* ---- week schedule (recurring study blocks) ----
+     Payloads arrive from the renderer → guard against null/non-object shapes. */
   H('schedule:add', (p) => {
-    const res = store.mutate((d) => Schedule.addBlock(d.schedule || (d.schedule = {}), p.block || {}));
+    const payload = (p && typeof p === 'object') ? p : {};
+    const res = store.mutate((d) => Schedule.addBlock(d.schedule || (d.schedule = {}), (payload.block && typeof payload.block === 'object') ? payload.block : {}));
     if (res.ok) pushSnapshot();
     return res;
   });
   H('schedule:update', (p) => {
-    const res = store.mutate((d) => Schedule.updateBlock(d.schedule || (d.schedule = {}), String(p.id || ''), p.patch || {}));
+    const payload = (p && typeof p === 'object') ? p : {};
+    const res = store.mutate((d) => Schedule.updateBlock(d.schedule || (d.schedule = {}), String(payload.id || ''), (payload.patch && typeof payload.patch === 'object') ? payload.patch : {}));
     if (res.ok) pushSnapshot();
     return res;
   });

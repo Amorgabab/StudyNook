@@ -11,26 +11,27 @@ Views.tasks = function (c) {
   card.appendChild(N.el('h2', { text: '📝 Study tasks' }));
   card.appendChild(N.el('div', { class: 'sub', text: 'Small, kind to-do items. Link one to a session so Mochi knows what you\'re growing.' }));
 
-  const form = N.el('div', { class: 'row' });
-  const txt = N.el('input', { class: 'input', id: 'task-text', placeholder: 'What needs doing? e.g. "Chemistry ch.4 notes"', style: 'flex:1;min-width:200px' });
-  const subj = N.el('select', { class: 'input', id: 'task-subj' });
-  subj.appendChild(N.el('option', { value: '', text: 'subject…' }));
-  for (const s of (d.subjects || [])) subj.appendChild(N.el('option', { value: s, text: s }));
-  let minVal = 0;
-  const min = N.stepper(0, 0, 600, (v) => { minVal = v; });
-  min.title = 'planned minutes (optional)';
-  const est = N.el('select', { class: 'input' });
-  for (let i = 1; i <= 8; i++) est.appendChild(N.el('option', { value: String(i), text: '🍅×' + i }));
-  const add = N.el('button', { class: 'btn btn-sage', text: '+ Add', onclick: () => submit() });
-  form.append(txt, subj, min, est, add);
+  /* --- creation form: every control is labeled — no cryptic steppers --- */
+  const form = N.el('div', { class: 'task-form' });
+  const txt = N.el('input', { class: 'input', id: 'task-text', placeholder: 'What needs doing? e.g. "Chemistry ch.4 notes"', style: 'flex:1;min-width:200px', 'aria-label': 'Task name' });
+  const f1 = N.el('div', { class: 'row' });
+  f1.append(txt, Views._field('Subject', Views._taskSubjects(d)), Views._field('Planned time', Views._taskMinStepper()), Views._field('Effort', Views._taskEstSelect()));
+  const planSel = Views._taskPlanSelect();
+  f1.appendChild(Views._field('Plan for', planSel));
+  const addBtn = N.el('button', { class: 'btn btn-sage task-add', text: '+ Add task', onclick: () => submit() });
+  const f2 = N.el('div', { class: 'row spread' });
+  f2.appendChild(N.el('div', { class: 'small', text: '⏱ planned minutes ≈ how long you\'ll spend · 🍅 Pomodoros ≈ how many focus rounds that might take (estimate only).' }));
+  f2.appendChild(addBtn);
+  form.append(f1, f2);
   txt.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
   card.appendChild(form);
-  card.appendChild(N.el('div', { class: 'small mt', text: 'Subjects are managed in Settings. "min" is the time you plan for the task (optional).' }));
+  card.appendChild(N.el('div', { class: 'small mt', text: 'Subjects are managed in Settings. "Planned time" is optional — leave it at 0 and the task stays open-ended.' }));
 
   function submit() {
     const v = txt.value.trim();
-    if (!v) return;
-    nook.invoke('tasks:add', { text: v, subject: subj.value, min: minVal, est: est.value });
+    if (!v) { txt.focus(); return; }
+    nook.invoke('tasks:add', { text: v, subject: Views._subjSel.value, min: Views._minVal, est: Views._estSel.value })
+      .then((t) => { if (t && t.id && Views._planSel.value) nook.invoke('tasks:setDate', { id: t.id, date: Views._planSel.value }); });
     Audio2.pop();
   }
 
@@ -43,36 +44,106 @@ Views.tasks = function (c) {
     N.el('div', { class: 'small', text: `${open.length} open · ${done.length} done · +5 XP each` })
   ));
 
+  /* --- weekly planner strip (Mon–Sun): the "what should I study this week?" layer --- */
+  const TD = window.TaskDays;
+  const week = TD.groupTasks(open, N.todayKey());
+  const strip = N.el('div', { class: 'week-strip' });
+  const stripHead = N.el('div', { class: 'row spread', style: 'margin:14px 0 6px' });
+  stripHead.appendChild(N.el('span', { class: 'lbl', text: '📅 This week' }));
+  stripHead.appendChild(N.el('span', { class: 'small', text: week.plannedCount ? `${week.plannedCount} task${week.plannedCount > 1 ? 's' : ''} planned · ${week.unplanned.length} unplanned` : 'Assign days with the "Plan for" picker — or drag nothing, it\'s optional.' }));
+  card.appendChild(stripHead);
+  for (const day of week.days) {
+    const col = N.el('div', { class: 'week-day' + (day.isToday ? ' today' : '') });
+    col.appendChild(N.el('div', { class: 'wd-head' }, N.el('b', { text: day.name }), N.el('span', { class: 'small', text: day.tasks.length ? String(day.tasks.length) : '·' })));
+    if (!day.tasks.length) col.appendChild(N.el('div', { class: 'wd-empty', text: day.isToday ? 'free' : '' }));
+    for (const t of day.tasks.slice(0, 4)) {
+      col.appendChild(N.el('button', { class: 'wd-task', title: 'Click to start focusing on this task', text: t.text, onclick: () => { App.lastTaskId = t.id; App.go('home'); } }));
+    }
+    if (day.tasks.length > 4) col.appendChild(N.el('div', { class: 'wd-more', text: '+' + (day.tasks.length - 4) + ' more' }));
+    strip.appendChild(col);
+  }
+  card.appendChild(strip);
+  if (week.overdue.length) {
+    const od = N.el('div', { class: 'row mt', style: 'gap:6px;flex-wrap:wrap' });
+    od.appendChild(N.el('span', { class: 'small', text: '⏳ Planned earlier, still open:' }));
+    for (const t of week.overdue.slice(0, 5)) od.appendChild(N.el('button', { class: 'domain-chip', style: 'cursor:pointer', text: t.text, title: 'Click to focus on this task', onclick: () => { App.lastTaskId = t.id; App.go('home'); } }));
+    card.appendChild(od);
+  }
+
+  /* --- task list rows --- */
   const list = N.el('div', { class: 'list mt' });
   const rows = App.taskFilter === 'done' ? done : open;
   if (!rows.length) list.appendChild(N.el('div', { class: 'small', text: App.taskFilter === 'done' ? 'Nothing finished yet — your future self is patient.' : 'All clear! Add a task above, or just free-focus. 🌿' }));
   for (const t of rows) {
     const row = N.el('div', { class: 'list-row' + (t.done ? ' done' : '') });
-    const cb = N.el('button', { class: 'checkbox' + (t.done ? ' on' : ''), text: '✓', title: t.done ? 'reopen' : 'complete (+5 XP)', onclick: () => { nook.invoke('tasks:toggle', { id: t.id }); if (!t.done) Audio2.pop(); } });
+    const cb = N.el('button', { class: 'checkbox' + (t.done ? ' on' : ''), text: '✓', title: t.done ? 'reopen' : 'complete (+5 XP)', 'aria-label': t.done ? 'Reopen task' : 'Complete task, +5 XP', onclick: () => { nook.invoke('tasks:toggle', { id: t.id }); if (!t.done) Audio2.pop(); } });
     const grow = N.el('div', { class: 'grow' }, N.el('div', { class: 'title', text: t.text }));
-    // study sources: paste url + , click ↗ to open, ✕ to remove
+    // meta line: subject / planned time / pomodoro progress / planned day — all explicit words now
+    const meta = [];
+    if (t.subject) meta.push(N.el('span', { class: 'tag', text: t.subject }));
+    if (t.min) meta.push(N.el('span', { class: 'meta-chip', title: 'Planned minutes — the time you expect this task to take', text: '⏱ planned ' + N.fmtMin(t.min) }));
+    meta.push(N.el('span', { class: 'meta-chip', title: 'Pomodoros done out of your estimate', text: `🍅 ${t.pomosDone || 0}/${t.est} pomodoros` }));
+    if (t.date) meta.push(N.el('button', { class: 'meta-chip link', title: 'Planned day — click to clear', text: '📅 ' + TD.dayLabel(t.date), onclick: () => nook.invoke('tasks:setDate', { id: t.id, date: null }) }));
+    // study sources: collapsed behind a "+ Source" affordance until opened
+    const srcWrap = N.el('div', { class: 'src-wrap' });
     const srcBar = N.el('div', { class: 'row', style: 'gap:5px;margin-top:6px;flex-wrap:wrap' });
     (t.sources || []).forEach((s, i) => {
       srcBar.appendChild(N.el('span', { class: 'domain-chip', title: s.url },
-        N.el('button', { style: 'width:auto;padding:0 7px;background:var(--sky-soft);border:none;color:#47688A;font-weight:800;cursor:pointer', text: '↗', title: 'open in browser', onclick: () => nook.invoke('open:url', { url: s.url }) }),
+        N.el('button', { style: 'width:auto;padding:0 7px;background:var(--sky-soft);border:none;color:#47688A;font-weight:800;cursor:pointer', text: '↗', title: 'open in browser', 'aria-label': 'Open source in browser', onclick: () => nook.invoke('open:url', { url: s.url }) }),
         N.el('span', { class: 'mono', style: 'border:none;background:transparent', text: N.shortUrl(s.url) }),
-        N.el('button', { text: '✕', title: 'remove source', onclick: () => nook.invoke('tasks:removeSource', { id: t.id, idx: i }) })
+        N.el('button', { text: '✕', title: 'remove source', 'aria-label': 'Remove source', onclick: () => nook.invoke('tasks:removeSource', { id: t.id, idx: i }) })
       ));
     });
-    const sInp = N.el('input', { class: 'input', style: 'flex:1;min-width:150px;padding:5px 10px;font-size:11px', placeholder: 'paste study material here…' });
+    const sInp = N.el('input', { class: 'input', style: 'flex:1;min-width:150px;padding:5px 10px;font-size:11px', placeholder: 'paste study material here…', 'aria-label': 'Study material URL' });
     const addSrc = () => { if (sInp.value.trim()) { nook.invoke('tasks:addSource', { id: t.id, url: sInp.value }); sInp.value = ''; } };
     sInp.addEventListener('keydown', (e) => { if (e.key === 'Enter') addSrc(); });
-    srcBar.append(sInp, N.el('button', { class: 'btn btn-sm btn-sage', style: 'padding:4px 10px', text: '+', title: 'add study source', onclick: addSrc }));
-    grow.appendChild(srcBar);
+    const srcForm = N.el('div', { class: 'row', style: 'gap:5px;margin-top:6px;display:none' });
+    srcForm.append(sInp, N.el('button', { class: 'btn btn-sm btn-sage', style: 'padding:4px 10px', text: '+ Add', 'aria-label': 'Add study source', onclick: addSrc }));
+    const srcToggle = N.el('button', { class: 'src-toggle', text: (t.sources && t.sources.length ? '＋ Add source' : '🔗 + Source'), title: 'Attach lecture videos, papers or textbook pages to this task', onclick: () => { srcForm.style.display = srcForm.style.display === 'none' ? 'flex' : 'none'; if (srcForm.style.display === 'flex') sInp.focus(); } });
+    srcWrap.append(srcBar, srcForm, srcToggle);
+    grow.appendChild(meta.length ? N.el('div', { class: 'task-meta' }, ...meta) : meta[0]);
+    grow.appendChild(srcWrap);
     row.append(cb, grow);
-    if (t.subject) row.appendChild(N.el('span', { class: 'tag', text: t.subject }));
-    if (t.min) row.appendChild(N.el('span', { class: 'small', text: '⏱ ' + t.min + 'm' }));
-    row.appendChild(N.el('span', { class: 'small', text: `🍅 ${t.pomosDone || 0}/${t.est}` }));
-    row.appendChild(N.el('button', { class: 'iconbtn', text: '🗑', title: 'delete', onclick: () => nook.invoke('tasks:remove', { id: t.id }) }));
+    row.appendChild(N.el('button', { class: 'iconbtn', text: '🗑', title: 'delete', 'aria-label': 'Delete task', onclick: () => App.confirm('Delete this task?', t.text, () => nook.invoke('tasks:remove', { id: t.id })) }));
     list.appendChild(row);
   }
   card.appendChild(list);
   c.appendChild(card);
+};
+
+/* --- small shared builders for the labeled task form (keeps Views.tasks readable) --- */
+Views._minVal = 0;
+Views._field = function (label, control) {
+  return N.el('label', { class: 'tfield' }, N.el('span', { class: 'tfield-lbl', text: label }), control);
+};
+Views._taskSubjects = function (d) {
+  const subj = N.el('select', { class: 'input', id: 'task-subj', 'aria-label': 'Subject' });
+  subj.appendChild(N.el('option', { value: '', text: '— none —' }));
+  for (const s of (d.subjects || [])) subj.appendChild(N.el('option', { value: s, text: s }));
+  Views._subjSel = subj;
+  return subj;
+};
+Views._taskMinStepper = function () {
+  Views._minVal = 0;
+  const min = N.stepper(0, 0, 600, (v) => { Views._minVal = v; });
+  min.setAttribute('aria-label', 'Planned minutes');
+  return min;
+};
+Views._taskEstSelect = function () {
+  const est = N.el('select', { class: 'input', 'aria-label': 'Estimated Pomodoros' });
+  est.appendChild(N.el('option', { value: '1', text: '1 🍅 Pomodoro' }));
+  for (let i = 2; i <= 8; i++) est.appendChild(N.el('option', { value: String(i), text: i + ' 🍅 Pomodoros' }));
+  Views._estSel = est;
+  return est;
+};
+Views._taskPlanSelect = function () {
+  const TD = window.TaskDays;
+  const sel = N.el('select', { class: 'input', 'aria-label': 'Plan for a day this week' });
+  sel.appendChild(N.el('option', { value: '', text: 'unplanned' }));
+  const dates = TD.weekDates(TD.weekStart(N.todayKey()));
+  for (const k of dates) sel.appendChild(N.el('option', { value: k, text: TD.dayLabel(k) + (k === N.todayKey() ? ' · today' : '') }));
+  Views._planSel = sel;
+  return sel;
 };
 
 /* ============================= NOTES ============================= */

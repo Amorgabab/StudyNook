@@ -42,6 +42,10 @@ window.App = (function () {
   });
 
   function bindChrome() {
+    App.go = function (view) {
+      const b = document.querySelector('.navbtn[data-view="' + view + '"]');
+      if (b) b.click();
+    };
     document.querySelectorAll('.navbtn').forEach((b) => {
       b.addEventListener('click', () => {
         Audio2.click();

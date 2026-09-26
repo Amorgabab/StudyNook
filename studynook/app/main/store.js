@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const Schedule = require('../shared/schedule.js');
+const TaskDays = require('../shared/taskdays.js');
 
 function defaultData() {
   return {
@@ -114,6 +115,7 @@ function sanitizeData(d) {
     id: str(t.id, 't' + Math.random().toString(36).slice(2), 40), text: str(t.text, '', 200),
     subject: str(t.subject, '', 40), est: num(t.est, 1, 1, 99), min: num(t.min, 0, 0, 6000),
     done: !!t.done, pomosDone: num(t.pomosDone, 0, 0, 1e6),
+    date: TaskDays.normDate(t.date) || null, // weekly planner: optional planned day (Mon–Sun grouping in Tasks view)
     sources: arr(t.sources).filter((x) => x && typeof x.url === 'string').map((x) => ({ url: String(x.url).slice(0, 500), addedAt: num(x.addedAt, 0, 0, 8.64e15) }))
   }));
   d.schedule = Schedule.sanitizeSchedule(obj(d.schedule));

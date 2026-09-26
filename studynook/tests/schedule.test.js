@@ -129,3 +129,98 @@ suite('schedule · store integration', () => {
     expect(sanitizeData(deepMerge(defaultData(), legacy)).schedule).toEqual({});
   });
 });
+
+suite('schedule · verification hardening', () => {
+  test('same-millisecond adds never collide (fresh unique ids)', () => {
+    const s = {};
+    const ids = [];
+    for (let i = 0; i < 12; i++) {
+      const r = SH.addBlock(s, { subject: 'S' + i, min: 5, days: [i % 7] });
+      expect(r.ok).toBeTruthy(); ids.push(r.id);
+    }
+    expect(new Set(ids).size).toBe(12);
+    expect(Object.keys(s).length).toBe(12);
+  });
+  test('renderer-supplied id on add cannot overwrite an existing block', () => {
+    const s = {};
+    const id = SH.addBlock(s, { subject: 'Original', min: 30, days: [0] }).id;   // run.js tests are sync — no destructure
+    const res = SH.addBlock(s, { id, subject: 'Impostor', min: 45, days: [1] });
+    expect(res.ok).toBeTruthy();
+    expect(res.id === id).toBeFalsy();           // fresh id generated server-side (no .not in run.js matcher)
+    expect(s[id].subject).toBe('Original');      // untouched
+    expect(Object.keys(s).length).toBe(2);
+  });
+  test('add into a missing/garbage schedule map fails gracefully', () => {
+    expect(SH.addBlock(null, { subject: 'X', days: [0] }).ok).toBeFalsy();
+    expect(SH.addBlock(undefined, { subject: 'X', days: [0] }).ok).toBeFalsy();
+    expect(SH.addBlock('nope', { subject: 'X', days: [0] }).ok).toBeFalsy();
+  });
+  test('inherited keys are not removable/togglable/updatable (hasOwnProperty)', () => {
+    function Fake() {} Fake.prototype.polluted = { subject: 'P', min: 5, days: [0], enabled: true };
+    const s = new Fake();                        // s.polluted exists via prototype only
+    expect(SH.removeBlock(s, 'polluted')).toBeFalsy();
+    expect(SH.toggleBlock(s, 'polluted')).toBeFalsy();
+    expect(SH.updateBlock(s, 'polluted', { min: 9 }).ok).toBeFalsy();
+  });
+  test('week boundaries: each weekday counts exactly one date in the rolling window', () => {
+    // Anchor on a Monday: Sun(-1d) Fri(-3d) Wed(-5d) Mon(today) must land on 6,4,2,0
+    const MON = new Date(2026, 8, 28, 9, 0, 0);
+    const k = (b) => SH.dateKey(b, MON);
+    const daily = { [k(0)]: { min: 5 }, [k(1)]: { min: 15 }, [k(3)]: { min: 40 }, [k(5)]: { min: 70 } };
+    expect(SH.actualByDay(daily, MON)).toEqual([5, 0, 70, 0, 40, 0, 15]);
+    // Anchor on a Sunday: yesterday is Saturday, six back is Monday
+    const SUN = new Date(2026, 8, 27, 12, 0, 0);
+    const kk = (b) => SH.dateKey(b, SUN);
+    expect(SH.actualByDay({ [kk(0)]: { min: 1 }, [kk(1)]: { min: 2 }, [kk(6)]: { min: 3 } }, SUN))
+      .toEqual([3, 0, 0, 0, 0, 2, 1]);
+  });
+  test('multiple blocks share one day without double-counting focus minutes', () => {
+    const s = {};
+    SH.addBlock(s, { subject: 'A', min: 30, days: [6] });
+    SH.addBlock(s, { subject: 'B', min: 30, days: [6] });
+    const SUN = new Date(2026, 8, 27, 12, 0, 0);
+    const sum = SH.summarize(s, { [SH.dateKey(0, SUN)]: { min: 60 } }, SUN);
+    expect(sum[6].planned).toBe(60); expect(sum[6].actual).toBe(60); expect(sum[6].met).toBeTruthy();
+    expect(sum[6].pct).toBe(1);
+  });
+});
+
+suite('schedule · final-release hardening', () => {
+  test('sanitizeSchedule accepts arrays without crashing (defensive obj coercion)', () => {
+    expect(SH.sanitizeSchedule([{ subject: 'Math', days: [0], min: 25 }])).toEqual({}); // arrays rejected → {}
+    expect(SH.sanitizeSchedule(null)).toEqual({});
+    expect(SH.sanitizeSchedule('nope')).toEqual({});
+  });
+  test('updateBlock rejects prototype keys (__proto__ never touches the map)', () => {
+    const s = {};
+    expect(SH.updateBlock(s, '__proto__', { min: 9 }).ok).toBeFalsy();
+    expect(SH.removeBlock(s, '__proto__')).toBeFalsy();
+    expect(SH.toggleBlock(s, 'constructor')).toBeFalsy();
+  });
+  test('summarize with no daily data at all → actual 0, pct 0, met false', () => {
+    const s = {};
+    SH.addBlock(s, { subject: 'Math', min: 45, days: [0, 1] });
+    const sum = SH.summarize(s, {}, NOW);
+    expect(sum[0].planned).toBe(45); expect(sum[0].actual).toBe(0);
+    expect(sum[0].pct).toBe(0); expect(sum[0].met).toBeFalsy();
+    expect(sum[2].planned).toBe(0); expect(sum[2].pct).toBe(null);
+  });
+  test('paused blocks are excluded from plan but kept in storage', () => {
+    const s = {};
+    const r = SH.addBlock(s, { subject: 'Gym', min: 60, days: [2] });
+    SH.toggleBlock(s, r.id);
+    expect(SH.plannedByDay(s)[2]).toBe(0);
+    expect(Object.keys(s).length).toBe(1);
+    SH.toggleBlock(s, r.id);
+    expect(SH.plannedByDay(s)[2]).toBe(60);
+  });
+  test('totals never exceed real minutes even when focus overshoots plan', () => {
+    const s = {};
+    SH.addBlock(s, { subject: 'Math', min: 10, days: [6] });
+    const SUN = new Date(2026, 8, 27, 12, 0, 0);
+    const t = SH.totals(s, { [SH.dateKey(0, SUN)]: { min: 300 } }, SUN);
+    expect(t.plannedMin).toBe(10); expect(t.actualMin).toBe(300);
+    const sum = SH.summarize(s, { [SH.dateKey(0, SUN)]: { min: 300 } }, SUN);
+    expect(sum[6].pct).toBe(1.5);   // capped — impossible percentages can't render
+  });
+});
