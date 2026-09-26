@@ -1,0 +1,70 @@
+{
+  "name": "studynook",
+  "productName": "StudyNook",
+  "version": "1.3.2",
+  "description": "Study focus app with app and website blocking, Pomodoro timer, tasks, notes, stats and a study pet.",
+  "main": "app/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node tests/run.js",
+    "smoke": "node tests/smoke.js",
+    "dist": "electron-builder --win --x64"
+  },
+  "author": "StudyNook",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "app.studynook.desktop",
+    "productName": "StudyNook",
+    "artifactName": "StudyNook-Setup-${version}.exe",
+    "files": [
+      "app/**/*",
+      "extension/rules.js",
+      "assets/icon.ico",
+      "assets/icon-256.png",
+      "assets/icon-32.png",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "extension",
+        "to": "extension"
+      },
+      {
+        "from": "assets/icon.ico",
+        "to": "icon.ico"
+      }
+    ],
+    "directories": {
+      "output": "dist-installer"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": false,
+      "shortcutName": "StudyNook",
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "license": null,
+      "include": "build/installer.nsh"
+    }
+  }
+}

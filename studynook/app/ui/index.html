@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:;" />
+  <title>StudyNook 🪺</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-tod="day" data-theme="light">
+
+  <!-- Time-of-day background gradient -->
+  <div id="bg-scene" aria-hidden="true"></div>
+
+  <!-- Title bar (draggable, custom window buttons) -->
+  <header class="titlebar">
+    <div class="tb-left">
+      <span class="tb-logo">🪺</span>
+      <span class="tb-name">StudyNook</span>
+      <span class="tb-greet" id="tb-greet"></span>
+    </div>
+    <div class="tb-right">
+      <div class="chip chip-streak" id="chip-streak" title="Day streak">🔥 0</div>
+      <div class="chip chip-level" id="chip-level" title="Level & title">🌱 Lv 1 · Seedling</div>
+      <div class="xpbar" title="XP to next level"><div class="xpbar-fill" id="xp-fill"></div></div>
+      <button class="winbtn" id="btn-min" title="Minimize">─</button>
+      <button class="winbtn winbtn-close" id="btn-close" title="Hide to tray (timer & guard keep running)">✕</button>
+    </div>
+  </header>
+
+  <div class="shell">
+    <nav class="sidebar" id="sidebar">
+      <button class="navbtn active" data-view="home"><span class="nav-ico">🏡</span><span class="nav-lbl">Nook</span></button>
+      <button class="navbtn" data-view="tasks"><span class="nav-ico">📝</span><span class="nav-lbl">Tasks</span></button>
+      <button class="navbtn" data-view="notes"><span class="nav-ico">🗒</span><span class="nav-lbl">Notes</span></button>
+      <button class="navbtn" data-view="apps"><span class="nav-ico">🧸</span><span class="nav-lbl">Apps</span></button>
+      <button class="navbtn" data-view="sites"><span class="nav-ico">🌐</span><span class="nav-lbl">Sites</span></button>
+      <button class="navbtn" data-view="garden"><span class="nav-ico">🌷</span><span class="nav-lbl">Garden</span></button>
+      <button class="navbtn" data-view="settings"><span class="nav-ico">⚙️</span><span class="nav-lbl">Settings</span></button>
+      <button class="navbtn" data-view="help"><span class="nav-ico">💡</span><span class="nav-lbl">Help</span></button>
+      <div class="side-status">
+        <div class="pill" id="pill-guard" title="App guard status">️ guard</div>
+        <div class="pill" id="pill-ext" title="Chrome extension status">🧩 extension</div>
+      </div>
+    </nav>
+    <main id="view" class="view"></main>
+  </div>
+
+  <div id="toasts"></div>
+  <div id="modal-root"></div>
+  <div id="tour-root"></div>
+
+  <!-- pure shared logic (also used by the engine + tests) -->
+  <script src="../shared/progress.js"></script>
+  <script src="../shared/catalog.js"></script>
+  <script src="../shared/quotes.js"></script>
+  <script src="../shared/iron.js"></script>
+  <script src="../../extension/rules.js"></script>
+  <!-- ui -->
+  <script src="js/util.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/mochi.js"></script>
+  <script src="js/views-home.js"></script>
+  <script src="js/views-manage.js"></script>
+  <script src="js/views-garden.js"></script>
+  <script src="js/views-misc.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

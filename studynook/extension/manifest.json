@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "StudyNook Tab Guardian",
+  "version": "1.3.4",
+  "description": "Cozy companion of the StudyNook desktop app: distracting tabs take a nap during focus sessions. Works standalone too, with its own mini timer.",
+  "permissions": ["storage", "alarms", "declarativeNetRequest", "webNavigation", "tabs"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+  },
+  "icons": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "web_accessible_resources": [
+    { "resources": ["blocked/blocked.html"], "matches": ["http://*/*", "https://*/*"] }
+  ]
+}

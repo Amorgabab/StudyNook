@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';" />
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; font-family: "Segoe UI", system-ui, sans-serif; }
+    #pill {
+      position: absolute; inset: 4px; border-radius: 999px;
+      background: #FFFCF6; border: 2px solid #E8886B;
+      box-shadow: 0 6px 20px rgba(122, 91, 62, .25);
+      display: flex; align-items: center; gap: 8px; padding: 0 14px;
+      -webkit-app-region: drag; cursor: grab; user-select: none;
+    }
+    #pill.brk { border-color: #7FB685; }
+    #pet { font-size: 20px; }
+    #time { font-size: 19px; font-weight: 800; color: #4A3B32; font-variant-numeric: tabular-nums; }
+    #lbl { font-size: 10px; font-weight: 700; color: #8A7466; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    button { -webkit-app-region: no-drag; border: none; background: #F7E8D3; border-radius: 999px; width: 30px; height: 30px; cursor: pointer; font-size: 13px; }
+    button:hover { background: #FBE3D8; }
+  </style>
+</head>
+<body>
+  <div id="pill">
+    <span id="pet">🥚</span>
+    <span id="time">25:00</span>
+    <span id="lbl">focus</span>
+  </div>
+  <script src="../shared/progress.js"></script>
+  <script src="js/util.js"></script>
+  <script src="mini.js"></script>
+</body>
+</html>
