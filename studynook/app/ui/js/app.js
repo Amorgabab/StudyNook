@@ -92,7 +92,6 @@ window.App = (function () {
     c.innerHTML = '';
     if (App.view === 'home') Views.home(c);
     else if (App.view === 'tasks') Views.tasks(c);
-    else if (App.view === 'schedule') Views.schedule(c);
     else if (App.view === 'notes') Views.notes(c);
     else if (App.view === 'apps') Views.apps(c);
     else if (App.view === 'sites') Views.sites(c);
@@ -239,7 +238,7 @@ window.App = (function () {
     ['🧸', 'App Guardian', 'On the Apps tab, list the programs that distract you. While you focus, StudyNook warns them, then closes them. System processes are always protected.'],
     ['🌐', 'Tab Guardian', 'On the Sites tab, set blocked or allowed websites, then pair the bundled Chrome extension with the 6-letter code. Blocked tabs show a waiting page instead.'],
     ['📊', 'Progress', 'Stats, streaks, achievements and a day-by-day garden live in the Garden tab. Notes and tasks are under their own tabs.'],
-    ['📅', 'Week schedule', 'On the Schedule tab, plan repeating study blocks for your week. StudyNook compares what you planned with the minutes you actually focused — no checkboxes needed.']
+    ['📅', 'This Week', 'Give a task a day with the “Schedule on day” picker — it appears in the This Week block under your tasks, where you can change its day or time anytime. Completing it anywhere completes it everywhere.']
   ];
   let tourIdx = 0;
   App.startTour = function () {
