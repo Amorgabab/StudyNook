@@ -16,6 +16,10 @@ Views.home = function (c) {
     const pill = N.el('div', { class: 'phase-pill' + (ses.phase !== 'focus' ? ' break' : ''), id: 'phase-pill', text: phaseLabel + (ses.running ? '' : ' · paused') });
     timerCard.appendChild(pill);
   }
+  // iron status — quiet session-state line at the top of the card, never between the action and the task picker
+  if (d.settings.timer.iron) {
+    timerCard.appendChild(N.el('div', { class: 'iron-status', text: '🔒 iron mode · no pause · switch locked for ' + NookIron.remainingHms(d.settings.timer.ironLockedUntil, Date.now()) }));
+  }
 
   // ring — thin subtle progress ring, large readable time
   const R = 110, CIRC = 2 * Math.PI * R;
@@ -67,22 +71,20 @@ Views.home = function (c) {
   }
   timerCard.appendChild(controls);
 
-  if (d.settings.timer.iron) {
-    timerCard.appendChild(N.el('div', { class: 'small mt', style: 'text-align:center', text: '🔒 Iron session: no pause · switch locked for ' + NookIron.remainingHms(d.settings.timer.ironLockedUntil, Date.now()) }));
-  }
-
   // free-mode length chips + task picker (only when idle)
   if (!ses.active) {
-    const freeRow = N.el('div', { class: 'free-row' });
+    // duration controls are a quiet secondary setting — small, muted, placed
+    // after the primary action flow so they never compete with the timer
     if (App.freeMode) {
+      const freeRow = N.el('div', { class: 'free-row' });
       for (const m of [15, 25, 45, 60, 90]) {
-        freeRow.appendChild(N.el('button', { class: 'btn btn-sm' + (App.freeMin === m ? ' on' : ''), text: m + ' min', onclick: () => { App.freeMin = m; App.render(); } }));
+        freeRow.appendChild(N.el('button', { class: 'dur-chip' + (App.freeMin === m ? ' on' : ''), text: m + 'm', onclick: () => { App.freeMin = m; App.render(); } }));
       }
       const custom = N.stepper(App.freeMin, 1, 600, (v) => { App.freeMin = v; App.render(); });
-      freeRow.appendChild(N.el('span', { class: 'row', style: 'gap:4px' }, custom, N.el('span', { class: 'small', text: 'min' })));
+      freeRow.appendChild(N.el('span', { class: 'dur-stepper' }, custom, N.el('span', { class: 'dur-unit', text: 'min' })));
+      timerCard.appendChild(freeRow);
     }
-    timerCard.appendChild(freeRow);
-    // task picker — compact & secondary, directly tied to the timer above
+    // task picker — compact & secondary, immediately follows Start focusing
     const taskRow = N.el('div', { class: 'task-pick' });
     const sel = N.el('select', { class: 'input', id: 'home-task' });
     sel.appendChild(N.el('option', { value: '', text: '🎯 no specific task' }));
@@ -164,7 +166,8 @@ Views.home = function (c) {
   const bottom = N.el('div', { class: 'grid2b mt' });
   const ambCard = N.el('div', { class: 'card amb-card' });
   ambCard.appendChild(N.el('h2', { text: '🎧 Ambience' }));
-  // explanatory sentence removed — the controls speak for themselves
+  // no explanatory text — title up top, controls grouped toward the bottom
+  ambCard.appendChild(N.el('div', { class: 'amb-spacer' }));
   const ambRow = N.el('div', { class: 'amb-row' });
   const AMB = [['rain', '🌧️ Rain'], ['fire', '🔥 Fireplace'], ['waves', '🌊 Waves'], ['cafe', '☕ Café']];
   for (const [id, lbl] of AMB) {
@@ -179,16 +182,16 @@ Views.home = function (c) {
     onclick: () => App.setAmbience('off')
   }));
   ambCard.appendChild(ambRow);
+  // volume belongs to the current selection — one quiet row with it
   const volRow = N.el('div', { class: 'amb-volrow' });
+  const volName = (AMB.find((a) => a[0] === App.ambience) || [, 'Ambience'])[1];
   const vol = N.el('input', { class: 'amb-vol', type: 'range', min: 0, max: 100, value: Math.round(d.settings.sound.volume * 100), 'aria-label': 'Ambience volume' });
   vol.addEventListener('input', () => {
     Audio2.setVolume(vol.value / 100);
     nook.invoke('settings:set', { section: 'sound', values: { volume: vol.value / 100 } });
   });
-  volRow.append(N.el('span', { class: 'small', text: 'Volume' }), vol);
+  volRow.append(N.el('span', { class: 'amb-vol-name', text: volName }), vol);
   ambCard.appendChild(volRow);
-  const quote = N.el('div', { class: 'small mt amb-quote', style: 'font-style:italic', text: '“' + NookQuotes.pick(NookQuotes.QUOTES) + '”' });
-  ambCard.appendChild(quote);
   bottom.appendChild(ambCard);
 
   const feedCard = N.el('div', { class: 'card' });
