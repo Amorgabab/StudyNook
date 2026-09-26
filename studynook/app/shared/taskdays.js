@@ -59,6 +59,18 @@
     return DAY_NAMES[(new Date(y, mo, da).getDay() + 6) % 7] + ' ' + da;
   }
 
+  const FULL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']; // index 0 = Monday
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  /** Full weekday name ("Monday") — the Week Schedule never abbreviates. */
+  function fullDayName(dateKey) {
+    const y = +dateKey.slice(0, 4), mo = +dateKey.slice(5, 7) - 1, da = +dateKey.slice(8, 10);
+    return FULL_DAYS[(new Date(y, mo, da).getDay() + 6) % 7];
+  }
+
+  /** Full month name ("September") for readable week-range headers. */
+  function fullMonthName(dateKey) { return MONTHS[+dateKey.slice(5, 7) - 1] || ''; }
+
   /**
    * Group tasks by planned date within one Monday-based week.
    * @returns {{ days: Array<{key:string,name:string,isToday:boolean,tasks:Array}>,
@@ -84,5 +96,5 @@
     return { days, unplanned, overdue, plannedCount };
   }
 
-  return { normDate, toKey, weekStart, weekDates, dayLabel, groupTasks, DAY_NAMES, MAX_PLANNED };
+  return { normDate, toKey, weekStart, weekDates, dayLabel, fullDayName, fullMonthName, groupTasks, DAY_NAMES, FULL_DAYS, MONTHS, MAX_PLANNED };
 });

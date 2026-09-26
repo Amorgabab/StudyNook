@@ -17,7 +17,12 @@ Views.tasks = function (c) {
   const f1 = N.el('div', { class: 'row' });
   f1.append(txt, Views._field('Subject', Views._taskSubjects(d)), Views._field('Planned time', Views._taskMinStepper()), Views._field('Effort', Views._taskEstSelect()));
   const planSel = Views._taskPlanSelect();
-  f1.appendChild(Views._field('Plan for', planSel));
+  f1.appendChild(Views._field('Schedule on day', planSel));
+  const atInp = N.el('input', { class: 'input', type: 'time', style: 'width:auto', 'aria-label': 'Start time (optional)' });
+  const atWrap = Views._field('Start time (optional)', atInp);
+  atWrap.style.display = 'none'; // appears only once a day is chosen — scheduling stays optional
+  f1.appendChild(atWrap);
+  planSel.addEventListener('change', () => { atWrap.style.display = planSel.value ? '' : 'none'; if (!planSel.value) atInp.value = ''; });
   const addBtn = N.el('button', { class: 'btn btn-sage task-add', text: '+ Add task', onclick: () => submit() });
   const f2 = N.el('div', { class: 'row spread' });
   f2.appendChild(N.el('div', { class: 'small', text: '⏱ planned minutes ≈ how long you\'ll spend · 🍅 Pomodoros ≈ how many focus rounds that might take (estimate only).' }));
@@ -25,13 +30,14 @@ Views.tasks = function (c) {
   form.append(f1, f2);
   txt.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
   card.appendChild(form);
-  card.appendChild(N.el('div', { class: 'small mt', text: 'Subjects are managed in Settings. "Planned time" is optional — leave it at 0 and the task stays open-ended.' }));
+  card.appendChild(N.el('div', { class: 'small mt', text: 'Subjects are managed in Settings. "Planned time" is optional — leave it at 0 and the task stays open-ended. Pick a day and the task also shows up on your Week Schedule.' }));
 
   function submit() {
     const v = txt.value.trim();
     if (!v) { txt.focus(); return; }
-    nook.invoke('tasks:add', { text: v, subject: Views._subjSel.value, min: Views._minVal, est: Views._estSel.value })
-      .then((t) => { if (t && t.id && Views._planSel.value) nook.invoke('tasks:setDate', { id: t.id, date: Views._planSel.value }); });
+    // one call — a scheduled task is created complete (date + optional start time travel together)
+    nook.invoke('tasks:add', { text: v, subject: Views._subjSel.value, min: Views._minVal, est: Views._estSel.value, date: Views._planSel.value || null, at: atInp.value || null })
+      .then((t) => { if (!t) App.toast('Could not add task', 'Please check the name and try again.'); });
     Audio2.pop();
   }
 

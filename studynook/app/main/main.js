@@ -23,7 +23,7 @@ const { Guardian } = require('./guardian.js');
 const { SyncServer } = require('./sync-server.js');
 const processes = require('./processes.js');
 const progress = require('../shared/progress.js');
-const Schedule = require('../shared/schedule.js');
+const WeekSched = require('../shared/weeksched.js');
 const catalog = require('../shared/catalog.js');
 const NookRules = require('../../extension/rules.js');
 const NookLinks = require('../shared/links.js');
@@ -419,7 +419,7 @@ function buildSnapshot() {
       v: d.v, profile: d.profile, pet: d.pet, xp: d.xp, level: d.level,
       streak: d.streak, settings: d.settings, apps: d.apps, sites: d.sites,
       subjects: d.subjects, notes: d.notes,
-      tasks: d.tasks, schedule: d.schedule, sessions: d.sessions.slice(0, 60), daily: d.daily,
+      tasks: d.tasks, sessions: d.sessions.slice(0, 60), daily: d.daily,
       counters: d.counters, achievements: d.achievements, onboarded: d.onboarded,
       feed: d.feed || []
     },
@@ -498,27 +498,48 @@ function registerIpc() {
 
   /* ---- tasks ---- */
   H('tasks:add', (p) => {
-    const t = { id: 't' + Date.now() + Math.floor(Math.random() * 999), text: String(p.text || '').slice(0, 200), subject: String(p.subject || '').slice(0, 40), est: Math.max(1, parseInt(p.est, 10) || 1), min: Math.max(0, parseInt(p.min, 10) || 0), done: false, pomosDone: 0, date: null, createdAt: Date.now(), completedAt: null };
+    const payload = (p && typeof p === 'object') ? p : {};
+    const TaskDays = require('../shared/taskdays.js');
+    const t = { id: 't' + Date.now() + Math.floor(Math.random() * 999), text: String(payload.text || '').slice(0, 200), subject: String(payload.subject || '').slice(0, 40), est: Math.max(1, parseInt(payload.est, 10) || 1), min: Math.max(0, parseInt(payload.min, 10) || 0), done: false, pomosDone: 0, date: null, at: null, createdAt: Date.now(), completedAt: null };
     if (!t.text) return null;
+    // Week Schedule is part of the task now — an optional date (+ optional start time).
+    if (payload.date != null && payload.date !== '') {
+      const key = TaskDays.normDate(String(payload.date));
+      if (!key) return null; // refuse to create a half-scheduled task on a bad date
+      t.date = key;
+      const planned = store.data.tasks.reduce((n, x) => n + (x.date ? 1 : 0), 0);
+      if (planned >= TaskDays.MAX_PLANNED) return null; // sanity cap
+      const at = WeekSched.normAt(payload.at);
+      if (payload.at != null && payload.at !== '' && !at) return null; // bad time → reject explicitly
+      t.at = at;
+    }
     store.mutate((d) => { d.tasks.unshift(t); });
     pushSnapshot();
     return t;
   });
   H('tasks:setDate', (p) => {
-    // weekly planner: assign a task to a day ('YYYY-MM-DD') or clear with null.
-    // Validation is delegated to the shared pure module + store sanitizer.
+    // Week Schedule: assign a task to a calendar day ('YYYY-MM-DD') with an
+    // OPTIONAL start time, or clear both with date:null ("Remove from Week Schedule").
+    // Validation is delegated to the shared pure modules + store sanitizer.
     const TaskDays = require('../shared/taskdays.js');
-    const key = p && p.date == null ? null : TaskDays.normDate(String(p.date));
-    if (p && p.date != null && !key) return false; // reject malformed dates explicitly
+    const payload = (p && typeof p === 'object') ? p : {};
+    let key = null, at = null;
+    if (payload.date != null && payload.date !== '') {
+      key = TaskDays.normDate(String(payload.date));
+      if (!key) return false; // reject malformed dates explicitly
+      at = WeekSched.normAt(payload.at); // optional — a dated task without a time is fine
+      if (payload.at != null && payload.at !== '' && !at) return false; // reject malformed times explicitly
+    }
     let hit = false;
     store.mutate((d) => {
-      const t = d.tasks.find((x) => x.id === (p && p.id));
+      const t = d.tasks.find((x) => x.id === payload.id);
       if (!t) return;
       if (key && !t.date) {
         const planned = d.tasks.reduce((n, x) => n + (x.date ? 1 : 0), 0);
         if (planned >= TaskDays.MAX_PLANNED) return; // sanity cap
       }
       t.date = key;
+      t.at = key ? at : null; // clearing the date always clears the time too — no orphan schedules
       hit = true;
     });
     if (hit) pushSnapshot();
@@ -574,22 +595,37 @@ function registerIpc() {
     return true;
   });
 
-  /* ---- week schedule (recurring study blocks) ----
-     Payloads arrive from the renderer → guard against null/non-object shapes. */
-  H('schedule:add', (p) => {
+  /* ---- Week Schedule actions on tasks (same task record — no second store) ----
+     The old recurring-block IPC (schedule:add/update/remove/toggle) is gone:
+     scheduled items ARE tasks now. These handlers keep the two actions of the
+     Week Schedule view clearly distinct:
+       • tasks:unschedule → "Remove from Week Schedule": clears date + start
+         time only. The task itself, its title/subject/duration/completion and
+         every other field stay exactly as they were.
+       • tasks:remove     → "Delete Task": permanently deletes it (above). */
+  H('tasks:unschedule', (p) => {
     const payload = (p && typeof p === 'object') ? p : {};
-    const res = store.mutate((d) => Schedule.addBlock(d.schedule || (d.schedule = {}), (payload.block && typeof payload.block === 'object') ? payload.block : {}));
-    if (res.ok) pushSnapshot();
-    return res;
+    let hit = false;
+    store.mutate((d) => {
+      const t = d.tasks.find((x) => x.id === payload.id);
+      if (!t) return;
+      t.date = null;
+      t.at = null; // never leave an orphan start-time behind
+      hit = true;
+    });
+    if (hit) pushSnapshot();
+    return hit;
   });
-  H('schedule:update', (p) => {
+  H('tasks:focusNow', (p) => {
+    // Start focusing right from a Week Schedule card. Refuses politely while a
+    // session is already running so this can never hijack an active focus block.
+    if (session.isRunning()) return false;
     const payload = (p && typeof p === 'object') ? p : {};
-    const res = store.mutate((d) => Schedule.updateBlock(d.schedule || (d.schedule = {}), String(payload.id || ''), (payload.patch && typeof payload.patch === 'object') ? payload.patch : {}));
-    if (res.ok) pushSnapshot();
-    return res;
+    const t = store.data.tasks.find((x) => x.id === payload.id);
+    if (!t || t.done) return false;
+    broadcast('focus-request', { taskId: t.id, minutes: Math.max(0, parseInt(t.min, 10) || 0) });
+    return true;
   });
-  H('schedule:remove', (p) => { const ok = store.mutate((d) => Schedule.removeBlock(d.schedule || {}, String(p.id || ''))); if (ok) pushSnapshot(); return ok; });
-  H('schedule:toggle', (p) => { const ok = store.mutate((d) => Schedule.toggleBlock(d.schedule || {}, String(p.id || ''))); if (ok) pushSnapshot(); return ok; });
 
   /* ---- apps (blocklists / allowlists) ---- */
   H('apps:add', (p) => {

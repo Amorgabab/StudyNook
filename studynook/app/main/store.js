@@ -10,7 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const Schedule = require('../shared/schedule.js');
+const WeekSched = require('../shared/weeksched.js');
 const TaskDays = require('../shared/taskdays.js');
 
 function defaultData() {
@@ -39,8 +39,7 @@ function defaultData() {
       allow: ['wikipedia.org', 'google.com', 'docs.google.com', 'drive.google.com', 'classroom.google.com', 'chatgpt.com', 'github.com', 'stackoverflow.com']
     },
     ext: { token: crypto.randomBytes(16).toString('hex'), code: makeCode(), lastSeen: 0, version: '' },
-    tasks: [],
-    schedule: {},          // Week Schedule: {blockId: {subject,label,min,at,days[],enabled}}
+    tasks: [],           // single source of truth — a task with date/at IS the Week Schedule (no second store)
     sessions: [],          // capped at 500
     daily: {},             // "YYYY-MM-DD": {min, sessions, kills, tasks}
     counters: { kills: 0, pets: 0, ambientMin: 0, sessionsTotal: 0, abandons: 0, tasksDone: 0 },
@@ -115,10 +114,11 @@ function sanitizeData(d) {
     id: str(t.id, 't' + Math.random().toString(36).slice(2), 40), text: str(t.text, '', 200),
     subject: str(t.subject, '', 40), est: num(t.est, 1, 1, 99), min: num(t.min, 0, 0, 6000),
     done: !!t.done, pomosDone: num(t.pomosDone, 0, 0, 1e6),
-    date: TaskDays.normDate(t.date) || null, // weekly planner: optional planned day (Mon–Sun grouping in Tasks view)
+    date: TaskDays.normDate(t.date) || null, // Week Schedule day — a task WITH a date is a scheduled task
+    at: WeekSched.normAt(t.at),               // optional start time "HH:MM" (ordering within the day)
     sources: arr(t.sources).filter((x) => x && typeof x.url === 'string').map((x) => ({ url: String(x.url).slice(0, 500), addedAt: num(x.addedAt, 0, 0, 8.64e15) }))
   }));
-  d.schedule = Schedule.sanitizeSchedule(obj(d.schedule));
+  migrateLegacySchedule(d);
   const sites = obj(d.sites); d.sites = sites;
   sites.enabled = sites.enabled !== false;
   sites.mode = sites.mode === 'allow' ? 'allow' : 'block';
@@ -144,6 +144,30 @@ function sanitizeData(d) {
   d.ext.token = str(d.ext.token, '', 64); d.ext.code = str(d.ext.code, '', 6);
   d.onboarded = !!d.onboarded;
   return d;
+}
+
+/* ---------- one-time migration: legacy recurring blocks → scheduled tasks ----------
+   Older builds stored a SEPARATE Week Schedule system (d.schedule = recurring
+   blocks). The unified design says d.tasks[] is the single source of truth, so
+   on first load we convert every valid block into real dated tasks (actual
+   calendar dates in the current week — never a recurrence engine), remember
+   which block ids were converted (so re-runs can never duplicate), then delete
+   the old structure entirely. Unmappable garbage is skipped safely. */
+function migrateLegacySchedule(d) {
+  const hasBlocks = d.schedule && typeof d.schedule === 'object' && !Array.isArray(d.schedule) && Object.keys(d.schedule).length > 0;
+  if (!hasBlocks) { delete d.schedule; return false; } // no legacy data → guarantee it's gone
+  const done = obj(d.migratedSchedules);
+  const existing = new Set(d.tasks.map((t) => t && t.migratedFrom).filter(Boolean));
+  const { tasks, sourceIds } = WeekSched.migrateBlocks(d.schedule, TaskDays.toKey(new Date()));
+  let added = 0;
+  for (const t of tasks) {
+    if (done[t.migratedFrom] || existing.has(t.migratedFrom)) continue; // idempotent guards
+    d.tasks.push(t); added++;
+  }
+  for (const id of sourceIds) done[id] = new Date().toISOString();
+  d.migratedSchedules = done;
+  delete d.schedule; // only now does the old structure disappear
+  return added > 0;
 }
 
 class Store {
@@ -195,4 +219,4 @@ class Store {
   }
 }
 
-module.exports = { Store, defaultData, deepMerge, sanitizeData };
+module.exports = { Store, defaultData, deepMerge, sanitizeData, migrateLegacySchedule };

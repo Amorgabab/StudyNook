@@ -42,6 +42,9 @@ window.App = (function () {
   });
 
   function bindChrome() {
+    // App.render() — re-run the current view (used by Tasks/Home/Schedule controls).
+    // The snapshot listener refreshes state, so a render is safe from anywhere.
+    App.render = function () { renderView(true); };
     App.go = function (view) {
       const b = document.querySelector('.navbtn[data-view="' + view + '"]');
       if (b) b.click();
