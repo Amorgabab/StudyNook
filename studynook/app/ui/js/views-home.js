@@ -199,16 +199,19 @@ Views.home = function (c) {
   if (!rows.length) feed.appendChild(N.el('div', { class: 'small', text: 'Your cozy story starts with the first session…' }));
   for (const r of rows) {
     const kind = r.kind === 'good' ? 'good' : r.kind === 'warn' ? 'warn' : 'info';
+    // Entry structure: [status icon] [event text] [time] → separate line for XP reward.
+    // The event's emoji rides with the text so nothing is lost from the data layer.
     const icon = kind === 'good' ? '✓' : kind === 'warn' ? '!' : '·';
     const entry = N.el('div', { class: 'feed-entry ' + kind },
-      N.el('div', { class: 'fe-main' },
-        N.el('span', { class: 'fe-emoji', text: r.emoji || '🌱' }),
-        N.el('span', { class: 'fe-text', text: r.text }),
+      N.el('div', { class: 'fe-header' },
         N.el('span', { class: 'fe-icon', 'aria-hidden': 'true', text: icon }),
+        N.el('span', { class: 'fe-text' },
+          N.el('span', { class: 'fe-emoji', text: r.emoji || '🌱' }),
+          document.createTextNode(' ' + r.text)),
         N.el('span', { class: 'ft', text: N.timeAgo(r.t) })
-      )
+      ),
+      r.xp > 0 ? N.el('div', { class: 'fe-reward', text: '+' + r.xp + ' XP' }) : null
     );
-    if (r.xp > 0) entry.appendChild(N.el('div', { class: 'fe-xp', text: '+' + r.xp + ' XP' }));
     feed.appendChild(entry);
   }
   feedCard.appendChild(feed);

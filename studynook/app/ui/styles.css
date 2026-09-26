@@ -208,9 +208,8 @@ select.input { cursor: pointer; }
 .area-today { grid-area: today; }
 .area-journal { grid-area: journal; }
 .home-col { display: contents; }   /* legacy wrapper — keeps children on the grid */
-/* timer card fills its stretched row; the ring area absorbs leftover height
-   so breathing room above/below stays balanced (no dead empty space) */
-.timer-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 22px 28px; }
+/* timer card — tighter vertical rhythm, no dead zones between controls */
+.timer-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 18px 28px; }
 /* iron mode — quiet session-state line, not a control */
 .iron-status { font-size: 11px; font-weight: 700; color: var(--ink-soft); background: var(--card2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; letter-spacing: .2px; }
 /* one quiet metadata row above the ring (phase / paused / iron) */
@@ -257,7 +256,7 @@ body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, 
 /* picker fills the group width so it shares the same edges as mode + start */
 .task-pick select.input { flex: 1 1 auto; min-width: 0; max-width: none; text-overflow: ellipsis; }
 
-.pet-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 26px 20px 34px; overflow: hidden; }
+.pet-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 20px 20px 26px; overflow: hidden; }
 .mochi-box { cursor: pointer; transition: transform .15s ease; position: relative; margin-bottom: 4px; }
 .mochi-box:hover { transform: scale(1.04); }
 .mochi-box:active { transform: scale(.95); }
@@ -277,9 +276,9 @@ body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, 
 @keyframes heartup { from { opacity: 1; transform: translate(0, 0) scale(.7); } to { opacity: 0; transform: translate(var(--dx, 10px), -70px) scale(1.25); } }
 
 .today-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-/* proper section headers — consistent typography, clear separation from content */
-.card h2.sec-h { margin: 2px 0 16px; font-size: 15px; font-weight: 800; letter-spacing: .2px; }
-.stat-tile { background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 18px 12px; text-align: center; min-width: 0; }
+/* proper section headers — clear separation from content */
+.card h2.sec-h { margin: 2px 0 18px; font-size: 15px; font-weight: 800; letter-spacing: .2px; }
+.stat-tile { background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 20px 12px; text-align: center; min-width: 0; }
 .stat-tile .v { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stat-tile .k { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; margin-top: 3px; letter-spacing: .3px; }
 /* streak tile — warm rose identity (streak, not danger) */
@@ -289,13 +288,11 @@ body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, 
 body[data-theme="dark"] .stat-tile.streak .v { color: var(--danger); }
 body[data-theme="dark"] .stat-tile.streak .k { color: var(--rose); opacity: .85; }
 
-/* compact utility card — title up top, controls grouped at the bottom.
-   The spacer is a small fixed gap only: ambience has little content, so it
-   never grows into a huge empty area (grid stretch keeps row B honest). */
+/* compact utility card — controls fill available width evenly */
 .amb-card { display: flex; flex-direction: column; }
 .amb-spacer { flex: 0 0 auto; height: 12px; }
-.amb-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.amb-btn { flex: 0 1 auto; min-width: 96px; max-width: 130px; text-align: center; border: 1.5px solid var(--line); background: var(--card2); border-radius: 999px; padding: 9px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .15s ease; box-shadow: none; }
+.amb-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: space-between; }
+.amb-btn { flex: 1 1 auto; min-width: 90px; max-width: 130px; text-align: center; border: 1.5px solid var(--line); background: var(--card2); border-radius: 999px; padding: 9px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .15s ease; box-shadow: none; }
 .amb-btn:hover { transform: translateY(-1px); }
 .amb-btn.on { background: var(--sky-soft); border-color: var(--sky); color: #47688A; box-shadow: 0 0 12px -6px var(--sky); }
 body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
@@ -307,21 +304,24 @@ body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
 .amb-vol-name { font-size: 11px; font-weight: 800; letter-spacing: .3px; color: var(--ink-soft); min-width: 74px; }
 .amb-vol { flex: 1; max-width: 220px; height: 4px; accent-color: var(--sky); cursor: pointer; }
 
-/* journal = high-density history surface → full-width band with roomier
-   entries and a generous scroll viewport (never a cramped notification box) */
-.feed { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; padding-right: 2px; max-height: min(46vh, 520px); }
+/* journal = high-density history surface → full-width band whose entries fill
+   the width as a responsive multi-column grid: each entry keeps a comfortable
+   reading width (never text stretched across the whole screen with a huge gap
+   before the timestamp), and the band gets a generous scroll viewport */
+.feed { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; align-content: start; overflow-y: auto; padding-right: 2px; max-height: min(46vh, 520px); }
+@media (max-width: 860px) { .feed { grid-template-columns: 1fr; } }
 .feed-entry { background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 16px 18px; }
-.fe-main { display: flex; align-items: center; gap: 10px; font-size: 13.5px; min-width: 0; }
+.fe-header { display: flex; align-items: center; gap: 10px; font-size: 13.5px; min-width: 0; }
 .fe-emoji { flex: 0 0 auto; }
 .fe-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .ft { margin-left: auto; color: var(--ink-soft); font-size: 10.5px; flex: 0 0 auto; }
 .fe-icon { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; background: var(--line); color: var(--ink-soft); }
-.fe-xp { font-size: 11.5px; font-weight: 800; color: var(--sage); padding-left: 29px; margin-top: 6px; }
+.fe-reward { font-size: 11.5px; font-weight: 800; color: var(--sage); margin-top: 6px; padding-left: 30px; }
 .feed-entry.good { border-color: var(--sage); background: var(--sage-soft); }
 .feed-entry.good .fe-icon { background: var(--sage); color: #fff; }
 .feed-entry.warn { border-color: var(--rose); background: var(--rose-soft); }
 .feed-entry.warn .fe-icon { background: var(--danger); color: #fff; }
-.feed-entry.warn .fe-xp { color: var(--danger); }
+.feed-entry.warn .fe-reward { color: var(--danger); }
 
 @media (max-width: 1080px) {
   /* same two-column grid — only the journal band reflows to full width;
