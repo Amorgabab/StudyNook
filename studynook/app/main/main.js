@@ -23,6 +23,7 @@ const { Guardian } = require('./guardian.js');
 const { SyncServer } = require('./sync-server.js');
 const processes = require('./processes.js');
 const progress = require('../shared/progress.js');
+const Schedule = require('../shared/schedule.js');
 const catalog = require('../shared/catalog.js');
 const NookRules = require('../../extension/rules.js');
 const NookLinks = require('../shared/links.js');
@@ -552,6 +553,20 @@ function registerIpc() {
     if (/^https?:\/\//i.test(u)) shell.openExternal(u);
     return true;
   });
+
+  /* ---- week schedule (recurring study blocks) ---- */
+  H('schedule:add', (p) => {
+    const res = store.mutate((d) => Schedule.addBlock(d.schedule || (d.schedule = {}), p.block || {}));
+    if (res.ok) pushSnapshot();
+    return res;
+  });
+  H('schedule:update', (p) => {
+    const res = store.mutate((d) => Schedule.updateBlock(d.schedule || (d.schedule = {}), String(p.id || ''), p.patch || {}));
+    if (res.ok) pushSnapshot();
+    return res;
+  });
+  H('schedule:remove', (p) => { const ok = store.mutate((d) => Schedule.removeBlock(d.schedule || {}, String(p.id || ''))); if (ok) pushSnapshot(); return ok; });
+  H('schedule:toggle', (p) => { const ok = store.mutate((d) => Schedule.toggleBlock(d.schedule || {}, String(p.id || ''))); if (ok) pushSnapshot(); return ok; });
 
   /* ---- apps (blocklists / allowlists) ---- */
   H('apps:add', (p) => {

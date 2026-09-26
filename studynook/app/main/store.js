@@ -10,6 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const Schedule = require('../shared/schedule.js');
 
 function defaultData() {
   return {
@@ -38,6 +39,7 @@ function defaultData() {
     },
     ext: { token: crypto.randomBytes(16).toString('hex'), code: makeCode(), lastSeen: 0, version: '' },
     tasks: [],
+    schedule: {},          // Week Schedule: {blockId: {subject,label,min,at,days[],enabled}}
     sessions: [],          // capped at 500
     daily: {},             // "YYYY-MM-DD": {min, sessions, kills, tasks}
     counters: { kills: 0, pets: 0, ambientMin: 0, sessionsTotal: 0, abandons: 0, tasksDone: 0 },
@@ -114,6 +116,7 @@ function sanitizeData(d) {
     done: !!t.done, pomosDone: num(t.pomosDone, 0, 0, 1e6),
     sources: arr(t.sources).filter((x) => x && typeof x.url === 'string').map((x) => ({ url: String(x.url).slice(0, 500), addedAt: num(x.addedAt, 0, 0, 8.64e15) }))
   }));
+  d.schedule = Schedule.sanitizeSchedule(obj(d.schedule));
   const sites = obj(d.sites); d.sites = sites;
   sites.enabled = sites.enabled !== false;
   sites.mode = sites.mode === 'allow' ? 'allow' : 'block';

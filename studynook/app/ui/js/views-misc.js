@@ -103,7 +103,7 @@ Views.settings = function (c) {
   /* about */
   const about = N.el('div', { class: 'card' });
   about.appendChild(N.el('h2', { text: 'About' }));
-  about.appendChild(N.el('div', { class: 'sub', text: 'StudyNook v1.1 · local-first: no accounts, no cloud, no telemetry.' }));
+  about.appendChild(N.el('div', { class: 'sub', text: 'StudyNook v' + (window.APP_VERSION || '1.3.2') + ' · local-first: no accounts, no cloud, no telemetry.' }));
   const arow = N.el('div', { class: 'row' });
   arow.appendChild(N.el('button', { class: 'btn btn-sm', text: '📖 Open README', onclick: () => nook.invoke('help:readme') }));
   arow.appendChild(N.el('button', { class: 'btn btn-sm', text: '🎓 Replay welcome tour', onclick: () => App.startTour() }));
