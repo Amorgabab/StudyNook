@@ -35,7 +35,7 @@ Views.garden = function (c) {
   c.appendChild(hero);
 
   /* ---------- charts row ---------- */
-  const charts = N.el('div', { class: 'grid2b mt' });
+  const charts = N.el('div', { class: 'grid2b garden-charts mt' });
 
   const week = N.el('div', { class: 'card' });
   week.appendChild(N.el('h2', { text: '📊 Last 7 days' }));

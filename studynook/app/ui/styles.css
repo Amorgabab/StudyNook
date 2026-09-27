@@ -468,7 +468,14 @@ body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
 .heat { display: grid; grid-template-columns: repeat(13, 1fr); gap: 5px; }
 .heat-cell { aspect-ratio: 1; border-radius: 6px; background: var(--card2); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: default; transition: transform .12s ease; }
 .heat-cell:hover { transform: scale(1.2); z-index: 2; }
-.bars { display: flex; align-items: flex-end; gap: 10px; height: 130px; padding-top: 8px; }
+/* Garden charts row — "Last 7 days" and "Focus garden" cards stretch to the
+   same height so their bottom edges align perfectly. The bar chart fills any
+   leftover space (bars stay pinned to the baseline, labels at the very bottom)
+   instead of leaving dead whitespace under the shorter card. */
+.garden-charts { align-items: stretch; }
+.garden-charts .card { display: flex; flex-direction: column; }
+.bars { display: flex; align-items: flex-end; gap: 10px; min-height: 130px; padding-top: 8px; }
+.garden-charts .bars { flex: 1 1 auto; }
 .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
 .bar { width: 100%; max-width: 44px; border-radius: 10px 10px 4px 4px; background: linear-gradient(180deg, var(--sage), var(--sky)); min-height: 4px; transition: height .6s ease; }
 .bar-lbl { font-size: 10px; color: var(--ink-soft); font-weight: 700; }
