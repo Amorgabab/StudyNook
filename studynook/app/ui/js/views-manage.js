@@ -150,7 +150,7 @@ Views.apps = function (c) {
   /* --- guard controls card --- */
   const ctrl = N.el('div', { class: 'card' });
   ctrl.appendChild(N.el('h2', { text: '🧸 App Guardian' }));
-  ctrl.appendChild(N.el('div', { class: 'sub', text: 'Closes distracting programs while you study. Windows are closed gently — you always get a warning first (unless you pick instant).' }));
+  /* subtitle removed for less clutter — the title and controls speak for themselves */
 
   ctrl.appendChild(N.el('div', { class: 'row spread' },
     N.el('div', { class: 'row' },
@@ -180,7 +180,7 @@ Views.apps = function (c) {
     N.el('span', { class: 'small', style: 'margin-left:10px', text: 'Scan every:' }), numInput(g.scanSec, 1, 30, (v) => setG({ scanSec: v }), 's'),
     N.el('span', { class: 'small', style: 'margin-left:auto', text: S.guardian.armed ? '🟢 armed right now' : '⚪ not armed right now' })
   ));
-  ctrl.appendChild(N.el('div', { class: 'small mt', text: 'Already-open apps are caught too: the guard re-reads the running process list on every scan, and scans instantly when a session arms. Note: website lists (Sites) and program lists (Apps) are separate — a desktop app must be listed here, its website over there.' }));
+  /* dense scan-behavior explanation removed for less clutter */
 
   if (g.mode === 'allow') {
     ctrl.appendChild(N.el('div', { class: 'banner warn mt' }, N.el('span', { text: '⚠️' }), N.el('span', { text: 'Allowlist mode closes any app NOT on your allow list (system processes are always protected). Use "Preview" anytime to see exactly what would close.' }), N.el('button', { class: 'btn btn-sm', text: 'Preview now', onclick: showPreview })));
@@ -192,12 +192,12 @@ Views.apps = function (c) {
   const tab = App.appsTab || 'block';
   lists.appendChild(N.el('div', { class: 'tabs' },
     ...[['block', `🚫 Blocked (${d.apps.block.length})`], ['allow', `✅ Allowed (${d.apps.allow.length})`], ['lib', '📚 App library'], ['run', '🔎 Running now']]
-      .map(([id, lbl]) => N.el('button', { class: 'btn btn-sm' + (tab === id ? ' btn-honey' : ' btn-ghost'), text: lbl, onclick: () => { App.appsTab = id; App.render(); } }))
+      .map(([id, lbl]) => N.el('button', { class: 'btn btn-sm' + (tab === id ? ' btn-honey' : ' btn-ghost'), text: lbl, title: id === 'run' ? 'See all currently running processes and their real names' : '', onclick: () => { App.appsTab = id; App.render(); } }))
   ));
 
   if (tab === 'block' || tab === 'allow') {
     const listKey = tab;
-    lists.appendChild(N.el('div', { class: 'small', style: 'margin-bottom:10px', text: listKey === 'block' ? 'These apps get closed (per your style above) whenever the guard is armed.' : 'These apps are safe to keep open. In blocklist mode this list is unused.' }));
+    /* section explanation removed for less clutter — the tab label says it all */
     const list = N.el('div', { class: 'list' });
     const entries = d.apps[listKey];
     if (!entries.length) list.appendChild(N.el('div', { class: 'small', text: 'Nothing here yet — add from the App library tab or the scanner below.' }));
@@ -213,11 +213,11 @@ Views.apps = function (c) {
     lists.appendChild(list);
 
     const addRow = N.el('div', { class: 'row mt' });
-    const lbl = N.el('input', { class: 'input', placeholder: 'App name (e.g. Discord)', style: 'width:170px' });
-    const procs = N.el('input', { class: 'input', placeholder: 'process names, comma separated (e.g. discord, discordptb)', style: 'flex:1;min-width:220px' });
+    const lbl = N.el('input', { class: 'input', placeholder: 'App name (e.g. Discord)', title: 'A friendly display name for the app', style: 'width:170px' });
+    const procs = N.el('input', { class: 'input', placeholder: 'process names, comma separated (e.g. discord, discordptb)', title: 'The OS process names to close — check the "Running now" tab for real names', style: 'flex:1;min-width:220px' });
     addRow.append(lbl, procs, N.el('button', { class: 'btn btn-sm btn-sage', text: '+ Add custom', onclick: () => { if (lbl.value.trim() && procs.value.trim()) nook.invoke('apps:add', { list: listKey, label: lbl.value, procs: procs.value.split(',').map((s) => s.trim()).filter(Boolean) }); } }));
     lists.appendChild(addRow);
-    lists.appendChild(N.el('div', { class: 'small mt', text: '💡 Not sure of the process name? Use the "Running now" tab — it shows real names of everything open.' }));
+    /* permanent hint line removed — moved into input tooltips + the "Running now" tab tooltip */
   }
 
   if (tab === 'lib') {
