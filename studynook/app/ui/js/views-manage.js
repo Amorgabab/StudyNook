@@ -302,7 +302,8 @@ Views.sites = function (c) {
   const d = App.state.data, s = d.sites, ext = App.state.ext;
 
   const ctrl = N.el('div', { class: 'card' });
-  ctrl.appendChild(N.el('h2', { text: '🌐 Tab Guardian (Chrome extension)' }));
+  /* unified section-header treatment — same .sec-h rhythm as every other card */
+  ctrl.appendChild(N.el('h2', { class: 'sec-h', text: '🌐 Tab Guardian (Chrome extension)' }));
   ctrl.appendChild(N.el('div', { class: 'row spread' },
     N.el('div', { class: 'row' },
       N.el('button', { class: 'toggle' + (s.enabled ? ' on' : ''), onclick: () => setS({ enabled: !s.enabled }) }),
@@ -367,7 +368,7 @@ Views.sites = function (c) {
 
   function domainList(key, title, arr, ph) {
     const card = N.el('div', { class: 'card site-card' });
-    card.appendChild(N.el('h2', { text: title }));
+    card.appendChild(N.el('h2', { class: 'sec-h', text: title }));
     // tag area grows to fill the card, pushing the add-row to the bottom
     const chips = N.el('div', { class: 'chips mt site-tags' });
     for (const dom of arr) {

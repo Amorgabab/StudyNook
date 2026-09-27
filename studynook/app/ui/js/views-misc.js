@@ -7,13 +7,16 @@ window.Views = window.Views || {};
 /* ---------- settings ---------- */
 Views.settings = function (c) {
   const d = App.state.data, s = d.settings;
+  /* Settings — one consistent rhythm: every card shares .set-grid's gap,
+     every section title keeps the same separation from its content */
   const grid = N.el('div', { class: 'set-grid' });
 
   /* profile */
   const prof = N.el('div', { class: 'card' });
   prof.appendChild(N.el('h2', { text: 'You & your pet' }));
-  prof.appendChild(setRow('Your name', 'Shown in greetings', textInput(d.profile.name, (v) => nook.invoke('profile:set', { name: v }))));
-  prof.appendChild(setRow('Pet name', 'Yes, you can rename Mochi', textInput(d.pet.name, (v) => nook.invoke('pet:rename', { name: v }))));
+  /* redundant hints removed — labels are self-explanatory */
+  prof.appendChild(setRow('Your name', '', textInput(d.profile.name, (v) => nook.invoke('profile:set', { name: v }))));
+  prof.appendChild(setRow('Pet name', '', textInput(d.pet.name, (v) => nook.invoke('pet:rename', { name: v }))));
   grid.appendChild(prof);
 
   /* subjects */
@@ -37,21 +40,22 @@ Views.settings = function (c) {
     sinp.value = '';
   }
 
-  /* timer */
+  /* timer — unit/limit hints kept where a bare number would be ambiguous;
+     flavor text that restates the label is dropped */
   const tim = N.el('div', { class: 'card' });
   tim.appendChild(N.el('h2', { text: '⏱ Timer' }));
   tim.appendChild(setRow('Focus length', 'minutes per round', numInput(s.timer.workMin, 5, 180, (v) => setT({ workMin: v }))));
   tim.appendChild(setRow('Short break', 'minutes', numInput(s.timer.shortMin, 1, 60, (v) => setT({ shortMin: v }))));
   tim.appendChild(setRow('Long break', 'minutes', numInput(s.timer.longMin, 5, 90, (v) => setT({ longMin: v }))));
   tim.appendChild(setRow('Rounds per plan', 'then a long break', numInput(s.timer.rounds, 2, 12, (v) => setT({ rounds: v }))));
-  tim.appendChild(setRow('Auto-start breaks', 'slide into rest without clicking', toggleInput(s.timer.autoStartBreaks, (v) => setT({ autoStartBreaks: v }))));
-  tim.appendChild(setRow('Auto-start next round', 'for the truly unstoppable', toggleInput(s.timer.autoStartFocus, (v) => setT({ autoStartFocus: v }))));
+  tim.appendChild(setRow('Auto-start breaks', '', toggleInput(s.timer.autoStartBreaks, (v) => setT({ autoStartBreaks: v }))));
+  tim.appendChild(setRow('Auto-start next round', '', toggleInput(s.timer.autoStartFocus, (v) => setT({ autoStartFocus: v }))));
   tim.appendChild(setRow('Strict mode', 'ending early = zero XP for that round', toggleInput(s.timer.strict, (v) => setT({ strict: v }))));
   const ironLocked = window.NookIron && NookIron.isLocked(s.timer.ironLockedUntil, Date.now());
   tim.appendChild(setRow('Iron session',
     ironLocked
       ? 'your own rule: this switch stays locked for ' + NookIron.remainingHms(s.timer.ironLockedUntil, Date.now())
-      : 'no pause anywhere while focusing; ending early = 60s cool-down + typed sentence',
+      : 'no pause anywhere while focusing; ending early = 60s cool-down + typed sentence',   /* consequence — not inferable from the label */
     ironLocked
       ? N.el('span', { class: 'pill warn', text: '🔒 locked ' + NookIron.remainingHms(s.timer.ironLockedUntil, Date.now()) })
       : toggleInput(s.timer.iron, (v) => setT({ iron: v }))));
@@ -61,15 +65,15 @@ Views.settings = function (c) {
       N.el('span', { class: 'small', text: 'days' }))));
   grid.appendChild(tim);
 
-  /* sound & looks */
+  /* sound & looks — only genuinely non-inferable hints kept */
   const snd = N.el('div', { class: 'card' });
   snd.appendChild(N.el('h2', { text: '🎧 Sound & looks' }));
   snd.appendChild(setRow('Ambience files', 'drop rain.mp3 / fire.mp3 / waves.mp3 / cafe.mp3 here — synthesized loops play until then: ' + (App.state.soundsPath || ''),
     N.el('button', { class: 'btn btn-sm btn-ghost', text: 'Open sounds folder', title: App.state.soundsPath || '', onclick: () => nook.invoke('data:openSounds') })));
-  snd.appendChild(setRow('UI sounds', 'clicks & pops', toggleInput(s.sound.ui, (v) => { setSnd({ ui: v }); Audio2.setEnabled({ ui: v, chimes: s.sound.chimes }); })));
-  snd.appendChild(setRow('Chimes', 'session start/finish bells', toggleInput(s.sound.chimes, (v) => { setSnd({ chimes: v }); Audio2.setEnabled({ ui: s.sound.ui, chimes: v }); })));
+  snd.appendChild(setRow('UI sounds', '', toggleInput(s.sound.ui, (v) => { setSnd({ ui: v }); Audio2.setEnabled({ ui: v, chimes: s.sound.chimes }); })));
+  snd.appendChild(setRow('Chimes', '', toggleInput(s.sound.chimes, (v) => { setSnd({ chimes: v }); Audio2.setEnabled({ ui: s.sound.ui, chimes: v }); })));
   snd.appendChild(setRow('Theme', 'auto follows the time of day', segInput(['auto', 'light', 'dark'], s.theme, (v) => nook.invoke('settings:set', { section: 'theme', values: v }))));
-  snd.appendChild(setRow('Mini floating timer', 'tiny always-on-top pill during sessions', toggleInput(s.miniWindow, (v) => nook.invoke('settings:set', { section: 'miniWindow', values: v }))));
+  snd.appendChild(setRow('Mini floating timer', '', toggleInput(s.miniWindow, (v) => nook.invoke('settings:set', { section: 'miniWindow', values: v }))));
   grid.appendChild(snd);
 
   /* guardian extras */
@@ -111,7 +115,18 @@ Views.settings = function (c) {
 
   /* helpers */
   function setRow(lbl, hint, control) {
-    return N.el('div', { class: 'set-row' }, N.el('div', {}, N.el('div', { class: 'lbl', text: lbl }), N.el('div', { class: 'hint', text: hint })), control);
+    /* empty hint → render nothing (no dead line-height eating vertical space);
+       long genuinely-useful hints become hover tooltips instead of permanent text */
+    const label = lbl.toLowerCase();
+    let shortHint = hint, tip = '';
+    if (hint && hint.length > 60) {
+      if (label.indexOf('ambience files') === 0) shortHint = hint;   // file-drop instructions can't live in a tooltip nobody finds
+      else { tip = hint; shortHint = ''; }
+    }
+    const wrap = N.el('div', {}, N.el('div', { class: 'lbl', text: lbl }));
+    if (shortHint) wrap.appendChild(N.el('div', { class: 'hint', text: shortHint }));
+    if (tip) wrap.setAttribute('title', tip);
+    return N.el('div', { class: 'set-row' }, wrap, control);
   }
   function textInput(val, onSet) {
     const i = N.el('input', { class: 'input', value: val || '', style: 'width:160px' });
@@ -155,13 +170,16 @@ Views.help = function (c) {
     ['🛟', '5 · Safety & emergency stops', 'StudyNook refuses to close system processes, and in gentle mode you always get a warning first. Need a blocked app? Click <b>"Leave it open 5 min"</b> on the warning, use <b>"let me breathe"</b> on the Apps tab, or quit from the tray — the guard stops instantly.'],
     ['💾', '6 · Your data stays home', 'Everything is stored in <b>data/data.json</b> inside the app folder — plain, readable JSON. Export/import backups from Settings. The localhost bridge (port 47470) only talks to your paired extension.']
   ];
-  const grid = N.el('div', { class: 'set-grid' });
+  /* Help is documentation — all text stays; the numbered 1–6 cards live in
+     the same set-grid (equal-feeling rows, aligned edges) with a comfortable
+     internal rhythm, and the FAQ gets matching breathing room. */
+  const grid = N.el('div', { class: 'set-grid help-grid' });
   for (const [e, h, p] of cards) {
     grid.appendChild(N.el('div', { class: 'card help-card' }, N.el('div', { class: 'n', text: e }), N.el('div', {}, N.el('h3', { text: h }), N.el('p', { html: p }))));
   }
   c.appendChild(grid);
 
-  const faq = N.el('div', { class: 'card mt' });
+  const faq = N.el('div', { class: 'card faq-card' });
   faq.appendChild(N.el('h2', { text: '❓ Quick FAQ' }));
   const rows = [
     ['Will it close something important?', 'No — a built-in NEVER_KILL list protects Windows/macOS/Linux system processes, plus anything on your allow list and anything you granted "5 min" to.'],

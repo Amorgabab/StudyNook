@@ -31,6 +31,15 @@
   --shadow: 0 10px 30px rgba(122, 91, 62, .12), 0 2px 8px rgba(122, 91, 62, .08);
   --radius: 22px;
   --radius-s: 14px;
+  /* cozy spacing scale — ONE rhythm for the whole app.
+     s 6 · m 10 · l 14 · xl 18 (card padding / title→content / control gaps)
+     xxl 22 (between related blocks) · xxxl 28 (page-level section transitions) */
+  --sp-1: 6px;
+  --sp-2: 10px;
+  --sp-3: 14px;
+  --sp-4: 18px;
+  --sp-5: 22px;
+  --sp-6: 28px;
   --font: "Segoe UI", "Nunito", "Trebuchet MS", system-ui, -apple-system, sans-serif;
 }
 body[data-theme="dark"] {
@@ -131,14 +140,20 @@ body[data-theme="dark"] #bg-scene { background: linear-gradient(160deg, var(--bg
 .view::-webkit-scrollbar { width: 12px; }
 .card {
   background: var(--card); border: 1.5px solid var(--line); border-radius: var(--radius);
-  box-shadow: var(--shadow); padding: 20px; position: relative;
+  box-shadow: var(--shadow); padding: var(--sp-4); position: relative;
   animation: rise .35s ease both;
 }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-.card h2 { font-size: 17px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
-.card .sub { color: var(--ink-soft); font-size: 12.5px; margin-bottom: 14px; }
-.grid2 { display: grid; grid-template-columns: 1.25fr .95fr; gap: 16px; align-items: start; }
-.grid2b { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+/* one section-header treatment everywhere: same size/weight, same 14px step
+   down to its content (pages that need a wider step override locally) */
+.card h2 { font-size: 17px; margin-bottom: var(--sp-3); display: flex; align-items: center; gap: 8px; }
+.card .sub { color: var(--ink-soft); font-size: 12.5px; margin-bottom: var(--sp-3); }
+/* side-by-side cards always share row height → aligned top AND bottom edges */
+.grid2 { display: grid; grid-template-columns: 1.25fr .95fr; gap: var(--sp-4); align-items: stretch; }
+.grid2b { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); align-items: stretch; }
+.row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.spread { justify-content: space-between; }
+.mt { margin-top: var(--sp-4); }
 /* Sites page — Blocked/Allowed cards stretch to equal height, inputs pinned to bottom */
 .site-cards { align-items: stretch; }
 .site-card { display: flex; flex-direction: column; }
@@ -155,11 +170,13 @@ body[data-theme="dark"] #bg-scene { background: linear-gradient(160deg, var(--bg
   }
   .site-cards .site-tags .domain-chip button { width: 18px; height: 18px; flex: 0 0 18px; }
 }
-.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .spread { justify-content: space-between; }
-.mt { margin-top: 16px; }
-/* Apps page (App Guardian): extra breathing room between guard controls → app lists */
-.card + .card.mt { margin-top: 28px; }
+.mt { margin-top: var(--sp-4); }
+/* one deliberate page-level rhythm: consecutive full-width cards are always
+   separated by the same xxl step (28px) on every page — Apps, Sites, Garden,
+   Settings, Help all inherit this instead of per-page values */
+.card + .card.mt { margin-top: var(--sp-6); }
 .small { font-size: 12px; color: var(--ink-soft); }
 .mono { font-family: Consolas, "SF Mono", monospace; font-size: 11px; background: var(--card2); padding: 2px 7px; border-radius: 8px; border: 1px solid var(--line); }
 

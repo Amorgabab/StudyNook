@@ -69,7 +69,8 @@ Views.garden = function (c) {
   c.appendChild(charts);
 
   /* ---------- evolution + achievements ---------- */
-  const evoCard = N.el('div', { class: 'card mt' });
+  /* tighter transition from the charts row → journey: one consistent gap */
+  const evoCard = N.el('div', { class: 'card garden-journey' });
   evoCard.appendChild(N.el('h2', { text: '🐾 ' + d.pet.name + "'s journey" }));
   evoCard.appendChild(N.el('div', { class: 'sub', text: NookProgress.PET_STAGES[d.pet.stage].blurb }));
   const track = N.el('div', { class: 'evo-track mt' });
