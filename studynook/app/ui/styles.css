@@ -528,7 +528,7 @@ input[type="number"].input { -moz-appearance: textfield; appearance: textfield; 
 .page-title { font-size: 21px; font-weight: 800; letter-spacing: -.2px; margin: 0 0 5px; display: flex; align-items: center; gap: 9px; }
 .page-sub { color: var(--ink-soft); font-size: 12.5px; line-height: 1.5; max-width: 640px; }
 
-.create-card { background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 14px 16px 12px; box-shadow: var(--shadow); }
+.create-card { background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 14px 16px 12px; box-shadow: var(--shadow); margin-bottom: 28px; }
 .create-row { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
 .task-input { flex: 1 1 240px; min-width: 200px; height: 42px; font-size: 14px; font-weight: 600; }
 .task-input::placeholder { font-weight: 400; }
@@ -539,7 +539,7 @@ body[data-theme="dark"] .task-add { box-shadow: 0 0 18px -8px var(--accent), var
 .hint { font-size: 11.5px; color: var(--ink-soft); line-height: 1.5; margin-top: 10px; }
 
 /* Open/Done tabs — restrained selected state in the app's segmented-control language */
-.task-filters { margin: 22px 0 12px; }
+.task-filters { margin: 0 0 16px; }
 .seg-sm button { padding: 5px 13px; font-size: 12px; }
 .seg-sm button.on.sage { background: var(--sage-soft); color: var(--sage); box-shadow: inset 0 0 0 1.5px var(--sage); }
 body[data-theme="dark"] .seg-sm button.on.sage { color: var(--sage); }

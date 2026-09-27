@@ -8,10 +8,9 @@ window.Views = window.Views || {};
 Views.tasks = function (c) {
   const d = App.state.data;
   const card = N.el('div', { class: 'card' });
-  /* page header — clear hierarchy: title → quiet description → create area */
+  /* page header — clean title only (subtitle removed for less clutter) */
   const head = N.el('div', { class: 'page-head' });
   head.appendChild(N.el('h2', { class: 'page-title', text: '📝 Study tasks' }));
-  head.appendChild(N.el('div', { class: 'page-sub', text: 'Small, kind to-do items. Link one to a session so Mochi knows what you\'re growing.' }));
   card.appendChild(head);
 
   /* --- creation form: elevated surface, input dominant, primary CTA --- */
@@ -22,7 +21,6 @@ Views.tasks = function (c) {
   const addBtn = N.el('button', { class: 'btn btn-primary task-add', text: '+ Add task', onclick: () => submit() });
   row.appendChild(addBtn);
   form.appendChild(row);
-  form.appendChild(N.el('div', { class: 'hint', text: '⏱ planned minutes ≈ how long you\'ll spend · 🍅 Pomodoros ≈ how many focus rounds that might take (estimate only). Planned time is optional — leave it at 0 and the task stays open-ended.' }));
   txt.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
   card.appendChild(form);
 
@@ -39,8 +37,7 @@ Views.tasks = function (c) {
     N.el('div', { class: 'seg seg-sm', role: 'tablist' },
       N.el('button', { class: App.taskFilter === 'done' ? '' : 'on sage', text: `Open (${open.length})`, onclick: () => { App.taskFilter = 'open'; App.render(); } }),
       N.el('button', { class: App.taskFilter === 'done' ? 'on sage' : '', text: `Done (${done.length})`, onclick: () => { App.taskFilter = 'done'; App.render(); } })
-    ),
-    N.el('div', { class: 'small', text: `${open.length} open · ${done.length} done · +5 XP each` })
+    )
   ));
 
   /* --- task list rows --- */
