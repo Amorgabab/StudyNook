@@ -565,3 +565,9 @@ body[data-theme="dark"] .seg-sm button.on.sage { color: var(--sage); }
 .wd-more { font-size: 10px; font-weight: 700; color: var(--ink-soft); }
 @media (max-width: 900px) { .week-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 620px) { .week-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* === Sites page: Tab Guardian cleanup — collapsible one-time setup steps === */
+.ext-setup-steps { display: none; }
+.ext-setup-steps.open { display: block; }
+.ext-setup-toggle { opacity: .85; }
+.ext-setup-toggle:hover { opacity: 1; }

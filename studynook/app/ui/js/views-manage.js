@@ -303,7 +303,6 @@ Views.sites = function (c) {
 
   const ctrl = N.el('div', { class: 'card' });
   ctrl.appendChild(N.el('h2', { text: '🌐 Tab Guardian (Chrome extension)' }));
-  ctrl.appendChild(N.el('div', { class: 'sub', text: 'Blocks distracting websites in Chrome/Edge/Brave. The bundled extension redirects them to a cozy "napping" page.' }));
   ctrl.appendChild(N.el('div', { class: 'row spread' },
     N.el('div', { class: 'row' },
       N.el('button', { class: 'toggle' + (s.enabled ? ' on' : ''), onclick: () => setS({ enabled: !s.enabled }) }),
@@ -320,18 +319,11 @@ Views.sites = function (c) {
     N.el('span', { class: 'small', text: 'Mode:' }),
     N.el('div', { class: 'seg' },
       N.el('button', { class: s.mode === 'block' ? 'on accent' : '', text: '🚫 Blocklist — block only these sites', onclick: () => setS({ mode: 'block' }) }),
-      N.el('button', { class: s.mode === 'allow' ? 'on accent' : '', text: '✅ Allowlist — block EVERYTHING else', onclick: () => setS({ mode: 'allow' }) }))
-  ));
-  ctrl.appendChild(N.el('div', { class: 'banner ' + (s.mode === 'allow' ? 'warn' : 'info') + ' mt' },
-    N.el('span', { text: s.mode === 'allow' ? '⚠️' : '💡' }),
-    N.el('span', { text: s.mode === 'allow'
-      ? 'Allowlist mode: during focus, ONLY the allowed sites below will open. Everything else lands on the napping page. localhost and your extension are always safe.'
-      : 'Blocklist mode: the sites below land on the napping page ' + (s.when === 'session' ? 'while a focus session runs.' : 'at all times.') })
+      N.el('button', { class: s.mode === 'allow' ? 'on accent' : '', text: '✅ Allowlist — block EVERYTHING else', title: 'During focus, only the allowed sites below will open — everything else lands on the napping page.', onclick: () => setS({ mode: 'allow' }) }))
   ));
   const focusing = App.state.session && App.state.session.active && App.state.session.phase === 'focus' && App.state.session.running;
   ctrl.appendChild(N.el('div', { class: 'row mt' },
-    N.el('span', { class: 'pill ' + (s.enabled && (s.when === 'always' || focusing) ? 'on' : 'warn'), text: s.enabled ? (s.when === 'always' ? '🟢 rules armed always' : focusing ? '🟢 rules armed (focusing)' : '💤 rules sleep until focus starts') : '⚪ site blocking off' }),
-    N.el('span', { class: 'small', text: 'Tip: paths work too — e.g. block "youtube.com/shorts" to keep lectures awake but nap the Shorts hole.' })
+    N.el('span', { class: 'pill ' + (s.enabled && (s.when === 'always' || focusing) ? 'on' : 'warn'), text: s.enabled ? (s.when === 'always' ? '🟢 rules armed always' : focusing ? '🟢 rules armed (focusing)' : '💤 rules sleep until focus starts') : '⚪ site blocking off' })
   ));
   c.appendChild(ctrl);
 
@@ -340,7 +332,7 @@ Views.sites = function (c) {
   listsCard.appendChild(domainList('allow', '✅ Allowed sites (allow-mode)', s.allow, 'wikipedia.org or youtube.com/watch?v=…'));
   c.appendChild(listsCard);
 
-  /* --- extension pairing card --- */
+  /* --- extension pairing card: status always visible; full setup steps collapse to a toggle --- */
   const extCard = N.el('div', { class: 'card mt' });
   extCard.appendChild(N.el('h2', { text: '🧩 Connect the extension' }));
   extCard.appendChild(N.el('div', { class: 'row spread mt' },
@@ -357,7 +349,17 @@ Views.sites = function (c) {
       N.el('button', { class: 'btn btn-sm', text: '📋 copy', onclick: () => { navigator.clipboard && navigator.clipboard.writeText(ext.code); App.toast('Pairing code copied', ext.code); } })
     )
   ));
-  const steps = N.el('div', { class: 'list mt' });
+  const setupToggle = N.el('button', {
+    class: 'btn btn-sm btn-ghost ext-setup-toggle',
+    text: ext.connected ? '▸ Setup instructions' : '▾ Setup instructions',   // connected users see it collapsed by default
+    title: 'One-time setup: load the unpacked extension in Chrome/Edge/Brave and pair it with this code.',
+    onclick: () => {
+      const open = steps.classList.toggle('open');
+      setupToggle.textContent = (open ? '▾' : '▸') + ' Setup instructions';
+    }
+  });
+  extCard.appendChild(N.el('div', { class: 'row mt' }, setupToggle));
+  const steps = N.el('div', { class: 'list mt ext-setup-steps' + (ext.connected ? '' : ' open') });
   [
     ['1', 'Open Chrome (or Edge/Brave) and go to chrome://extensions'],
     ['2', 'Turn ON "Developer mode" (top-right corner)'],
@@ -365,7 +367,9 @@ Views.sites = function (c) {
     ['4', 'Click the StudyNook extension icon → paste the pairing code above → Pair']
   ].forEach(([n, t]) => steps.appendChild(N.el('div', { class: 'list-row' }, N.el('span', { class: 'tag', text: n }), N.el('div', { class: 'grow' }, N.el('div', { class: 'title', style: 'font-weight:600', text: t })))));
   extCard.appendChild(steps);
-  extCard.appendChild(N.el('div', { class: 'banner good mt' }, N.el('span', { text: '🌈' }), N.el('span', { text: 'No desktop app running? The extension still works on its own — open its popup for a built-in mini timer & lists. When StudyNook is open, the desktop settings win.' })));
+  if (!ext.connected) {
+    extCard.appendChild(N.el('div', { class: 'banner good mt' }, N.el('span', { text: '🌈' }), N.el('span', { text: 'No desktop app running? The extension still works on its own — open its popup for a built-in mini timer & lists. When StudyNook is open, the desktop settings win.' })));
+  }
   c.appendChild(extCard);
 
   function setS(patch) { nook.invoke('sites:set', { patch }); }
@@ -390,7 +394,7 @@ Views.sites = function (c) {
       card.appendChild(N.el('div', { class: 'small mt', text: 'quick add:' }));
       card.appendChild(N.el('div', { class: 'chips', style: 'margin-top:6px' }, ...seeds.map((sd) => N.el('button', { class: 'btn btn-sm btn-ghost', text: '+ ' + sd, onclick: () => setS({ [key]: [...arr, sd] }) }))));
     }
-    if (key === 'allow') card.appendChild(N.el('div', { class: 'small mt', text: 'Exact pages: paste a FULL url (youtube.com/watch?v=…) to allow only that page — the rest of the site stays napped (allow mode). Wander-proof your lectures.' }));
+    if (key === 'block') inp.title = 'Tip: paths work too — e.g. youtube.com/shorts blocks only the Shorts feed.';
     function add() {
       const v = NookRules.normalizeEntry(inp.value);   // keeps paths: youtube.com/shorts
       if (!v) return;
