@@ -211,19 +211,27 @@ select.input { cursor: pointer; }
 .area-amb   { grid-area: amb; }
 .area-today { grid-area: today; }
 .area-journal { grid-area: journal; }
-.home-col { display: contents; }   /* legacy wrapper — keeps children on the grid */
-/* timer card — tighter vertical rhythm, no dead zones between controls.
-   The ring + control group form ONE visual unit (ring-wrap has a small
-   negative bottom margin so the segmented control reads as attached to the
-   dial); the aux hairline row is pulled close behind it via its own margin. */
-.timer-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 22px 28px 20px; }
+/* column wrappers keep the SAME two-column grid (timer|pet / amb|today /
+   journal band) while giving each column independent vertical gaps:
+   large breathing room between Timer→Ambience and Mochi→Today, slightly
+   smaller transition gap before the full-width Journal band. */
+.home-col { display: flex; flex-direction: column; gap: 36px; min-width: 0; }
+.area-timer { margin-bottom: -12px; }  /* section-transition gap before Ambience */
+.area-pet   { margin-bottom: -8px; }   /* section-transition gap before Today */
+/* timer card — generous top breathing room above the ring; internal rhythm:
+   ring → 22px → mode toggle → 18px → start → 18px → studying, one cohesive
+   control group on a shared measured width (never an hourglass). */
+.timer-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 30px 28px 22px; }
 /* iron mode — quiet session-state line, not a control */
 .iron-status { font-size: 11px; font-weight: 700; color: var(--ink-soft); background: var(--card2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; letter-spacing: .2px; }
 /* one quiet metadata row above the ring (phase / paused / iron) */
 .timer-status { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
 .phase-pill { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 16px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
 .phase-pill.break { background: var(--sage-soft); color: var(--sage); }
-.ring-wrap { position: relative; width: 250px; height: 250px; margin-bottom: -6px; }
+/* ring gets real breathing room below it — the control group starts a full
+   step down, but stays clearly part of the same card composition */
+.ring-wrap { position: relative; width: 250px; height: 250px; margin: 4px 0 12px; flex: 0 0 auto; }
+@media (max-width: 380px) { .ring-wrap { transform: scale(.86); margin: -16px 0 -2px; } }
 .ring-wrap svg { transform: rotate(-90deg); }
 .ring-bg { stroke: var(--line); }
 .ring-fg { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .5s linear, stroke .4s ease; }
@@ -233,8 +241,9 @@ select.input { cursor: pointer; }
 .ring-sub { font-size: 12px; color: var(--ink-soft); font-weight: 600; max-width: 170px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* one cohesive focus-control group: every direct child shares the same
    measured width (ring width + allowance), so the stack reads as a single
-   block — never wide → tiny → medium → tiny (the old hourglass shape). */
-.timer-controls { display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: min(358px, 100%); }
+   block — never wide → tiny → medium → tiny (the old hourglass shape).
+   Controlled internal rhythm: mode → 18px → start → 18px → studying. */
+.timer-controls { display: flex; flex-direction: column; align-items: stretch; gap: 18px; width: min(358px, 100%); }
 .timer-controls .seg { display: flex; width: 100%; }
 .timer-controls .seg button { flex: 1; }
 .glass-btn {
@@ -254,7 +263,7 @@ body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, 
 .running-actions .btn-ghost { flex: 0 0 auto; }
 /* duration controls — deliberately quiet secondary setting, visually detached
    from the primary group by a hairline so they never compete with it */
-.timer-aux { display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(358px, 100%); margin-top: -2px; padding-top: 8px; border-top: 1px solid var(--line); }
+.timer-aux { display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(358px, 100%); margin-top: -4px; padding-top: 10px; border-top: 1px solid var(--line); }
 .free-row { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; align-items: center; }
 .dur-chip { border: 1px solid transparent; background: transparent; border-radius: 999px; padding: 3px 10px; font-size: 11.5px; font-weight: 700; color: var(--ink-soft); cursor: pointer; transition: all .15s ease; box-shadow: none; }
 .dur-chip:hover { color: var(--ink); background: var(--card2); }
@@ -262,19 +271,24 @@ body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, 
 .dur-stepper { display: inline-flex; align-items: center; gap: 4px; opacity: .85; }
 .dur-stepper .btn { padding: 2px 9px; font-size: 12px; box-shadow: none; }
 .dur-unit { font-size: 11px; color: var(--ink-soft); font-weight: 700; }
-.task-pick { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
-.tp-label { font-size: 11px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--ink-soft); flex: 0 0 auto; }
-.tp-hint { font-size: 10.5px; color: var(--ink-soft); opacity: .75; flex: 0 0 auto; }
+/* studying row — clear separation from Start focusing (handled by the group
+   gap) plus its own top breathing room so it never feels squished under the
+   button; label / dropdown / hint share consistent internal spacing */
+.task-pick { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 2px; }
+.tp-label { font-size: 11px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--ink-soft); flex: 0 0 auto; padding: 4px 0; }
+.tp-hint { font-size: 10.5px; color: var(--ink-soft); opacity: .75; flex: 0 0 auto; padding: 4px 6px; }
 /* picker fills the group width so it shares the same edges as mode + start */
 .task-pick select.input { flex: 1 1 auto; min-width: 0; max-width: none; text-overflow: ellipsis; }
 
 /* Mochi companion — calm and spacious, header aligned with the Timer card.
    The head sits at the shared top line; the character group centers in the
-   remaining space so stretch never creates random gaps. */
-.pet-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 20px 22px 24px; overflow: hidden; }
+   remaining space so stretch never creates random gaps. Generous whitespace:
+   ≥40px around the character block, 16px from character to progress bar,
+   10px from progress bar to mood text. */
+.pet-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 20px 22px 28px; overflow: hidden; }
 .pet-h { align-self: flex-start; margin: 0 0 auto !important; }
-.pet-mid { display: flex; flex-direction: column; align-items: center; gap: 3px; margin: auto 0; width: 100%; }
-.mochi-box { cursor: pointer; transition: transform .15s ease; position: relative; margin-bottom: 2px; }
+.pet-mid { display: flex; flex-direction: column; align-items: center; gap: 3px; margin: auto 0; width: 100%; padding: 40px 0; }
+.mochi-box { cursor: pointer; transition: transform .15s ease; position: relative; margin-bottom: 16px; }
 .mochi-box:hover { transform: scale(1.04); }
 .mochi-box:active { transform: scale(.95); }
 .mochi-svg { width: 170px; height: 150px; display: block; }
@@ -286,9 +300,9 @@ body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, 
 @keyframes zfloat { 0%, 100% { transform: translate(0, 0); opacity: .9; } 50% { transform: translate(4px, -6px); opacity: .5; } }
 .pet-name { font-size: 17px; font-weight: 800; margin-top: 2px; }
 .pet-stage { font-size: 12px; color: var(--ink-soft); font-weight: 700; margin-bottom: 6px; }
-.stage-bar { width: 80%; height: 8px; background: var(--line); border-radius: 8px; overflow: hidden; }
+.stage-bar { width: 80%; height: 8px; background: var(--line); border-radius: 8px; overflow: hidden; margin-top: 16px; }
 .stage-fill { height: 100%; background: linear-gradient(90deg, var(--rose), var(--honey)); border-radius: 8px; transition: width .6s ease; }
-.pet-mood { font-size: 12px; color: var(--ink-soft); margin-top: 6px; font-style: italic; min-height: 16px; text-align: center; }
+.pet-mood { font-size: 12px; color: var(--ink-soft); margin-top: 10px; font-style: italic; min-height: 16px; text-align: center; }
 .heart { position: absolute; font-size: 15px; animation: heartup 1s ease forwards; pointer-events: none; }
 @keyframes heartup { from { opacity: 1; transform: translate(0, 0) scale(.7); } to { opacity: 0; transform: translate(var(--dx, 10px), -70px) scale(1.25); } }
 
@@ -296,17 +310,17 @@ body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, 
    tile row is pinned to the bottom edge so any row-stretch becomes an
    intentional header gap, never dead space under the numbers */
 .area-today { display: flex; flex-direction: column; }
-.today-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: auto; }
+.today-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: auto; }
 /* proper section headers — clear separation from content */
 .card h2.sec-h { margin: 2px 0 18px; font-size: 15px; font-weight: 800; letter-spacing: .2px; }
-.stat-tile { background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 18px 10px; text-align: center; min-width: 0; }
+.stat-tile { background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 16px 14px; text-align: center; min-width: 0; }
 .stat-tile .v { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stat-tile .k { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; margin-top: 3px; letter-spacing: .3px; }
 /* streak tile — same component family as the other tiles, distinguished with
    the app's established honey/flame progression language (matches the streak
    chip in the top bar and the xpbar gradient). Warm, special — never an
    error state. */
-.stat-tile.streak { border-color: color-mix(in srgb, var(--honey) 65%, var(--line)); background: var(--honey-soft); }
+.stat-tile.streak { border-color: color-mix(in srgb, var(--honey) 65%, var(--line)); background: var(--honey-soft); padding: 18px 14px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--honey) 25%, transparent); }
 .stat-tile.streak .v { color: #B98A2A; }
 .stat-tile.streak .k { color: #A5822F; opacity: .95; }
 body[data-theme="dark"] .stat-tile.streak .v { color: var(--honey); }
@@ -314,7 +328,9 @@ body[data-theme="dark"] .stat-tile.streak .k { color: var(--honey); opacity: .75
 
 /* compact utility card — controls fill available width evenly */
 .amb-card { display: flex; flex-direction: column; }
-.amb-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-start; }
+/* sound pills form ONE cohesive left-grouped cluster — consistent 10px gaps,
+   natural widths (never stretched edge-to-edge), comfortable wrap */
+.amb-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-start; }
 .amb-btn { flex: 0 0 auto; min-width: 90px; max-width: 130px; text-align: center; border: 1.5px solid var(--line); background: var(--card2); border-radius: 999px; padding: 9px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .15s ease; box-shadow: none; }
 .amb-btn:hover { transform: translateY(-1px); }
 .amb-btn.on { background: var(--sky-soft); border-color: var(--sky); color: #47688A; box-shadow: 0 0 12px -6px var(--sky); }
@@ -322,8 +338,9 @@ body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
 .amb-off { border: 1.5px dashed var(--line); background: transparent; color: var(--ink-soft); border-radius: 999px; padding: 9px 14px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s ease; box-shadow: none; }
 .amb-off:hover { border-style: solid; border-color: var(--danger); color: var(--danger); }
 .amb-off.on { border-style: solid; background: var(--card2); border-color: var(--ink-soft); color: var(--ink); }
-/* volume belongs to whatever ambience is selected */
-.amb-volrow { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+/* volume belongs to whatever ambience is selected — 14px separation from the
+   button cluster keeps it attached to (not floating away from) the controls */
+.amb-volrow { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
 .amb-vol-name { font-size: 11px; font-weight: 800; letter-spacing: .3px; color: var(--ink-soft); min-width: 74px; }
 .amb-vol { flex: 1; max-width: 220px; height: 4px; accent-color: var(--sky); cursor: pointer; }
 
@@ -332,15 +349,19 @@ body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
    ROWS on a shared baseline — icon → event (+ reward line) → time — separated
    by hairlines instead of oversized per-entry cards, so it scans like an
    activity feed rather than a stack of giant buttons. */
-.feed { display: flex; flex-direction: column; gap: 0; overflow-y: auto; padding: 0 8px 2px 2px; max-height: min(46vh, 520px); }
-.feed-entry { display: flex; align-items: flex-start; gap: 12px; background: transparent; border: none; border-bottom: 1px solid var(--line); border-left: 3px solid transparent; border-radius: 0; padding: 10px 12px; }
+.feed { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding: 2px 8px 4px 2px; max-height: min(46vh, 520px); }
+/* feed rows: comfortable 12/16 padding, subtle hairline separation between
+   the 12px gaps so the stream stays scannable without looking cramped */
+.feed-entry { display: flex; align-items: center; gap: 12px; background: transparent; border: none; border-bottom: 1px solid var(--line); border-left: 3px solid transparent; border-radius: 0; padding: 12px 16px; margin-top: -12px; }
+.feed-entry:first-child { margin-top: 0; }
 .feed-entry:last-child { border-bottom: none; }
-.fe-icon { flex: 0 0 auto; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 800; background: var(--line); color: var(--ink-soft); }
+.fe-icon { flex: 0 0 auto; width: 22px; height: 22px; margin-right: 8px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 800; background: var(--line); color: var(--ink-soft); }
 .fe-body { flex: 1; min-width: 0; max-width: 72ch; }
 .fe-text { font-size: 13px; font-weight: 600; line-height: 1.4; }
 .fe-emoji { margin-right: 4px; }
 .fe-reward { font-size: 11px; font-weight: 800; color: var(--sage); margin-top: 2px; }
-.ft { margin-left: auto; flex: 0 0 auto; align-self: center; color: var(--ink-soft); font-size: 10.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* timestamp — secondary, lighter gray, right-aligned with consistent edge padding */
+.ft { margin-left: auto; flex: 0 0 auto; align-self: center; padding-right: 12px; color: var(--ink-soft); opacity: .85; font-size: 10.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 /* three states, one design system: green done / red interrupted / gray started.
    Color is a restrained accent (icon + left rule + faint tint) — the row never
    becomes a filled alert banner, and red is reserved for real interruptions. */
@@ -353,16 +374,23 @@ body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
 
 @media (max-width: 1080px) {
   /* same two-column grid — only the journal band reflows to full width;
-     gaps/padding tighten intelligently, controls stay readable */
+     gaps/padding tighten intelligently (~70% of full spacing), controls
+     stay readable */
   .home-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "timer pet" "amb today" "journal journal"; gap: 14px; }
-  .timer-card { padding: 20px 18px; }
-  .pet-card { padding: 18px 16px 20px; }
+  .home-col { gap: 26px; }
+  .area-timer { margin-bottom: -8px; }
+  .area-pet { margin-bottom: -6px; }
+  .timer-card { padding: 24px 18px 18px; }
+  .timer-controls { gap: 14px; }
+  .pet-card { padding: 16px 16px 20px; }
+  .pet-mid { padding: 28px 0; }
   .grid2b { grid-template-columns: 1fr; }
   .prog-title { display: none; }
 }
 @media (max-width: 860px) {
   /* single deliberate column, reading order = priority order */
   .home-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "timer" "pet" "today" "amb" "journal"; gap: 12px; }
+  .home-col { gap: 22px; }
   .mochi-svg { width: 140px; height: 124px; }
 }
 @media (max-width: 720px) {
