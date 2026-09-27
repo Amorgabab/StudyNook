@@ -199,9 +199,12 @@ select.input { cursor: pointer; }
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, .95fr);
   grid-template-areas: "timer pet" "amb today" "journal journal";
-  gap: 16px;
+  gap: 18px;
   align-items: stretch;
 }
+/* shared flexible fill — lets compact cards absorb row stretch from an
+   intentional gap instead of dead space around the content */
+.card-fill { flex: 1 1 auto; min-height: 0; }
 .area-timer { grid-area: timer; }
 .area-pet   { grid-area: pet; }
 .area-amb   { grid-area: amb; }
@@ -209,7 +212,7 @@ select.input { cursor: pointer; }
 .area-journal { grid-area: journal; }
 .home-col { display: contents; }   /* legacy wrapper — keeps children on the grid */
 /* timer card — tighter vertical rhythm, no dead zones between controls */
-.timer-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 18px 28px; }
+.timer-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px 28px; }
 /* iron mode — quiet session-state line, not a control */
 .iron-status { font-size: 11px; font-weight: 700; color: var(--ink-soft); background: var(--card2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; letter-spacing: .2px; }
 /* one quiet metadata row above the ring (phase / paused / iron) */
@@ -224,10 +227,10 @@ select.input { cursor: pointer; }
 .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
 .ring-time { font-size: 54px; font-weight: 800; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
 .ring-sub { font-size: 12px; color: var(--ink-soft); font-weight: 600; max-width: 170px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* ONE cohesive focus-control group: every direct child shares the same
+/* one cohesive focus-control group: every direct child shares the same
    measured width (ring width + allowance), so the stack reads as a single
    block — never wide → tiny → medium → tiny (the old hourglass shape). */
-.timer-controls { display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: min(358px, 100%); }
+.timer-controls { display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: min(358px, 100%); }
 .timer-controls .seg { display: flex; width: 100%; }
 .timer-controls .seg button { flex: 1; }
 .glass-btn {
@@ -261,7 +264,12 @@ body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, 
 /* picker fills the group width so it shares the same edges as mode + start */
 .task-pick select.input { flex: 1 1 auto; min-width: 0; max-width: none; text-overflow: ellipsis; }
 
-.pet-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 20px 20px 26px; overflow: hidden; }
+/* Mochi companion — calm and spacious, header aligned with the Timer card.
+   The head sits at the shared top line; the character group centers in the
+   remaining space so stretch never creates random gaps. */
+.pet-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 20px 22px 24px; overflow: hidden; }
+.pet-h { align-self: flex-start; margin: 0 0 auto !important; }
+.pet-mid { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: auto 0; width: 100%; }
 .mochi-box { cursor: pointer; transition: transform .15s ease; position: relative; margin-bottom: 4px; }
 .mochi-box:hover { transform: scale(1.04); }
 .mochi-box:active { transform: scale(.95); }
@@ -280,10 +288,14 @@ body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, 
 .heart { position: absolute; font-size: 15px; animation: heartup 1s ease forwards; pointer-events: none; }
 @keyframes heartup { from { opacity: 1; transform: translate(0, 0) scale(.7); } to { opacity: 0; transform: translate(var(--dx, 10px), -70px) scale(1.25); } }
 
-.today-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+/* Today — proper section header with clear separation from the tiles; the
+   tile row is pinned to the bottom edge so any row-stretch becomes an
+   intentional header gap, never dead space under the numbers */
+.area-today { display: flex; flex-direction: column; }
+.today-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: auto; }
 /* proper section headers — clear separation from content */
 .card h2.sec-h { margin: 2px 0 18px; font-size: 15px; font-weight: 800; letter-spacing: .2px; }
-.stat-tile { background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 20px 12px; text-align: center; min-width: 0; }
+.stat-tile { background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 18px 10px; text-align: center; min-width: 0; }
 .stat-tile .v { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stat-tile .k { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; margin-top: 3px; letter-spacing: .3px; }
 /* streak tile — warm rose identity (streak, not danger) */
@@ -295,7 +307,6 @@ body[data-theme="dark"] .stat-tile.streak .k { color: var(--rose); opacity: .85;
 
 /* compact utility card — controls fill available width evenly */
 .amb-card { display: flex; flex-direction: column; }
-.amb-spacer { flex: 0 0 auto; height: 12px; }
 .amb-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-start; }
 .amb-btn { flex: 0 0 auto; min-width: 90px; max-width: 130px; text-align: center; border: 1.5px solid var(--line); background: var(--card2); border-radius: 999px; padding: 9px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .15s ease; box-shadow: none; }
 .amb-btn:hover { transform: translateY(-1px); }
@@ -310,17 +321,16 @@ body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
 .amb-vol { flex: 1; max-width: 220px; height: 4px; accent-color: var(--sky); cursor: pointer; }
 
 /* journal = chronological history → ONE vertical stream (never a column grid,
-   which made it read like a notification dashboard). The full-width card uses
-   its space by giving every entry breathing room; the stream itself is capped
-   at a comfortable reading width so text never stretches icon → gap → time. */
-.feed { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding: 2px 8px 2px 2px; max-height: min(46vh, 520px); max-width: 760px; }
+   which made it read like a notification dashboard). Full-width card, full-
+   width entries: the horizontal space belongs to each event itself. */
+.feed { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding: 2px 8px 2px 2px; max-height: min(46vh, 520px); }
 .feed-entry { display: flex; align-items: flex-start; gap: 12px; background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 13px 16px; }
 .fe-icon { flex: 0 0 auto; width: 24px; height: 24px; margin-top: 1px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; background: var(--line); color: var(--ink-soft); }
-.fe-body { flex: 1; min-width: 0; }
+.fe-body { flex: 1; min-width: 0; max-width: 72ch; }
 .fe-text { font-size: 13.5px; font-weight: 600; line-height: 1.4; }
 .fe-emoji { margin-right: 4px; }
 .fe-reward { font-size: 11.5px; font-weight: 800; color: var(--sage); margin-top: 4px; }
-.ft { margin-left: auto; flex: 0 0 auto; align-self: flex-start; padding-top: 3px; color: var(--ink-soft); font-size: 10.5px; }
+.ft { margin-left: auto; flex: 0 0 auto; align-self: flex-start; padding-top: 3px; color: var(--ink-soft); font-size: 10.5px; white-space: nowrap; }
 /* three states, one design system: green done / red interrupted / gray started */
 .feed-entry.good { border-color: color-mix(in srgb, var(--sage) 55%, var(--line)); background: var(--sage-soft); }
 .feed-entry.good .fe-icon { background: var(--sage); color: #fff; }
@@ -331,14 +341,17 @@ body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
 
 @media (max-width: 1080px) {
   /* same two-column grid — only the journal band reflows to full width;
-     no functionality is hidden, nothing overflows */
-  .home-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "timer pet" "amb today" "journal journal"; }
+     gaps/padding tighten intelligently, controls stay readable */
+  .home-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "timer pet" "amb today" "journal journal"; gap: 14px; }
+  .timer-card { padding: 20px 18px; }
+  .pet-card { padding: 18px 16px 20px; }
   .grid2b { grid-template-columns: 1fr; }
   .prog-title { display: none; }
 }
 @media (max-width: 860px) {
   /* single deliberate column, reading order = priority order */
-  .home-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "timer" "pet" "today" "amb" "journal"; }
+  .home-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "timer" "pet" "today" "amb" "journal"; gap: 12px; }
+  .mochi-svg { width: 140px; height: 124px; }
 }
 @media (max-width: 720px) {
   .today-grid { grid-template-columns: repeat(2, 1fr); }

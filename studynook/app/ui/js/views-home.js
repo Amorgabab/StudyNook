@@ -122,6 +122,7 @@ Views.home = function (c) {
   const right = N.el('div', { class: 'home-col' });     // mochi + today + journal
 
   const petCard = N.el('div', { class: 'card pet-card area-pet' });
+  const petHead = N.el('h2', { class: 'sec-h pet-h', text: '🧸 Mochi' });
   const stage = NookProgress.PET_STAGES[d.pet.stage] || NookProgress.PET_STAGES[0];
   const next = NookProgress.PET_STAGES[d.pet.stage + 1];
   const box = N.el('div', { class: 'mochi-box', id: 'mochi-box', title: 'Pet ' + d.pet.name });
@@ -136,14 +137,18 @@ Views.home = function (c) {
     box.appendChild(h);
     setTimeout(() => h.remove(), 1000);
   });
-  petCard.appendChild(box);
-  petCard.appendChild(N.el('div', { class: 'pet-name', text: d.pet.name }));
-  petCard.appendChild(N.el('div', { class: 'pet-stage', text: stage.emoji + ' ' + stage.name + (next ? ` · ${N.fmtMin(next.min - d.pet.totalFocusMin)} to evolve` : ' · fully evolved!') }));
+  petCard.appendChild(petHead);
+  // character + identity grouped together, centered in the remaining space
+  const petMid = N.el('div', { class: 'pet-mid' });
+  petMid.appendChild(box);
+  petCard.appendChild(petMid);
+  petMid.appendChild(N.el('div', { class: 'pet-name', text: d.pet.name }));
+  petMid.appendChild(N.el('div', { class: 'pet-stage', text: stage.emoji + ' ' + stage.name + (next ? ` · ${N.fmtMin(next.min - d.pet.totalFocusMin)} to evolve` : ' · fully evolved!') }));
   const sbar = N.el('div', { class: 'stage-bar' });
   const pct = next ? Math.min(1, (d.pet.totalFocusMin - stage.min) / (next.min - stage.min)) : 1;
   sbar.appendChild(N.el('div', { class: 'stage-fill', style: `width:${Math.round(pct * 100)}%` }));
-  petCard.appendChild(sbar);
-  petCard.appendChild(N.el('div', { class: 'pet-mood', id: 'pet-mood', text: App.moodLine() }));
+  petMid.appendChild(sbar);
+  petMid.appendChild(N.el('div', { class: 'pet-mood', id: 'pet-mood', text: App.moodLine() }));
   right.appendChild(petCard);
 
   const todayKey = N.todayKey();
@@ -168,8 +173,10 @@ Views.home = function (c) {
   /* ---------- ambience (left, compact) + journal (right, roomy) ---------- */
   const ambCard = N.el('div', { class: 'card amb-card area-amb' });
   ambCard.appendChild(N.el('h2', { class: 'sec-h', text: '🎧 Ambience' }));
-  // no explanatory text — title up top, controls grouped toward the bottom
-  ambCard.appendChild(N.el('div', { class: 'amb-spacer' }));
+  // no explanatory text — title up top, controls grouped toward the bottom.
+  // The fill absorbs whatever height the row needs (to match Today), so the
+  // controls always sit on a consistent baseline without looking stretched.
+  ambCard.appendChild(N.el('div', { class: 'card-fill' }));
   const ambRow = N.el('div', { class: 'amb-row' });
   const AMB = [['rain', '🌧️ Rain'], ['fire', '🔥 Fireplace'], ['waves', '🌊 Waves'], ['cafe', '☕ Café']];
   for (const [id, lbl] of AMB) {
@@ -195,8 +202,11 @@ Views.home = function (c) {
   volRow.append(N.el('span', { class: 'amb-vol-name', text: volName }), vol);
   ambCard.appendChild(volRow);
 
+  /* ---------- journal: ONE chronological vertical stream (never columns).
+     Full-width card, full-width entries: icon → event (+ reward line) → time.
+     The wide space is used by the entry itself, not by extra text columns. ---------- */
   const feedCard = N.el('div', { class: 'card journal-card area-journal' });
-  feedCard.appendChild(N.el('h2', { class: 'sec-h', text: 'Journal' }));
+  feedCard.appendChild(N.el('h2', { class: 'sec-h', text: '📖 Journal' }));
   const feed = N.el('div', { class: 'feed' });
   const rows = (d.feed || []).slice(0, 9);
   if (!rows.length) feed.appendChild(N.el('div', { class: 'small', text: 'Your cozy story starts with the first session…' }));
