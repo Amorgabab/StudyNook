@@ -8,22 +8,23 @@ window.Views = window.Views || {};
 Views.tasks = function (c) {
   const d = App.state.data;
   const card = N.el('div', { class: 'card' });
-  card.appendChild(N.el('h2', { text: '📝 Study tasks' }));
-  card.appendChild(N.el('div', { class: 'sub', text: 'Small, kind to-do items. Link one to a session so Mochi knows what you\'re growing.' }));
+  /* page header — clear hierarchy: title → quiet description → create area */
+  const head = N.el('div', { class: 'page-head' });
+  head.appendChild(N.el('h2', { class: 'page-title', text: '📝 Study tasks' }));
+  head.appendChild(N.el('div', { class: 'page-sub', text: 'Small, kind to-do items. Link one to a session so Mochi knows what you\'re growing.' }));
+  card.appendChild(head);
 
-  /* --- creation form: every control is labeled — no cryptic steppers --- */
-  const form = N.el('div', { class: 'task-form' });
-  const txt = N.el('input', { class: 'input', id: 'task-text', placeholder: 'What needs doing? e.g. "Chemistry ch.4 notes"', style: 'flex:1;min-width:200px', 'aria-label': 'Task name' });
-  const f1 = N.el('div', { class: 'row' });
-  f1.append(txt, Views._field('Subject', Views._taskSubjects(d)), Views._field('Planned time', Views._taskMinStepper()), Views._field('Effort', Views._taskEstSelect()));
-  const addBtn = N.el('button', { class: 'btn btn-sage task-add', text: '+ Add task', onclick: () => submit() });
-  const f2 = N.el('div', { class: 'row spread' });
-  f2.appendChild(N.el('div', { class: 'small', text: '⏱ planned minutes ≈ how long you\'ll spend · 🍅 Pomodoros ≈ how many focus rounds that might take (estimate only).' }));
-  f2.appendChild(addBtn);
-  form.append(f1, f2);
+  /* --- creation form: elevated surface, input dominant, primary CTA --- */
+  const form = N.el('div', { class: 'create-card' });
+  const row = N.el('div', { class: 'create-row' });
+  const txt = N.el('input', { class: 'input task-input', id: 'task-text', placeholder: 'What needs doing? e.g. "Chemistry ch.4 notes"', 'aria-label': 'Task name' });
+  row.append(txt, Views._field('Subject', Views._taskSubjects(d)), Views._field('Planned time', Views._taskMinStepper()), Views._field('Effort', Views._taskEstSelect()));
+  const addBtn = N.el('button', { class: 'btn btn-primary task-add', text: '+ Add task', onclick: () => submit() });
+  row.appendChild(addBtn);
+  form.appendChild(row);
+  form.appendChild(N.el('div', { class: 'hint', text: '⏱ planned minutes ≈ how long you\'ll spend · 🍅 Pomodoros ≈ how many focus rounds that might take (estimate only). Planned time is optional — leave it at 0 and the task stays open-ended.' }));
   txt.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
   card.appendChild(form);
-  card.appendChild(N.el('div', { class: 'small mt', text: 'Subjects are managed in Settings. "Planned time" is optional — leave it at 0 and the task stays open-ended.' }));
 
   function submit() {
     const v = txt.value.trim();
@@ -34,8 +35,8 @@ Views.tasks = function (c) {
   }
 
   const open = d.tasks.filter((t) => !t.done), done = d.tasks.filter((t) => t.done);
-  card.appendChild(N.el('div', { class: 'row mt spread' },
-    N.el('div', { class: 'seg' },
+  card.appendChild(N.el('div', { class: 'row spread task-filters' },
+    N.el('div', { class: 'seg seg-sm', role: 'tablist' },
       N.el('button', { class: App.taskFilter === 'done' ? '' : 'on sage', text: `Open (${open.length})`, onclick: () => { App.taskFilter = 'open'; App.render(); } }),
       N.el('button', { class: App.taskFilter === 'done' ? 'on sage' : '', text: `Done (${done.length})`, onclick: () => { App.taskFilter = 'done'; App.render(); } })
     ),
@@ -43,7 +44,7 @@ Views.tasks = function (c) {
   ));
 
   /* --- task list rows --- */
-  const list = N.el('div', { class: 'list mt' });
+  const list = N.el('div', { class: 'list task-list' });
   const rows = App.taskFilter === 'done' ? done : open;
   if (!rows.length) list.appendChild(N.el('div', { class: 'small', text: App.taskFilter === 'done' ? 'Nothing finished yet — your future self is patient.' : 'All clear! Add a task above, or just free-focus. 🌿' }));
   for (const t of rows) {
@@ -57,7 +58,7 @@ Views.tasks = function (c) {
     meta.push(N.el('span', { class: 'meta-chip', title: 'Pomodoros done out of your estimate', text: `🍅 ${t.pomosDone || 0}/${t.est} pomodoros` }));
     // study sources: collapsed behind a "+ Source" affordance until opened
     const srcWrap = N.el('div', { class: 'src-wrap' });
-    const srcBar = N.el('div', { class: 'row', style: 'gap:5px;margin-top:6px;flex-wrap:wrap' });
+    const srcBar = N.el('div', { class: 'row src-bar', style: 'gap:5px;flex-wrap:wrap' });
     (t.sources || []).forEach((s, i) => {
       srcBar.appendChild(N.el('span', { class: 'domain-chip', title: s.url },
         N.el('button', { style: 'width:auto;padding:0 7px;background:var(--sky-soft);border:none;color:#47688A;font-weight:800;cursor:pointer', text: '↗', title: 'open in browser', 'aria-label': 'Open source in browser', onclick: () => nook.invoke('open:url', { url: s.url }) }),
@@ -71,7 +72,7 @@ Views.tasks = function (c) {
     const srcForm = N.el('div', { class: 'row', style: 'gap:5px;margin-top:6px;display:none' });
     srcForm.append(sInp, N.el('button', { class: 'btn btn-sm btn-sage', style: 'padding:4px 10px', text: '+ Add', 'aria-label': 'Add study source', onclick: addSrc }));
     const srcToggle = N.el('button', { class: 'src-toggle', text: (t.sources && t.sources.length ? '＋ Add source' : '🔗 + Source'), title: 'Attach lecture videos, papers or textbook pages to this task', onclick: () => { srcForm.style.display = srcForm.style.display === 'none' ? 'flex' : 'none'; if (srcForm.style.display === 'flex') sInp.focus(); } });
-    srcWrap.append(srcBar, srcForm, srcToggle);
+    srcWrap.append(srcBar, srcToggle, srcForm);
     grow.appendChild(meta.length ? N.el('div', { class: 'task-meta' }, ...meta) : meta[0]);
     grow.appendChild(srcWrap);
     row.append(cb, grow);
