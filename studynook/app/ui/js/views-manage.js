@@ -327,12 +327,12 @@ Views.sites = function (c) {
   ));
   c.appendChild(ctrl);
 
-  const listsCard = N.el('div', { class: 'grid2b mt' });
+  const listsCard = N.el('div', { class: 'grid2b site-cards mt' });
   listsCard.appendChild(domainList('block', '🚫 Blocked sites', s.block, 'youtube.com'));
   listsCard.appendChild(domainList('allow', '✅ Allowed sites (allow-mode)', s.allow, 'wikipedia.org or youtube.com/watch?v=…'));
   c.appendChild(listsCard);
 
-  /* --- extension pairing card: status always visible; full setup steps collapse to a toggle --- */
+  /* --- extension pairing card: status + full setup steps always visible --- */
   const extCard = N.el('div', { class: 'card mt' });
   extCard.appendChild(N.el('h2', { text: '🧩 Connect the extension' }));
   extCard.appendChild(N.el('div', { class: 'row spread mt' },
@@ -349,17 +349,8 @@ Views.sites = function (c) {
       N.el('button', { class: 'btn btn-sm', text: '📋 copy', onclick: () => { navigator.clipboard && navigator.clipboard.writeText(ext.code); App.toast('Pairing code copied', ext.code); } })
     )
   ));
-  const setupToggle = N.el('button', {
-    class: 'btn btn-sm btn-ghost ext-setup-toggle',
-    text: ext.connected ? '▸ Setup instructions' : '▾ Setup instructions',   // connected users see it collapsed by default
-    title: 'One-time setup: load the unpacked extension in Chrome/Edge/Brave and pair it with this code.',
-    onclick: () => {
-      const open = steps.classList.toggle('open');
-      setupToggle.textContent = (open ? '▾' : '▸') + ' Setup instructions';
-    }
-  });
-  extCard.appendChild(N.el('div', { class: 'row mt' }, setupToggle));
-  const steps = N.el('div', { class: 'list mt ext-setup-steps' + (ext.connected ? '' : ' open') });
+  extCard.appendChild(N.el('div', { class: 'small mt', text: '✨ Setup instructions' }));
+  const steps = N.el('div', { class: 'list mt ext-setup-steps open' });
   [
     ['1', 'Open Chrome (or Edge/Brave) and go to chrome://extensions'],
     ['2', 'Turn ON "Developer mode" (top-right corner)'],
@@ -375,25 +366,28 @@ Views.sites = function (c) {
   function setS(patch) { nook.invoke('sites:set', { patch }); }
 
   function domainList(key, title, arr, ph) {
-    const card = N.el('div', { class: 'card' });
+    const card = N.el('div', { class: 'card site-card' });
     card.appendChild(N.el('h2', { text: title }));
-    const chips = N.el('div', { class: 'chips mt' });
+    // tag area grows to fill the card, pushing the add-row to the bottom
+    const chips = N.el('div', { class: 'chips mt site-tags' });
     for (const dom of arr) {
       chips.appendChild(N.el('span', { class: 'domain-chip' }, dom, N.el('button', { text: '✕', title: 'remove', onclick: () => setS({ [key]: arr.filter((x) => x !== dom) }) })));
     }
     if (!arr.length) chips.appendChild(N.el('span', { class: 'small', text: 'empty' }));
     card.appendChild(chips);
-    const row = N.el('div', { class: 'row mt' });
+    const foot = N.el('div', { class: 'site-input-section' });
+    const row = N.el('div', { class: 'row' });
     const inp = N.el('input', { class: 'input', placeholder: ph, style: 'flex:1' });
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
     row.append(inp, N.el('button', { class: 'btn btn-sm btn-sage', text: '+ Add', onclick: add }));
-    card.appendChild(row);
+    foot.appendChild(row);
     // seed suggestions
     const seeds = (key === 'block' ? NookCatalog.SEED_BLOCK_SITES : NookCatalog.SEED_ALLOW_SITES).filter((x) => !arr.includes(x)).slice(0, 6);
     if (seeds.length) {
-      card.appendChild(N.el('div', { class: 'small mt', text: 'quick add:' }));
-      card.appendChild(N.el('div', { class: 'chips', style: 'margin-top:6px' }, ...seeds.map((sd) => N.el('button', { class: 'btn btn-sm btn-ghost', text: '+ ' + sd, onclick: () => setS({ [key]: [...arr, sd] }) }))));
+      foot.appendChild(N.el('div', { class: 'small mt', text: 'quick add:' }));
+      foot.appendChild(N.el('div', { class: 'chips', style: 'margin-top:6px' }, ...seeds.map((sd) => N.el('button', { class: 'btn btn-sm btn-ghost', text: '+ ' + sd, onclick: () => setS({ [key]: [...arr, sd] }) }))));
     }
+    card.appendChild(foot);
     if (key === 'block') inp.title = 'Tip: paths work too — e.g. youtube.com/shorts blocks only the Shorts feed.';
     function add() {
       const v = NookRules.normalizeEntry(inp.value);   // keeps paths: youtube.com/shorts

@@ -139,6 +139,11 @@ body[data-theme="dark"] #bg-scene { background: linear-gradient(160deg, var(--bg
 .card .sub { color: var(--ink-soft); font-size: 12.5px; margin-bottom: 14px; }
 .grid2 { display: grid; grid-template-columns: 1.25fr .95fr; gap: 16px; align-items: start; }
 .grid2b { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+/* Sites page — Blocked/Allowed cards stretch to equal height, inputs pinned to bottom */
+.site-cards { align-items: stretch; }
+.site-card { display: flex; flex-direction: column; }
+.site-tags { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.site-input-section { flex: 0 0 auto; margin-top: 16px; border-top: 1.5px solid var(--line); padding-top: 14px; }
 .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .spread { justify-content: space-between; }
 .mt { margin-top: 16px; }
@@ -566,8 +571,7 @@ body[data-theme="dark"] .seg-sm button.on.sage { color: var(--sage); }
 @media (max-width: 900px) { .week-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 620px) { .week-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
-/* === Sites page: Tab Guardian cleanup — collapsible one-time setup steps === */
-.ext-setup-steps { display: none; }
-.ext-setup-steps.open { display: block; }
-.ext-setup-toggle { opacity: .85; }
-.ext-setup-toggle:hover { opacity: 1; }
+/* === Sites page: Tab Guardian layout refinements === */
+/* Extension setup steps — always visible, generous vertical rhythm */
+.ext-setup-steps { display: flex; flex-direction: column; gap: 18px; }
+.ext-setup-steps .list-row { padding: 14px 16px; }
