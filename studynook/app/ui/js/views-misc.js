@@ -173,11 +173,16 @@ Views.help = function (c) {
   /* Help is documentation — all text stays; the numbered 1–6 cards live in
      the same set-grid (equal-feeling rows, aligned edges) with a comfortable
      internal rhythm, and the FAQ gets matching breathing room. */
+  /* The numbered 1–6 cards live in their own wrapper so the FAQ block is a
+     sibling below it — never inside the grid, where an auto-placed full-width
+     card could creep up beside rows 5 & 6 and overlap them. */
+  const wrap = N.el('div');
   const grid = N.el('div', { class: 'set-grid help-grid' });
   for (const [e, h, p] of cards) {
     grid.appendChild(N.el('div', { class: 'card help-card' }, N.el('div', { class: 'n', text: e }), N.el('div', {}, N.el('h3', { text: h }), N.el('p', { html: p }))));
   }
-  c.appendChild(grid);
+  wrap.appendChild(grid);
+  c.appendChild(wrap);
 
   const faq = N.el('div', { class: 'card faq-card' });
   faq.appendChild(N.el('h2', { text: '❓ Quick FAQ' }));

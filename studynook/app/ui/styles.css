@@ -534,6 +534,9 @@ input[type="number"].input { -moz-appearance: textfield; appearance: textfield; 
 .stepper button:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .stepper button:active { transform: scale(.92); }
 .stepper .input { width: 62px; text-align: center; padding: 6px 4px; }
+/* Quick FAQ sits below the numbered 1–6 grid as its own full-width card,
+   pushed down a little so it never crowds the last row of cards. */
+.faq-card { margin-top: 20px; }
 .help-card { display: flex; gap: 14px; align-items: flex-start; }
 .help-card .n { font-size: 26px; }
 .help-card h3 { font-size: 14px; margin-bottom: 4px; }
