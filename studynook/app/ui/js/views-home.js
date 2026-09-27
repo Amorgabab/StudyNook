@@ -170,13 +170,13 @@ Views.home = function (c) {
   todayCard.appendChild(tg);
   right.appendChild(todayCard);
 
-  /* ---------- ambience (left, compact) + journal (right, roomy) ---------- */
+  /* ---------- ambience (left, compact) + today (right) ---------- */
   const ambCard = N.el('div', { class: 'card amb-card area-amb' });
   ambCard.appendChild(N.el('h2', { class: 'sec-h', text: '🎧 Ambience' }));
-  // no explanatory text — title up top, controls grouped toward the bottom.
-  // The fill absorbs whatever height the row needs (to match Today), so the
-  // controls always sit on a consistent baseline without looking stretched.
-  ambCard.appendChild(N.el('div', { class: 'card-fill' }));
+  // no explanatory text and no dead spacer — header keeps its normal rhythm
+  // and the control group follows directly, keeping the card genuinely
+  // compact (any row-stretch goes to the card's bottom edge, not into a
+  // giant hole between the title and the buttons).
   const ambRow = N.el('div', { class: 'amb-row' });
   const AMB = [['rain', '🌧️ Rain'], ['fire', '🔥 Fireplace'], ['waves', '🌊 Waves'], ['cafe', '☕ Café']];
   for (const [id, lbl] of AMB) {

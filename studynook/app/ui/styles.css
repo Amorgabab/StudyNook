@@ -203,7 +203,8 @@ select.input { cursor: pointer; }
   align-items: stretch;
 }
 /* shared flexible fill — lets compact cards absorb row stretch from an
-   intentional gap instead of dead space around the content */
+   intentional gap instead of dead space around the content (generic utility;
+   currently unused by the home grid, kept for other card layouts) */
 .card-fill { flex: 1 1 auto; min-height: 0; }
 .area-timer { grid-area: timer; }
 .area-pet   { grid-area: pet; }
@@ -211,15 +212,18 @@ select.input { cursor: pointer; }
 .area-today { grid-area: today; }
 .area-journal { grid-area: journal; }
 .home-col { display: contents; }   /* legacy wrapper — keeps children on the grid */
-/* timer card — tighter vertical rhythm, no dead zones between controls */
-.timer-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px 28px; }
+/* timer card — tighter vertical rhythm, no dead zones between controls.
+   The ring + control group form ONE visual unit (ring-wrap has a small
+   negative bottom margin so the segmented control reads as attached to the
+   dial); the aux hairline row is pulled close behind it via its own margin. */
+.timer-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 22px 28px 20px; }
 /* iron mode — quiet session-state line, not a control */
 .iron-status { font-size: 11px; font-weight: 700; color: var(--ink-soft); background: var(--card2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; letter-spacing: .2px; }
 /* one quiet metadata row above the ring (phase / paused / iron) */
 .timer-status { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
 .phase-pill { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 16px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
 .phase-pill.break { background: var(--sage-soft); color: var(--sage); }
-.ring-wrap { position: relative; width: 250px; height: 250px; }
+.ring-wrap { position: relative; width: 250px; height: 250px; margin-bottom: -6px; }
 .ring-wrap svg { transform: rotate(-90deg); }
 .ring-bg { stroke: var(--line); }
 .ring-fg { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .5s linear, stroke .4s ease; }
@@ -250,7 +254,7 @@ body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, 
 .running-actions .btn-ghost { flex: 0 0 auto; }
 /* duration controls — deliberately quiet secondary setting, visually detached
    from the primary group by a hairline so they never compete with it */
-.timer-aux { display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(358px, 100%); padding-top: 4px; border-top: 1px solid var(--line); }
+.timer-aux { display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(358px, 100%); margin-top: -2px; padding-top: 8px; border-top: 1px solid var(--line); }
 .free-row { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; align-items: center; }
 .dur-chip { border: 1px solid transparent; background: transparent; border-radius: 999px; padding: 3px 10px; font-size: 11.5px; font-weight: 700; color: var(--ink-soft); cursor: pointer; transition: all .15s ease; box-shadow: none; }
 .dur-chip:hover { color: var(--ink); background: var(--card2); }
@@ -269,8 +273,8 @@ body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, 
    remaining space so stretch never creates random gaps. */
 .pet-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 20px 22px 24px; overflow: hidden; }
 .pet-h { align-self: flex-start; margin: 0 0 auto !important; }
-.pet-mid { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: auto 0; width: 100%; }
-.mochi-box { cursor: pointer; transition: transform .15s ease; position: relative; margin-bottom: 4px; }
+.pet-mid { display: flex; flex-direction: column; align-items: center; gap: 3px; margin: auto 0; width: 100%; }
+.mochi-box { cursor: pointer; transition: transform .15s ease; position: relative; margin-bottom: 2px; }
 .mochi-box:hover { transform: scale(1.04); }
 .mochi-box:active { transform: scale(.95); }
 .mochi-svg { width: 170px; height: 150px; display: block; }
@@ -280,11 +284,11 @@ body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, 
 @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
 .m-zzz { animation: zfloat 2.6s ease-in-out infinite; }
 @keyframes zfloat { 0%, 100% { transform: translate(0, 0); opacity: .9; } 50% { transform: translate(4px, -6px); opacity: .5; } }
-.pet-name { font-size: 17px; font-weight: 800; margin-top: 4px; }
-.pet-stage { font-size: 12px; color: var(--ink-soft); font-weight: 700; margin-bottom: 8px; }
+.pet-name { font-size: 17px; font-weight: 800; margin-top: 2px; }
+.pet-stage { font-size: 12px; color: var(--ink-soft); font-weight: 700; margin-bottom: 6px; }
 .stage-bar { width: 80%; height: 8px; background: var(--line); border-radius: 8px; overflow: hidden; }
 .stage-fill { height: 100%; background: linear-gradient(90deg, var(--rose), var(--honey)); border-radius: 8px; transition: width .6s ease; }
-.pet-mood { font-size: 12px; color: var(--ink-soft); margin-top: 10px; font-style: italic; min-height: 16px; text-align: center; }
+.pet-mood { font-size: 12px; color: var(--ink-soft); margin-top: 6px; font-style: italic; min-height: 16px; text-align: center; }
 .heart { position: absolute; font-size: 15px; animation: heartup 1s ease forwards; pointer-events: none; }
 @keyframes heartup { from { opacity: 1; transform: translate(0, 0) scale(.7); } to { opacity: 0; transform: translate(var(--dx, 10px), -70px) scale(1.25); } }
 
@@ -298,12 +302,15 @@ body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, 
 .stat-tile { background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 18px 10px; text-align: center; min-width: 0; }
 .stat-tile .v { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stat-tile .k { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; margin-top: 3px; letter-spacing: .3px; }
-/* streak tile — warm rose identity (streak, not danger) */
-.stat-tile.streak { border-color: var(--rose); background: var(--rose-soft); }
-.stat-tile.streak .v { color: #C2544E; }
-.stat-tile.streak .k { color: #B65A62; opacity: .9; }
-body[data-theme="dark"] .stat-tile.streak .v { color: var(--danger); }
-body[data-theme="dark"] .stat-tile.streak .k { color: var(--rose); opacity: .85; }
+/* streak tile — same component family as the other tiles, distinguished with
+   the app's established honey/flame progression language (matches the streak
+   chip in the top bar and the xpbar gradient). Warm, special — never an
+   error state. */
+.stat-tile.streak { border-color: color-mix(in srgb, var(--honey) 65%, var(--line)); background: var(--honey-soft); }
+.stat-tile.streak .v { color: #B98A2A; }
+.stat-tile.streak .k { color: #A5822F; opacity: .95; }
+body[data-theme="dark"] .stat-tile.streak .v { color: var(--honey); }
+body[data-theme="dark"] .stat-tile.streak .k { color: var(--honey); opacity: .75; }
 
 /* compact utility card — controls fill available width evenly */
 .amb-card { display: flex; flex-direction: column; }
@@ -321,20 +328,25 @@ body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
 .amb-vol { flex: 1; max-width: 220px; height: 4px; accent-color: var(--sky); cursor: pointer; }
 
 /* journal = chronological history → ONE vertical stream (never a column grid,
-   which made it read like a notification dashboard). Full-width card, full-
-   width entries: the horizontal space belongs to each event itself. */
-.feed { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding: 2px 8px 2px 2px; max-height: min(46vh, 520px); }
-.feed-entry { display: flex; align-items: flex-start; gap: 12px; background: var(--card2); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 13px 16px; }
-.fe-icon { flex: 0 0 auto; width: 24px; height: 24px; margin-top: 1px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; background: var(--line); color: var(--ink-soft); }
+   which made it read like a notification dashboard). Entries are compact feed
+   ROWS on a shared baseline — icon → event (+ reward line) → time — separated
+   by hairlines instead of oversized per-entry cards, so it scans like an
+   activity feed rather than a stack of giant buttons. */
+.feed { display: flex; flex-direction: column; gap: 0; overflow-y: auto; padding: 0 8px 2px 2px; max-height: min(46vh, 520px); }
+.feed-entry { display: flex; align-items: flex-start; gap: 12px; background: transparent; border: none; border-bottom: 1px solid var(--line); border-left: 3px solid transparent; border-radius: 0; padding: 10px 12px; }
+.feed-entry:last-child { border-bottom: none; }
+.fe-icon { flex: 0 0 auto; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 800; background: var(--line); color: var(--ink-soft); }
 .fe-body { flex: 1; min-width: 0; max-width: 72ch; }
-.fe-text { font-size: 13.5px; font-weight: 600; line-height: 1.4; }
+.fe-text { font-size: 13px; font-weight: 600; line-height: 1.4; }
 .fe-emoji { margin-right: 4px; }
-.fe-reward { font-size: 11.5px; font-weight: 800; color: var(--sage); margin-top: 4px; }
-.ft { margin-left: auto; flex: 0 0 auto; align-self: flex-start; padding-top: 3px; color: var(--ink-soft); font-size: 10.5px; white-space: nowrap; }
-/* three states, one design system: green done / red interrupted / gray started */
-.feed-entry.good { border-color: color-mix(in srgb, var(--sage) 55%, var(--line)); background: var(--sage-soft); }
+.fe-reward { font-size: 11px; font-weight: 800; color: var(--sage); margin-top: 2px; }
+.ft { margin-left: auto; flex: 0 0 auto; align-self: center; color: var(--ink-soft); font-size: 10.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* three states, one design system: green done / red interrupted / gray started.
+   Color is a restrained accent (icon + left rule + faint tint) — the row never
+   becomes a filled alert banner, and red is reserved for real interruptions. */
+.feed-entry.good { border-left-color: var(--sage); background: color-mix(in srgb, var(--sage-soft) 55%, transparent); }
 .feed-entry.good .fe-icon { background: var(--sage); color: #fff; }
-.feed-entry.warn { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); background: var(--rose-soft); }
+.feed-entry.warn { border-left-color: var(--danger); background: var(--danger-soft); }
 .feed-entry.warn .fe-icon { background: var(--danger); color: #fff; }
 .feed-entry.warn .fe-reward { color: var(--danger); }
 .feed-entry.info .fe-icon { background: var(--line); color: var(--ink-soft); }
