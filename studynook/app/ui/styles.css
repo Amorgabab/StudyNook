@@ -495,7 +495,10 @@ body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
 .evo-step.reached .evo-line { background: var(--sage); }
 
 /* ---------- 10 · settings & help ---------- */
-.set-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.set-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; }
+/* equal weight: every settings card fills its row height, content pinned to the top */
+.set-grid > .card { display: flex; flex-direction: column; padding: 22px; }
+.set-grid > .card > h2 { margin-bottom: 8px; }
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px dashed var(--line); }
 .set-row:last-child { border-bottom: none; }
 .set-row .lbl { font-size: 13px; font-weight: 700; }

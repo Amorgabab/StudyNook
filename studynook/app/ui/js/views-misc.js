@@ -19,8 +19,7 @@ Views.settings = function (c) {
   /* subjects */
   const subjCard = N.el('div', { class: 'card' });
   subjCard.appendChild(N.el('h2', { text: 'Subjects' }));
-  subjCard.appendChild(N.el('div', { class: 'sub', text: 'Used by the dropdown when adding tasks.' }));
-  const chips = N.el('div', { class: 'chips' });
+  const chips = N.el('div', { class: 'chips mt' });
   for (const s of (d.subjects || [])) {
     chips.appendChild(N.el('span', { class: 'domain-chip' }, s, N.el('button', { text: '✕', title: 'remove', onclick: () => nook.invoke('subjects:set', { list: (d.subjects || []).filter((x) => x !== s) }) })));
   }
@@ -65,8 +64,8 @@ Views.settings = function (c) {
   /* sound & looks */
   const snd = N.el('div', { class: 'card' });
   snd.appendChild(N.el('h2', { text: '🎧 Sound & looks' }));
-  snd.appendChild(N.el('div', { class: 'sub', text: 'Real ambience: drop rain.mp3 / fire.mp3 / waves.mp3 / cafe.mp3 into the sounds folder (button below creates/opens it). Synthesized versions play until then.' }));
-  snd.appendChild(N.el('div', { class: 'small', style: 'margin-bottom:8px', text: App.state.soundsPath || '' }));
+  snd.appendChild(setRow('Ambience files', 'drop rain.mp3 / fire.mp3 / waves.mp3 / cafe.mp3 here — synthesized loops play until then: ' + (App.state.soundsPath || ''),
+    N.el('button', { class: 'btn btn-sm btn-ghost', text: 'Open sounds folder', title: App.state.soundsPath || '', onclick: () => nook.invoke('data:openSounds') })));
   snd.appendChild(setRow('UI sounds', 'clicks & pops', toggleInput(s.sound.ui, (v) => { setSnd({ ui: v }); Audio2.setEnabled({ ui: v, chimes: s.sound.chimes }); })));
   snd.appendChild(setRow('Chimes', 'session start/finish bells', toggleInput(s.sound.chimes, (v) => { setSnd({ chimes: v }); Audio2.setEnabled({ ui: s.sound.ui, chimes: v }); })));
   snd.appendChild(setRow('Theme', 'auto follows the time of day', segInput(['auto', 'light', 'dark'], s.theme, (v) => nook.invoke('settings:set', { section: 'theme', values: v }))));
@@ -76,18 +75,16 @@ Views.settings = function (c) {
   /* guardian extras */
   const gcard = N.el('div', { class: 'card' });
   gcard.appendChild(N.el('h2', { text: '🛟 Safety & emergency' }));
-  gcard.appendChild(N.el('div', { class: 'sub', text: 'StudyNook never touches system processes (see app/shared/catalog.js → NEVER_KILL). If you ever need a blocked app:' }));
-  const btns = N.el('div', { class: 'row' });
+  const btns = N.el('div', { class: 'row mt' });
   for (const m of [5, 15, 60]) btns.appendChild(N.el('button', { class: 'btn btn-sm', text: `pause guard ${m} min`, onclick: () => nook.invoke('guardian:pause', { min: m }) }));
   gcard.appendChild(btns);
-  gcard.appendChild(N.el('div', { class: 'small mt', text: '…or click "Leave it open 5 min" on any warning card, or quit StudyNook from the tray (guard stops instantly).' }));
+  gcard.appendChild(N.el('div', { class: 'small mt', title: 'StudyNook never touches system processes (see app/shared/catalog.js → NEVER_KILL).', text: 'Need a blocked app? Also: click "Leave it open 5 min" on any warning card, or quit StudyNook from the tray — the guard stops instantly.' }));
   grid.appendChild(gcard);
 
   /* data */
   const data = N.el('div', { class: 'card' });
   data.appendChild(N.el('h2', { text: 'Export & backups' }));
-  data.appendChild(N.el('div', { class: 'sub', text: 'Everything lives in one readable file: data/data.json. A backup is saved automatically once a day (last 7 kept).' }));
-  const drow = N.el('div', { class: 'row' });
+  const drow = N.el('div', { class: 'row mt' });
   drow.appendChild(N.el('button', { class: 'btn btn-sm', text: 'Export backup (download)', onclick: exportData }));
   drow.appendChild(N.el('button', { class: 'btn btn-sm', text: 'Import backup', onclick: importData }));
   drow.appendChild(N.el('button', { class: 'btn btn-sm', text: 'Back up now', onclick: () => nook.invoke('data:backupNow').then((r) => App.toast('Backup saved', r.name)) }));
@@ -103,8 +100,8 @@ Views.settings = function (c) {
   /* about */
   const about = N.el('div', { class: 'card' });
   about.appendChild(N.el('h2', { text: 'About' }));
-  about.appendChild(N.el('div', { class: 'sub', text: 'StudyNook v' + (App.state.appVersion || '1.5') + ' · local-first: no accounts, no cloud, no telemetry.' }));
-  const arow = N.el('div', { class: 'row' });
+  about.appendChild(N.el('div', { class: 'small mt', style: 'margin-bottom:2px', text: 'StudyNook v' + (App.state.appVersion || '1.5') + ' · local-first: no accounts, no cloud, no telemetry.' }));
+  const arow = N.el('div', { class: 'row mt' });
   arow.appendChild(N.el('button', { class: 'btn btn-sm', text: '📖 Open README', onclick: () => nook.invoke('help:readme') }));
   arow.appendChild(N.el('button', { class: 'btn btn-sm', text: '🎓 Replay welcome tour', onclick: () => App.startTour() }));
   about.appendChild(arow);
