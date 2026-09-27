@@ -144,6 +144,17 @@ body[data-theme="dark"] #bg-scene { background: linear-gradient(160deg, var(--bg
 .site-card { display: flex; flex-direction: column; }
 .site-tags { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .site-input-section { flex: 0 0 auto; margin-top: 16px; border-top: 1.5px solid var(--line); padding-top: 14px; }
+/* Sites page — identical chip sizing in Blocked vs Allowed cards (full width).
+   Base .domain-chip is content-sized, so chips could render at slightly
+   different heights between the two cards. Lock size + text metrics here. */
+@media (min-width: 921px) {
+  .site-cards .site-tags .domain-chip {
+    font-size: 12px; line-height: 18px; font-weight: 600;
+    height: 30px; min-height: 30px; box-sizing: border-box;
+    padding: 0 6px 0 12px; align-items: center; white-space: nowrap;
+  }
+  .site-cards .site-tags .domain-chip button { width: 18px; height: 18px; flex: 0 0 18px; }
+}
 .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .spread { justify-content: space-between; }
 .mt { margin-top: 16px; }
