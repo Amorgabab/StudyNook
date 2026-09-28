@@ -19,6 +19,7 @@ const fs = require('fs');
 
 const { Store } = require('./store.js');
 const { SessionEngine } = require('./session.js');
+const Iron = require('../shared/iron.js');
 const { Guardian } = require('./guardian.js');
 const { SyncServer } = require('./sync-server.js');
 const processes = require('./processes.js');
@@ -141,6 +142,7 @@ app.whenReady().then(() => {
 
   session = new SessionEngine({
     getSettings: () => store.data.settings.timer,
+    isIronLocked: () => Iron.isLocked(store.data.settings.timer.ironLockedUntil, Date.now()),
     onTick: (st) => broadcast('tick', st),
     onState: () => pushSnapshot(),
     onPhaseEnd: (info) => handlePhaseEnd(info),

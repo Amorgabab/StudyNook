@@ -24,37 +24,45 @@ class SessionEngine {
     this.timer = null;
     this.lastTickSec = -1;
     this.killsThisSession = [];    // [{label, count}]
-    /* Iron mode is decided by the ENGINE, not by whatever a hand-edited
-       data.json currently claims. `isIron()` is the single authority:
-         • during a focus phase → the value captured at start (or re-derived
-           from the lock after a crash-restart), so mid-session file edits
-           can neither enable nor disable iron; while the self-lock runs it
-           is always true.
-         • outside a focus phase → the live stored value, so once the lock
-           expires you can genuinely switch iron off in Settings.
-       The stored flag is only ever *written* through settings:set's guarded
-       path (Iron.applyIron); direct file edits are re-normalized on load
-       (store.sanitizeData) and re-asserted on every save (store.enforceIron). */
+    /* Iron mode is decided by the ENGINE at session start, not by whatever a
+       hand-edited data.json currently claims. `isIron()` / `ironActive()` are
+       the single authorities and they are scoped to the RUNNING FOCUS PHASE:
+         • strictness (no pause, guard never disarms, instant close, sites
+           always-blocked) applies ONLY while an iron focus is running — you
+           choose iron or no-iron when you press Start;
+         • during breaks and after the session ends, your own saved guard /
+           site choices apply again exactly as stored — nothing stays
+           secretly hardened in the background;
+         • mid-session file edits can neither enable nor disable the promise:
+           the flag is frozen at start, and while the multi-day self-lock
+           runs a restored/active iron focus keeps it anyway (tamper-proof).
+       The stored switch itself is only ever *written* through settings:set's
+       guarded path (Iron.applyIron); direct file edits are re-normalized on
+       load (store.sanitizeData) and re-asserted on every save
+       (store.enforceIron). */
     this.ironAtStart = false;
   }
 
-  /** Effective iron state — see the note in the constructor. */
+  /** The engine's live view of "is this focus iron?". True only while a
+      focus phase is actually running with iron chosen at start (or
+      re-derived from the self-lock after a crash-restart). Idle / breaks →
+      false: strictness is a per-session thing, decided when you press
+      Start — never a permanent background mode. */
   isIron() {
-    if (!this.hooks.isIronLocked) return !!(this.hooks.getSettings() || {}).iron;
-    if (this.s && this.s.phase === 'focus') {
-      if (this.hooks.isIronLocked()) return true;   // promise still running
-      return this.s.iron;                           // captured at start
-    }
-    return !!this.hooks.getSettings().iron;
+    return !!(this.s && this.s.phase === 'focus' && this.s.iron);
   }
 
-  /** Iron "in effect" right now: the switch is on OR the self-lock is still
-      running. While that's true nothing about iron may be relaxed — pausing,
-      guard pauses, or softening the app/site blockers — even if data.json was
-      hand-edited. Outside a lock with the switch off, normal rules apply. */
+  /** Iron strictness is IN EFFECT only while a focus phase is actually
+      running with iron chosen at start ("when starting the session, iron or
+      no iron — you choose"). It is NOT tied to the multi-day switch lock:
+      once the session ends, your own guard/site choices (gentle warn,
+      only-during-focus, blocking off…) apply again exactly as saved.
+      A hand-edited data.json can't fake it either — while the self-lock
+      runs, an already-active iron focus keeps its promise. */
   ironActive() {
+    if (!this.s || this.s.phase !== 'focus') return false;
     if (this.hooks.isIronLocked && this.hooks.isIronLocked()) return true;
-    return this.isIron();
+    return !!this.s.iron;
   }
 
   isActive() { return !!this.s; }
@@ -63,6 +71,11 @@ class SessionEngine {
 
   start({ mode = 'pomodoro', freeMin = 0, taskId = null, label = '' } = {}) {
     const t = this.hooks.getSettings();
+    /* You choose iron or no-iron HERE, when you press Start: the stored
+       switch (kept true by the self-lock while your promise runs) is frozen
+       into the session. Editing data.json mid-session can't change it. */
+    const Iron = require('../shared/iron.js');
+    const ironOn = Iron.resolveIron(t.iron, t.ironLockedUntil, Date.now());
     const workSec = (mode === 'free' ? (freeMin || t.workMin) : t.workMin) * 60;
     this.s = {
       mode,
@@ -78,7 +91,7 @@ class SessionEngine {
       phaseAccumStart: 0,        // sessionFocusSec snapshot at phase start
       phaseStartAt: Date.now(),
       taskId, label,
-      iron: this.isIron()        // frozen for this focus phase — tamper-proof
+      iron: ironOn               // frozen at start — tamper-proof for this session
     };
     this.ironAtStart = this.s.iron;
     this.killsThisSession = [];
@@ -90,7 +103,7 @@ class SessionEngine {
 
   pause() {
     // Iron focus: no pausing — the engine refuses, whatever the settings file says.
-    if (this.isIron() && this.s && this.s.phase === 'focus') return this.publicState();
+    if (this.ironActive()) return this.publicState();
     if (!this.s || !this.s.running) return this.publicState();
     this.s.sessionFocusSec += this._focusedSecInPhase();
     this.s.pausedRemaining = this.remainingSec();
@@ -141,12 +154,14 @@ class SessionEngine {
   }
 
   /** Restore a persisted session after a crash/restart. The iron flag is NOT
-      trusted from the file — it's re-derived live (lock still running → iron
-      stays on), so a hand-edited data.json can't smuggle a paused, iron-less
-      session back in. */
+      trusted from the file — it's re-derived live at start (switch on OR
+      self-lock still running → iron stays on), so a hand-edited data.json
+      can't smuggle a paused, iron-less session back in. */
   restore(st) {
     if (!st || !st.active) return null;
-    const iron = this.isIron();
+    const Iron = require('../shared/iron.js');
+    const t = this.hooks.getSettings() || {};
+    const iron = Iron.resolveIron(t.iron, t.ironLockedUntil, Date.now());
     this.s = {
       mode: st.mode === 'free' ? 'free' : 'pomodoro',
       running: !!st.running,
