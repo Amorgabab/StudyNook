@@ -256,17 +256,17 @@ select.input { cursor: pointer; }
 /* timer card — generous top breathing room above the ring; internal rhythm:
    ring → 22px → mode toggle → 18px → start → 18px → studying, one cohesive
    control group on a shared measured width (never an hourglass). */
-.timer-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 36px 28px 22px; }
+.timer-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 36px 28px 34px; }
 /* iron mode — quiet session-state line, not a control */
 .iron-status { font-size: 11px; font-weight: 700; color: var(--ink-soft); background: var(--card2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; letter-spacing: .2px; }
 /* one quiet metadata row above the ring (phase / paused / iron) */
 .timer-status { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
 .phase-pill { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 16px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
 .phase-pill.break { background: var(--sage-soft); color: var(--sage); }
-/* ring gets real breathing room below it — the control group starts a full
-   step down, but stays clearly part of the same card composition */
-.ring-wrap { position: relative; width: 250px; height: 250px; margin: 4px 0 12px; flex: 0 0 auto; }
-@media (max-width: 380px) { .ring-wrap { transform: scale(.86); margin: -16px 0 -2px; } }
+/* ring gets real breathing room below it — the control group starts two full
+   steps down, but stays clearly part of the same card composition */
+.ring-wrap { position: relative; width: 250px; height: 250px; margin: 4px 0 30px; flex: 0 0 auto; }
+@media (max-width: 380px) { .ring-wrap { transform: scale(.86); margin: -16px 0 14px; } }
 .ring-wrap svg { transform: rotate(-90deg); }
 .ring-bg { stroke: var(--line); }
 .ring-fg { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .5s linear, stroke .4s ease; }
@@ -293,9 +293,41 @@ body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, 
 .startbig { font-size: 16px; padding: 13px 38px; width: 100%; }
 /* running session actions — one cohesive group on the same measured width as
    idle mode/start/task, so the timer never sits above a scattered row */
-.running-actions { display: flex; align-items: center; justify-content: center; gap: 10px; width: min(358px, 100%); }
-.running-actions .startbig { width: auto; flex: 1 1 auto; }
-.running-actions .btn-ghost { flex: 0 0 auto; }
+.running-actions { display: flex; align-items: stretch; justify-content: center; gap: 10px; width: min(358px, 100%); }
+/* Pause (regular) and End session share ONE fixed footprint — identical width
+   AND height in every mode. The iron "No pause" twin is the same pill too, so
+   switching modes never resizes or re-centers anything. */
+.action-btn {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  height: 48px;
+  padding: 0 14px;
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+/* monochrome button icons — inherit the label color, sit on the text baseline */
+.btn-ico { display: inline-block; vertical-align: -2px; flex: 0 0 auto; }
+/* salmon primary buttons (Pause / Resume / No pause) use dark ink for contrast */
+.btn-primary.startbig { color: #3A2318; }
+body[data-theme="dark"] .btn-primary.startbig { color: #2A1A12; }
+/* clear disabled state: flat muted fill, no shadow, still-readable text */
+.btn:disabled,
+.btn:disabled.pause-btn,
+.btn:disabled.action-btn {
+  opacity: 1;
+  background: var(--card2);
+  border-color: var(--line);
+  color: var(--ink-soft);
+  box-shadow: none;
+  transform: none;
+  cursor: not-allowed;
+}
 /* duration controls — deliberately quiet secondary setting, visually detached
    from the primary group by a hairline so they never compete with it */
 .timer-aux { display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(358px, 100%); margin-top: -4px; padding-top: 10px; border-top: 1px solid var(--line); }
@@ -488,13 +520,24 @@ body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
 /* Garden charts row — "Last 7 days" and "Focus garden" cards stretch to the
    same height so their bottom edges align perfectly. The bar chart fills any
    leftover space (bars stay pinned to the baseline, labels at the very bottom)
-   instead of leaving dead whitespace under the shorter card. */
+   instead of leaving dead whitespace under the shorter card. The heatmap is
+   capped at a fixed size and centred, so on wide windows it can no longer
+   grow taller than its sibling card and push up over the Last-7-days card's
+   bottom edge. */
 .garden-charts { align-items: stretch; }
 .garden-charts .card { display: flex; flex-direction: column; }
 .bars { display: flex; align-items: flex-end; gap: 10px; min-height: 130px; padding-top: 8px; }
 .garden-charts .bars { flex: 1 1 auto; }
 .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
 .bar { width: 100%; max-width: 44px; border-radius: 10px 10px 4px 4px; background: linear-gradient(180deg, var(--sage), var(--sky)); min-height: 4px; transition: height .6s ease; }
+/* Focus garden quick fix: keep the plant grid compact & stable (max ~28px per
+   cell, centred) and let it sit flush against the card's bottom edge — never
+   overlapping the Last 7 days card above/left of it. */
+.garden-charts .heat { margin-top: auto; justify-self: center; }
+@media (min-width: 921px) {
+  .garden-charts .heat { max-width: 430px; width: 100%; margin-left: auto; margin-right: auto; }
+  .garden-charts .heat-cell { aspect-ratio: 1; max-width: 28px; max-height: 28px; font-size: 13px; }
+}
 .bar-lbl { font-size: 10px; color: var(--ink-soft); font-weight: 700; }
 .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
 .ach-card { border-radius: var(--radius-s); border: 1.5px solid var(--line); background: var(--card2); padding: 12px; display: flex; gap: 10px; align-items: center; }
@@ -502,14 +545,23 @@ body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
 .ach-card .e { font-size: 26px; }
 .ach-card .n { font-size: 12.5px; font-weight: 800; }
 .ach-card .d { font-size: 11px; color: var(--ink-soft); }
-.evo-track { display: flex; align-items: center; gap: 4px; }
+/* Pet journey card — sits directly under the "Last 7 days" charts row. It is
+   an opaque, positioned card with extra breathing room on top, so nothing from
+   the garden/heatmap above can visually bleed into (or overlap) its header. */
+.garden-journey { margin-top: var(--sp-6); z-index: 1; }
+.evo-track { display: flex; align-items: center; gap: 4px; padding-top: 8px; }
 .evo-step { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; position: relative; }
-.evo-step .e { font-size: 24px; filter: grayscale(1); opacity: .4; transition: all .3s ease; }
+.evo-step .e { font-size: 24px; line-height: 1; filter: grayscale(1); opacity: .4; transition: all .3s ease; }
 .evo-step.reached .e { filter: none; opacity: 1; }
 .evo-step.current .e { transform: scale(1.3); }
 .evo-step .n { font-size: 9.5px; color: var(--ink-soft); font-weight: 700; text-align: center; white-space: pre-line; }
-.evo-line { position: absolute; top: 14px; left: 50%; width: 100%; height: 3px; background: var(--line); z-index: -1; }
+/* Connector line: drawn *inside* the emoji row (top = half of the 24px glyph),
+   never reaching past the last step and never escaping the track's top edge —
+   previously top:14px + z-index:-1 let it poke out over the card above. */
+.evo-line { position: absolute; top: 12px; left: 50%; width: 100%; height: 3px; background: var(--line); z-index: 0; }
+.evo-step:last-child .evo-line { display: none; }
 .evo-step.reached .evo-line { background: var(--sage); }
+.evo-step .e, .evo-step .n { position: relative; z-index: 1; }
 
 /* ---------- 10 · settings & help ---------- */
 .set-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; }

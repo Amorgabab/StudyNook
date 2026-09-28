@@ -38,13 +38,46 @@ class Guardian {
 
   cfg() { return this.hooks.store.data.settings.guardian; }
 
+  /** Iron strictness (shared/iron.js → effectiveGuard): while Iron is in
+      effect the guard is ALWAYS on and closes apps instantly — no gentle
+      warning you can sit on, no remind-only mode. The UI renders from the
+      same helper, so what you see is exactly what runs. */
+  effCfg() {
+    const g = this.cfg();
+    if (!this._ironActive()) return g;
+    const Iron = require('../shared/iron.js');
+    return Iron.effectiveGuard(g, true);
+  }
+
+  /** Iron in effect for the GUARD = an iron focus phase exists right now
+      (running OR paused) or the self-lock is running. Falls back to the raw
+      stored flag when no session hook is wired (plain unit tests).
+      NOTE: we use isIronFocus(), not isFocusing() — pausing an iron timer
+      stops the CLOCK but must never stop the blocking. */
+  _ironActive() {
+    const s = this.hooks.session;
+    if (s && typeof s.isIronFocus === 'function') {
+      if (s.isIronFocus()) return true;
+      // paused-iron sessions still honour a live self-lock
+      if (s.ironActive && typeof s.ironActive === 'function') return !!s.ironActive();
+      return false;
+    }
+    const t = (this.hooks.store.data.settings || {}).timer || {};
+    return !!t.iron;
+  }
+
   /* list/kill go through hooks when provided (tests), real OS otherwise */
   _list() { return this.hooks.listProcesses ? this.hooks.listProcesses() : processes.listProcesses(); }
   _kill(pid) { return this.hooks.killProcess ? this.hooks.killProcess(pid) : processes.killProcess(pid); }
 
   isArmed() {
-    const g = this.cfg();
+    const g = this.effCfg();
     if (!g.enabled) return false;
+    /* Iron promise: the guard NEVER disarms while an iron focus runs — not
+       for a breathing-room request, not for "only during focus", and NOT
+       even when you pause the timer (pause only stops the clock). Outside
+       iron, your own saved choices apply exactly as stored. */
+    if (this._ironActive()) return true;
     if (Date.now() < this.pausedUntil) return false;
     if (g.onlyDuringSessions) return this.hooks.session.isFocusing();
     return true;
@@ -76,19 +109,28 @@ class Guardian {
     }
   }
 
+  /** Breathe-room pause of the GUARD itself (the "let me breathe" button).
+      Refused while an iron focus is running — that would switch blocking
+      off, and in iron mode nothing stops the blocking. Pausing the TIMER
+      is a different thing and IS allowed: it only stops the clock. */
   pauseFor(min) {
+    if (this._ironActive()) return false;
     this.pausedUntil = Date.now() + min * 60000;
     this.warned.clear();
     this.hooks.hideReminder && this.hooks.hideReminder();
     this.pendingReminder = null;
+    return true;
   }
   pausedMinLeft() { return Math.max(0, Math.ceil((this.pausedUntil - Date.now()) / 60000)); }
 
   allowOnce(norm, min = 5) {
+    /* Iron: "leave it open 5 min" grants are not granted — instant close wins. */
+    if (this._ironActive()) return false;
     this.hooks.store.mutate((d) => { d.apps.allowOnce[norm] = Date.now() + min * 60000; });
     this.warned.clear();
     this.hooks.hideReminder && this.hooks.hideReminder();
     this.pendingReminder = null;
+    return true;
   }
 
   async killNow(norm) { // used by the reminder window's "close it now" button
@@ -136,7 +178,7 @@ class Guardian {
     }
     this.busy = true;
     try {
-      const g = this.cfg();
+      const g = this.effCfg();   // iron-hardened view — UI shows the same thing
       const d = this.hooks.store.data;
       const procs = await this._list();
       const targets = planner.chooseTargets(procs, {
@@ -181,7 +223,7 @@ class Guardian {
     const last = this.remindThrottle.get(grp.label) || 0;
     if (now - last < 90000) return;          // don't nag more than every 90s per app
     this.remindThrottle.set(grp.label, now);
-    const g = this.cfg();
+    const g = this.effCfg();
     const deadline = now + (g.action === 'gentle' ? (g.graceSec || 15) : 30) * 1000;
     this.pendingReminder = { label: grp.label, norm: (grp.norms && grp.norms[0]) || grp.label, count: grp.count, deadline, gentle: g.action === 'gentle' };
     this.hooks.onEvent && this.hooks.onEvent({ type: 'warn', label: grp.label, count: grp.count });
