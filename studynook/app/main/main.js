@@ -278,7 +278,17 @@ function createMainWindow() {
     win.webContents.on('console-message', (_e, level, message) => global.__slog('renderer[' + level + ']: ' + message));
     win.webContents.on('did-fail-load', (_e, code, desc) => global.__slog('renderer FAIL: ' + code + ' ' + desc));
   }
-  win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
+  /* SECURITY FIX (defense-in-depth): window.open used to hand ANY url string
+     straight to shell.openExternal — a renderer bug or hostile link could
+     launch non-browser handlers (file:, custom schemes). Same http(s) rule
+     the audited open:url handler already enforces; legit links unchanged. */
+  const safeExternal = (url) => { if (/^https?:\/\//i.test(String(url || ''))) shell.openExternal(String(url)); };
+  win.webContents.setWindowOpenHandler(({ url }) => { safeExternal(url); return { action: 'deny' }; });
+  win.webContents.on('will-navigate', (e, url) => {
+    // The UI is loaded from file:// and never navigates on its own; anything
+    // else (http/file pushes from a compromised page) is refused.
+    if (!/^file:/.test(String(url || ''))) e.preventDefault();
+  });
 }
 
 function ensureMini() {
@@ -545,8 +555,53 @@ function registerIpc() {
         }
       }
       const sec = d.settings[p.section];
-      if (sec && typeof sec === 'object' && !Array.isArray(sec)) Object.assign(sec, p.values || {});
-      else d.settings[p.section] = p.values;
+      /* SECURITY FIX: settings:set used to Object.assign renderer values with
+         no type/range checks, so a buggy or hostile renderer could persist
+         e.g. guardian.scanSec = 0.000001 (verified: it survived save() and
+         ran until restart). Clamp known fields through the SAME num()/str()
+         helpers sanitizeData uses at load/import — legitimate UI values pass
+         through untouched; only out-of-range/garbage gets corrected. */
+      {
+        const { num } = require('./store.js');
+        let vals;
+        if (p.section === 'theme' || p.section === 'miniWindow' || p.section === 'bridgeAllowOrigins') {
+          // these three sections send a RAW VALUE, not an object (UI contract)
+          vals = { [p.section]: p.values };
+        } else {
+          vals = p.values && typeof p.values === 'object' && !Array.isArray(p.values) ? p.values : {};
+        }
+        const clean = {};
+        for (const k of Object.keys(vals)) {
+          if (!Object.prototype.hasOwnProperty.call(vals, k)) continue;   // never copy inherited props
+          let v = vals[k];
+          if (p.section === 'timer') {
+            if (k === 'workMin') v = num(v, 25, 1, 600);
+            else if (k === 'shortMin') v = num(v, 5, 1, 120);
+            else if (k === 'longMin') v = num(v, 15, 1, 240);
+            else if (k === 'rounds') v = num(v, 4, 1, 24);
+            else if (k === 'ironLockDays') v = num(v, 1, 1, 365);
+            else if (k === 'mode') v = (v === 'free' || v === 'pomodoro') ? v : 'pomodoro';
+            else if (k === 'iron' || k === 'strict' || k === 'autoStartBreaks' || k === 'autoStartFocus') v = !!v;
+            else if (k === 'ironLockedUntil') v = num(v, 0, 0, 8.64e15);
+          } else if (p.section === 'guardian') {
+            if (k === 'enabled' || k === 'onlyDuringSessions') v = !!v;
+            else if (k === 'mode') v = (v === 'allow') ? 'allow' : 'block';
+            else if (k === 'action') v = ['gentle', 'instant', 'remind'].includes(v) ? v : 'gentle';
+            else if (k === 'graceSec') v = num(v, 15, 1, 600);
+            else if (k === 'scanSec') v = num(v, 3, 1, 60);
+          } else if (p.section === 'sound') {
+            if (k === 'ui' || k === 'chimes') v = !!v;
+            else if (k === 'volume') v = num(v, 0.6, 0, 1);
+          } else if (k === 'theme') v = ['auto', 'light', 'dark'].includes(v) ? v : 'auto';
+          else if (k === 'miniWindow' || k === 'bridgeAllowOrigins') v = !!v;
+          clean[k] = v;
+        }
+        if (p.section === 'theme' || p.section === 'miniWindow' || p.section === 'bridgeAllowOrigins') {
+          d.settings[p.section] = clean[p.section];
+        } else if (sec && typeof sec === 'object' && !Array.isArray(sec)) {
+          Object.assign(sec, clean);
+        }
+      }
       // Iron strictness: timer/guardian edits are filtered through the same
       // pure helpers the engine and the UI use — you cannot soften them
       // mid-promise, and what gets stored is exactly what will run.
@@ -746,8 +801,14 @@ function registerIpc() {
   H('sites:set', (p) => {
     const Iron = require('../shared/iron.js');
     store.mutate((d) => {
-      const patch = p.patch || {};
-      for (const k of ['enabled', 'mode', 'when']) if (patch[k] !== undefined) d.sites[k] = patch[k];
+      const patch = (p && p.patch && typeof p.patch === 'object' && !Array.isArray(p.patch)) ? p.patch : {};
+      /* SECURITY FIX: enums/booleans were assigned unvalidated — a buggy or
+         hostile renderer could persist mode:'banana', which makes rule
+         matching fail open (nothing blocks) until the next restart. Same
+         value sets the bridge's /sites endpoint and sanitizeData enforce. */
+      if (typeof patch.enabled === 'boolean') d.sites.enabled = patch.enabled;
+      if (patch.mode === 'block' || patch.mode === 'allow') d.sites.mode = patch.mode;
+      if (patch.when === 'session' || patch.when === 'always') d.sites.when = patch.when;
       // normalizeEntry KEEPS paths (youtube.com/shorts stays youtube.com/shorts)
       for (const k of ['block', 'allow']) if (Array.isArray(patch[k])) d.sites[k] = dedupe(patch[k].map((x) => NookRules.normalizeEntry(x)).filter(Boolean)).slice(0, 500);
       /* No iron filtering here — the Sites section is FREE WILL. Iron never
@@ -810,7 +871,18 @@ function registerIpc() {
   });
 
   /* ---- data ---- */
-  H('data:export', () => JSON.stringify(store.data, null, 2));
+  H('data:export', () => {
+    /* SECURITY FIX: exports used to embed the LIVE bridge secret (ext.token)
+       and pairing code — verified present in export output. Users email/save
+       these files; anyone holding one could rewrite site blocklists or read
+       session data over the localhost bridge until a manual reset. The
+       running store keeps its token (extension stays paired); only the
+       exported copy is redacted, exactly like the diagnostics blob already
+       strips the pairing code. */
+    const clone = JSON.parse(JSON.stringify(store.data));
+    if (clone.ext) { clone.ext.token = ''; clone.ext.code = ''; }
+    return JSON.stringify(clone, null, 2);
+  });
   H('data:import', (p) => {
     if (session && session.isRunning()) { broadcast('data-blocked', {}); return false; }
     try {

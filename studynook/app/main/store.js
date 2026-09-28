@@ -355,4 +355,4 @@ class Store {
   }
 }
 
-module.exports = { Store, defaultData, deepMerge, sanitizeData, migrateLegacySchedule, normAt };
+module.exports = { Store, defaultData, deepMerge, sanitizeData, migrateLegacySchedule, normAt, num, str };
