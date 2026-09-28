@@ -17,7 +17,9 @@ Views.home = function (c) {
     statusBits.push(N.el('div', { class: 'phase-pill' + (ses.phase !== 'focus' ? ' break' : ''), id: 'phase-pill', text: phaseLabel + (ses.running ? '' : ' · paused') }));
   }
   if (d.settings.timer.iron) {
-    statusBits.push(N.el('div', { class: 'iron-status', text: '🔒 iron mode · no pause · switch locked for ' + NookIron.remainingHms(d.settings.timer.ironLockedUntil, Date.now()) }));
+    // drop a leading "0d" when the lock is under 24h — never show zero days
+    const ironRem = NookIron.remainingHms(d.settings.timer.ironLockedUntil, Date.now()).replace(/^0d\s+/, '');
+    statusBits.push(N.el('div', { class: 'iron-status', text: 'iron mode · no pause · switch locked for ' + ironRem }));
   }
   if (statusBits.length) timerCard.appendChild(N.el('div', { class: 'timer-status' }, ...statusBits));
 
@@ -47,7 +49,9 @@ Views.home = function (c) {
     const bFree = N.el('button', { class: App.freeMode ? 'on accent' : '', text: '🌙 Free focus', onclick: () => { App.freeMode = true; App.render(); } });
     modeSeg.append(bPomo, bFree);
     controls.appendChild(modeSeg);
-    const start = N.el('button', { class: 'btn glass-btn startbig', text: '▶ Start focusing', onclick: () => startSession() });
+    // monochrome SVG play icon (no emoji) — inherits currentColor
+    const ICON_PLAY = '<svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
+    const start = N.el('button', { class: 'btn glass-btn startbig', html: ICON_PLAY + ' Start focusing', onclick: () => startSession() });
     controls.appendChild(start);
     // task picker — immediately follows Start focusing inside the same group
     const taskRow = N.el('div', { class: 'task-pick' });
@@ -68,28 +72,34 @@ Views.home = function (c) {
     controls.appendChild(taskRow);
   } else {
     const iron = d.settings.timer.iron && ses.phase === 'focus';
+    // monochrome inline SVG icons (no emoji) — they inherit the button's text color
+    const ICO_PAUSE = '<svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z" fill="currentColor"/></svg>';
+    const ICO_RESUME = '<svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
+    const ICO_LOCK = '<svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 1 1 6 0v3z" fill="currentColor"/></svg>';
+    const ICO_STOP = '<svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M6 6h12v12H6z" fill="currentColor"/></svg>';
     // one shared control size for both modes — the iron "no pause" button is a
-    // disabled twin of the regular Pause/Resume button, never a smaller pill
+    // disabled twin of the regular Pause/Resume button, never a smaller pill;
+    // End session matches it exactly (same fixed width & height via .action-btn)
     const pp = iron && ses.running
-      ? N.el('button', { class: 'btn btn-primary startbig pause-btn', disabled: true, title: 'Iron session: no pause', text: '🔒 no pause (iron)' })
+      ? N.el('button', { class: 'btn btn-primary startbig pause-btn action-btn', disabled: true, title: 'Iron session: no pause', html: ICO_LOCK + ' No pause' })
       : N.el('button', {
-          class: 'btn btn-primary startbig pause-btn',
-          text: ses.running ? '⏸ Pause' : '▶ Resume',
+          class: 'btn btn-primary startbig pause-btn action-btn',
+          html: (ses.running ? ICO_PAUSE + ' Pause' : ICO_RESUME + ' Resume'),
           onclick: () => nook.invoke(ses.running ? 'session:pause' : 'session:resume')
         });
     const giveUp = iron
       ? N.el('button', {
-          class: 'btn btn-ghost', text: '🔒 End early (iron gate)',
+          class: 'btn btn-ghost action-btn', html: ICO_LOCK + ' End early',
           onclick: () => App.ironGate(() => nook.invoke('session:stop', { abandon: true }))
         })
       : N.el('button', {
-          class: 'btn btn-ghost', text: '🌧️ End session', onclick: () => App.confirm('End this session?', ses.phase === 'focus' ? 'Focused minutes still count for XP (unless strict mode is on), but you lose the completion bonus.' : 'Your break ends and the session stops.', () => nook.invoke('session:stop', { abandon: ses.phase === 'focus' }))
+          class: 'btn btn-ghost action-btn', html: ICO_STOP + ' End session', onclick: () => App.confirm('End this session?', ses.phase === 'focus' ? 'Focused minutes still count for XP (unless strict mode is on), but you lose the completion bonus.' : 'Your break ends and the session stops.', () => nook.invoke('session:stop', { abandon: ses.phase === 'focus' }))
         });
-    // running actions share one group row — pause stays the dominant action
+    // running actions share one group row — equal-size primary & secondary buttons
     const actions = N.el('div', { class: 'running-actions' });
     actions.append(pp, giveUp);
     controls.appendChild(actions);
-    if (ses.phase !== 'focus') controls.appendChild(N.el('button', { class: 'btn btn-sage', text: '⏭ Skip break', onclick: () => nook.invoke('session:skip') }));
+    if (ses.phase !== 'focus') controls.appendChild(N.el('button', { class: 'btn btn-sage', html: '<svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M5 5l8 7-8 7zM16 5h3v14h-3z" fill="currentColor"/></svg> Skip break', onclick: () => nook.invoke('session:skip') }));
   }
   timerCard.appendChild(controls);
 

@@ -256,17 +256,17 @@ select.input { cursor: pointer; }
 /* timer card — generous top breathing room above the ring; internal rhythm:
    ring → 22px → mode toggle → 18px → start → 18px → studying, one cohesive
    control group on a shared measured width (never an hourglass). */
-.timer-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 36px 28px 22px; }
+.timer-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 36px 28px 34px; }
 /* iron mode — quiet session-state line, not a control */
 .iron-status { font-size: 11px; font-weight: 700; color: var(--ink-soft); background: var(--card2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; letter-spacing: .2px; }
 /* one quiet metadata row above the ring (phase / paused / iron) */
 .timer-status { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
 .phase-pill { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 6px 16px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
 .phase-pill.break { background: var(--sage-soft); color: var(--sage); }
-/* ring gets real breathing room below it — the control group starts a full
-   step down, but stays clearly part of the same card composition */
-.ring-wrap { position: relative; width: 250px; height: 250px; margin: 4px 0 12px; flex: 0 0 auto; }
-@media (max-width: 380px) { .ring-wrap { transform: scale(.86); margin: -16px 0 -2px; } }
+/* ring gets real breathing room below it — the control group starts two full
+   steps down, but stays clearly part of the same card composition */
+.ring-wrap { position: relative; width: 250px; height: 250px; margin: 4px 0 30px; flex: 0 0 auto; }
+@media (max-width: 380px) { .ring-wrap { transform: scale(.86); margin: -16px 0 14px; } }
 .ring-wrap svg { transform: rotate(-90deg); }
 .ring-bg { stroke: var(--line); }
 .ring-fg { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .5s linear, stroke .4s ease; }
@@ -293,22 +293,41 @@ body[data-theme="dark"] .glass-btn:hover { box-shadow: 0 6px 22px rgba(0, 0, 0, 
 .startbig { font-size: 16px; padding: 13px 38px; width: 100%; }
 /* running session actions — one cohesive group on the same measured width as
    idle mode/start/task, so the timer never sits above a scattered row */
-.running-actions { display: flex; align-items: center; justify-content: center; gap: 10px; width: min(358px, 100%); }
-.running-actions .startbig { width: auto; flex: 1 1 auto; }
-.running-actions .btn-ghost { flex: 0 0 auto; }
-/* pause control consistency: regular "Pause" and iron-mode "no pause" share one
-   fixed size + style (same primary pill, same height), so switching modes never
-   resizes the dominant action. min-width keeps the locked iron label from
-   shrinking the button below the normal Pause footprint. */
-.pause-btn {
-  flex: 0 0 auto;
-  width: 172px;
-  min-width: 172px;
-  max-width: 100%;
-  text-align: center;
+.running-actions { display: flex; align-items: stretch; justify-content: center; gap: 10px; width: min(358px, 100%); }
+/* Pause (regular) and End session share ONE fixed footprint — identical width
+   AND height in every mode. The iron "No pause" twin is the same pill too, so
+   switching modes never resizes or re-centers anything. */
+.action-btn {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  height: 48px;
+  padding: 0 14px;
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   white-space: nowrap;
+  overflow: hidden;
 }
-.btn:disabled.pause-btn { opacity: .55; }
+/* monochrome button icons — inherit the label color, sit on the text baseline */
+.btn-ico { display: inline-block; vertical-align: -2px; flex: 0 0 auto; }
+/* salmon primary buttons (Pause / Resume / No pause) use dark ink for contrast */
+.btn-primary.startbig { color: #3A2318; }
+body[data-theme="dark"] .btn-primary.startbig { color: #2A1A12; }
+/* clear disabled state: flat muted fill, no shadow, still-readable text */
+.btn:disabled,
+.btn:disabled.pause-btn,
+.btn:disabled.action-btn {
+  opacity: 1;
+  background: var(--card2);
+  border-color: var(--line);
+  color: var(--ink-soft);
+  box-shadow: none;
+  transform: none;
+  cursor: not-allowed;
+}
 /* duration controls — deliberately quiet secondary setting, visually detached
    from the primary group by a hairline so they never compete with it */
 .timer-aux { display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(358px, 100%); margin-top: -4px; padding-top: 10px; border-top: 1px solid var(--line); }
