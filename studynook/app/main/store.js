@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const TaskDays = require('../shared/taskdays.js');
+const Iron = require('../shared/iron.js');
 
 function defaultData() {
   return {
@@ -81,9 +82,13 @@ function sanitizeData(d) {
   t.workMin = num(t.workMin, 25, 1, 600); t.shortMin = num(t.shortMin, 5, 1, 120);
   t.longMin = num(t.longMin, 15, 1, 240); t.rounds = num(t.rounds, 4, 1, 24);
   t.autoStartBreaks = !!t.autoStartBreaks; t.autoStartFocus = !!t.autoStartFocus;
-  t.strict = !!t.strict; t.iron = !!t.iron;
-  t.ironLockDays = num(t.ironLockDays, 4, 1, 30);
-  t.ironLockedUntil = num(t.ironLockedUntil, 0, 0, 8.64e15);
+  t.strict = !!t.strict;
+  /* Iron fields — tamper-proof. A hand-edit of data.json can never switch
+     iron off while the self-lock still runs (resolveIron keeps it ON, so the
+     countdown and the no-pause rules stay consistent), garbage values are
+     clamped, and an expired lock cleans itself up instead of leaving a stale
+     "0h 0m" / stuck pill behind. */
+  Iron.normalizeFields(t, Date.now());
   const g = obj(s.guardian); s.guardian = g;
   g.enabled = g.enabled !== false;
   g.mode = g.mode === 'allow' ? 'allow' : 'block';
@@ -275,8 +280,20 @@ class Store {
   /** mutate(fn) — change data then save. Returns fn's result. */
   mutate(fn) {
     const r = fn(this.data);
+    this.enforceIron();
     this.save();
     return r;
+  }
+  /** Re-assert the iron promise on every write: while the self-lock runs,
+      settings.timer.iron is always true — even if something (a hand-edited
+      file that got loaded, an import, a stray code path) tried to clear it.
+      After the lock expires nothing is forced, so iron can be turned off. */
+  enforceIron() {
+    try {
+      const t = this.data && this.data.settings && this.data.settings.timer;
+      if (!t) return;
+      if (Iron.isLocked(t.ironLockedUntil, Date.now())) t.iron = true;
+    } catch (e) {}
   }
   addFeed(text, emoji) {
     this.data.feed = this.data.feed || [];

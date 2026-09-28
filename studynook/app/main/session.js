@@ -24,6 +24,28 @@ class SessionEngine {
     this.timer = null;
     this.lastTickSec = -1;
     this.killsThisSession = [];    // [{label, count}]
+    /* Iron mode is decided by the ENGINE, not by whatever a hand-edited
+       data.json currently claims. `isIron()` is the single authority:
+         • during a focus phase → the value captured at start (or re-derived
+           from the lock after a crash-restart), so mid-session file edits
+           can neither enable nor disable iron; while the self-lock runs it
+           is always true.
+         • outside a focus phase → the live stored value, so once the lock
+           expires you can genuinely switch iron off in Settings.
+       The stored flag is only ever *written* through settings:set's guarded
+       path (Iron.applyIron); direct file edits are re-normalized on load
+       (store.sanitizeData) and re-asserted on every save (store.enforceIron). */
+    this.ironAtStart = false;
+  }
+
+  /** Effective iron state — see the note in the constructor. */
+  isIron() {
+    if (!this.hooks.isIronLocked) return !!(this.hooks.getSettings() || {}).iron;
+    if (this.s && this.s.phase === 'focus') {
+      if (this.hooks.isIronLocked()) return true;   // promise still running
+      return this.s.iron;                           // captured at start
+    }
+    return !!this.hooks.getSettings().iron;
   }
 
   isActive() { return !!this.s; }
@@ -46,8 +68,10 @@ class SessionEngine {
       sessionFocusSec: 0,        // focused seconds across the whole session
       phaseAccumStart: 0,        // sessionFocusSec snapshot at phase start
       phaseStartAt: Date.now(),
-      taskId, label
+      taskId, label,
+      iron: this.isIron()        // frozen for this focus phase — tamper-proof
     };
+    this.ironAtStart = this.s.iron;
     this.killsThisSession = [];
     this._loop();
     this._persist();
@@ -56,6 +80,8 @@ class SessionEngine {
   }
 
   pause() {
+    // Iron focus: no pausing — the engine refuses, whatever the settings file says.
+    if (this.isIron() && this.s && this.s.phase === 'focus') return this.publicState();
     if (!this.s || !this.s.running) return this.publicState();
     this.s.sessionFocusSec += this._focusedSecInPhase();
     this.s.pausedRemaining = this.remainingSec();
@@ -99,6 +125,38 @@ class SessionEngine {
     this.hooks.onPhaseEnd && this.hooks.onPhaseEnd(info);
     this.hooks.onState && this.hooks.onState();
     return { minutes, abandon };
+  }
+
+  /** Restore a persisted session after a crash/restart. The iron flag is NOT
+      trusted from the file — it's re-derived live (lock still running → iron
+      stays on), so a hand-edited data.json can't smuggle a paused, iron-less
+      session back in. */
+  restore(st) {
+    if (!st || !st.active) return null;
+    const iron = this.isIron();
+    this.s = {
+      mode: st.mode === 'free' ? 'free' : 'pomodoro',
+      running: !!st.running,
+      phase: ['focus', 'short', 'long'].includes(st.phase) ? st.phase : 'focus',
+      phaseSec: Math.max(0, Number(st.phaseSec) || 0),
+      endsAt: Number(st.endsAt) || Date.now(),
+      pausedRemaining: Number(st.pausedRemaining) || 0,
+      roundIdx: Math.max(0, Number(st.roundIdx) || 0),
+      rounds: Math.max(1, Number(st.rounds) || 4),
+      startedAt: Number(st.startedAt) || Date.now(),
+      sessionFocusSec: Math.max(0, Number(st.accumSec) || 0),
+      phaseAccumStart: Math.max(0, Number(st.accumSec) || 0),
+      phaseStartAt: Date.now(),
+      taskId: st.taskId || null, label: String(st.label || ''),
+      iron
+    };
+    this.ironAtStart = iron;
+    this._lastRem = null;
+    this.lastTickSec = -1;
+    this.killsThisSession = [];
+    this._loop();
+    this.hooks.onState && this.hooks.onState();
+    return this.publicState();
   }
 
   recordKill(label) {
