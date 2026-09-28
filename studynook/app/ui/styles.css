@@ -488,13 +488,24 @@ body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
 /* Garden charts row — "Last 7 days" and "Focus garden" cards stretch to the
    same height so their bottom edges align perfectly. The bar chart fills any
    leftover space (bars stay pinned to the baseline, labels at the very bottom)
-   instead of leaving dead whitespace under the shorter card. */
+   instead of leaving dead whitespace under the shorter card. The heatmap is
+   capped at a fixed size and centred, so on wide windows it can no longer
+   grow taller than its sibling card and push up over the Last-7-days card's
+   bottom edge. */
 .garden-charts { align-items: stretch; }
 .garden-charts .card { display: flex; flex-direction: column; }
 .bars { display: flex; align-items: flex-end; gap: 10px; min-height: 130px; padding-top: 8px; }
 .garden-charts .bars { flex: 1 1 auto; }
 .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
 .bar { width: 100%; max-width: 44px; border-radius: 10px 10px 4px 4px; background: linear-gradient(180deg, var(--sage), var(--sky)); min-height: 4px; transition: height .6s ease; }
+/* Focus garden quick fix: keep the plant grid compact & stable (max ~28px per
+   cell, centred) and let it sit flush against the card's bottom edge — never
+   overlapping the Last 7 days card above/left of it. */
+.garden-charts .heat { margin-top: auto; justify-self: center; }
+@media (min-width: 921px) {
+  .garden-charts .heat { max-width: 430px; width: 100%; margin-left: auto; margin-right: auto; }
+  .garden-charts .heat-cell { aspect-ratio: 1; max-width: 28px; max-height: 28px; font-size: 13px; }
+}
 .bar-lbl { font-size: 10px; color: var(--ink-soft); font-weight: 700; }
 .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
 .ach-card { border-radius: var(--radius-s); border: 1.5px solid var(--line); background: var(--card2); padding: 12px; display: flex; gap: 10px; align-items: center; }
@@ -502,14 +513,23 @@ body[data-theme="dark"] .amb-btn.on { color: var(--sky); }
 .ach-card .e { font-size: 26px; }
 .ach-card .n { font-size: 12.5px; font-weight: 800; }
 .ach-card .d { font-size: 11px; color: var(--ink-soft); }
-.evo-track { display: flex; align-items: center; gap: 4px; }
+/* Pet journey card — sits directly under the "Last 7 days" charts row. It is
+   an opaque, positioned card with extra breathing room on top, so nothing from
+   the garden/heatmap above can visually bleed into (or overlap) its header. */
+.garden-journey { margin-top: var(--sp-6); z-index: 1; }
+.evo-track { display: flex; align-items: center; gap: 4px; padding-top: 8px; }
 .evo-step { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; position: relative; }
-.evo-step .e { font-size: 24px; filter: grayscale(1); opacity: .4; transition: all .3s ease; }
+.evo-step .e { font-size: 24px; line-height: 1; filter: grayscale(1); opacity: .4; transition: all .3s ease; }
 .evo-step.reached .e { filter: none; opacity: 1; }
 .evo-step.current .e { transform: scale(1.3); }
 .evo-step .n { font-size: 9.5px; color: var(--ink-soft); font-weight: 700; text-align: center; white-space: pre-line; }
-.evo-line { position: absolute; top: 14px; left: 50%; width: 100%; height: 3px; background: var(--line); z-index: -1; }
+/* Connector line: drawn *inside* the emoji row (top = half of the 24px glyph),
+   never reaching past the last step and never escaping the track's top edge —
+   previously top:14px + z-index:-1 let it poke out over the card above. */
+.evo-line { position: absolute; top: 12px; left: 50%; width: 100%; height: 3px; background: var(--line); z-index: 0; }
+.evo-step:last-child .evo-line { display: none; }
 .evo-step.reached .evo-line { background: var(--sage); }
+.evo-step .e, .evo-step .n { position: relative; z-index: 1; }
 
 /* ---------- 10 · settings & help ---------- */
 .set-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; }
