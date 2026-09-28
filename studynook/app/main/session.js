@@ -167,31 +167,74 @@ class SessionEngine {
     return { minutes, abandon };
   }
 
-  /** Restore a persisted session after a crash/restart. The iron flag is NOT
-      trusted from the file — it's re-derived live at start (switch on OR
-      self-lock still running → iron stays on), so a hand-edited data.json
-      can't smuggle a paused, iron-less session back in. */
+  /** Restore a persisted session after a crash / "End task" kill / restart.
+      The engine was built for this (`persist` writes session.json every few
+      seconds and `restore` reads it back) — but nobody ever called it, so a
+      killed app made the session look like it never started. Now main.js
+      actually restores it here.
+
+      Time while the app was DEAD does not count against you: the timer
+      resumes exactly where it was left, as if no time passed. For a RUNNING
+      focus we keep only the focused seconds accrued up to the last persist
+      (`accumSec` minus what the open phase had banked at save time) and
+      rebuild `endsAt` from that remainder. The iron flag is NOT trusted from
+      the file — it's re-derived live (switch on OR self-lock still running →
+      iron stays on), so a hand-edited data.json can't smuggle a paused,
+      iron-less session back in. */
   restore(st) {
     if (!st || !st.active) return null;
     const Iron = require('../shared/iron.js');
     const t = this.hooks.getSettings() || {};
     const iron = Iron.resolveIron(t.iron, t.ironLockedUntil, Date.now());
+    const accum = Math.max(0, Number(st.accumSec) || 0);
+    // A session.json written by an older build may lack phaseStartAt — derive
+    // it from the countdown snapshot (savedAt minus the elapsed part of the
+    // phase) so the banked-time math below still works.
+    const savedTime = Number(st.savedAt) || Date.now();
+    const remAtSave = st.running
+      ? Math.max(0, Math.round(((Number(st.endsAt) || savedTime) - savedTime) / 1000))
+      : Math.max(0, Number(st.pausedRemaining) || 0);
+    const effPhaseStart = Number(st.phaseStartAt) || (savedTime - remAtSave * 1000);
+    // How much of the saved accum belongs to the CURRENT open phase?
+    let phaseBanked = 0;
+    if (st.phase === 'focus') {
+      if (st.running) {
+        // focus was ticking: everything since its start already sits in accum
+        phaseBanked = Math.max(0, Math.min(Math.round((savedTime - effPhaseStart) / 1000), accum));
+      } else {
+        // paused focus: pausedRemaining was frozen at pause time
+        phaseBanked = Math.max(0, (Number(st.phaseSec) || 0) - (Number(st.pausedRemaining) || 0));
+        phaseBanked = Math.min(phaseBanked, accum);
+      }
+    }
     this.s = {
       mode: st.mode === 'free' ? 'free' : 'pomodoro',
       running: !!st.running,
       phase: ['focus', 'short', 'long'].includes(st.phase) ? st.phase : 'focus',
       phaseSec: Math.max(0, Number(st.phaseSec) || 0),
-      endsAt: Number(st.endsAt) || Date.now(),
+      endsAt: 0,
       pausedRemaining: Number(st.pausedRemaining) || 0,
       roundIdx: Math.max(0, Number(st.roundIdx) || 0),
       rounds: Math.max(1, Number(st.rounds) || 4),
       startedAt: Number(st.startedAt) || Date.now(),
-      sessionFocusSec: Math.max(0, Number(st.accumSec) || 0),
-      phaseAccumStart: Math.max(0, Number(st.accumSec) || 0),
+      sessionFocusSec: Math.max(0, accum - phaseBanked),
+      phaseAccumStart: Math.max(0, accum - phaseBanked),
       phaseStartAt: Date.now(),
       taskId: st.taskId || null, label: String(st.label || ''),
       iron
     };
+    // Rebuild the countdown from where it was left off — dead time is free.
+    if (this.s.phase === 'focus' && this.s.running) {
+      const rem = Math.max(0, this.s.phaseSec - phaseBanked);
+      this.s.pausedRemaining = null;
+      this.s.endsAt = Date.now() + rem * 1000;
+    } else if (this.s.running) {
+      // a running break: honour its original end if it hasn't fully elapsed
+      this.s.endsAt = Math.max(Date.now(), Number(st.endsAt) || Date.now());
+    } else {
+      this.s.pausedRemaining = this.s.pausedRemaining ||
+        (this.s.phase === 'focus' ? Math.max(0, this.s.phaseSec - phaseBanked) : this.s.phaseSec);
+    }
     this.ironAtStart = iron;
     this._lastRem = null;
     this.lastTickSec = -1;
@@ -252,6 +295,7 @@ class SessionEngine {
       phaseSec: s.phaseSec, endsAt: s.endsAt, pausedRemaining: s.pausedRemaining,
       roundIdx: s.roundIdx, rounds: s.rounds, taskId: s.taskId, label: s.label,
       startedAt: s.startedAt,
+      phaseStartAt: s.phaseStartAt,
       accumSec: s.sessionFocusSec + this._focusedSecInPhase(),
       savedAt: Date.now()
     };

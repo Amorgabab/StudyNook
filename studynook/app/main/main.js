@@ -45,30 +45,72 @@ let lastAmbientAward = 0;
 let gateCleared = false;   // iron session: window-close gate passed?
 const SOUND_IDS = new Set(['rain', 'waves', 'fire', 'cafe']);
 
-/* ---------- interrupted-session recovery (task manager / crash / power loss) ---------- */
-function recoverInterruptedSession() {
-  const f = path.join(DATA_DIR, 'session.json');
-  if (!fs.existsSync(f)) return;
-  try {
-    const s = JSON.parse(fs.readFileSync(f, 'utf8'));
-    fs.unlinkSync(f);
-    if (!s || !s.active) return;
-    const minutes = Math.floor((s.accumSec || 0) / 60);
-    const iron = store.data.settings.timer.iron;
-    if (minutes > 0 && !iron) {
-      store.mutate((d) => progress.focusRewards(d, minutes, false, { abandoned: true }));
-    }
-    store.mutate((d) => {
-      d.feed = d.feed || [];
-      d.feed.unshift({
-        t: Date.now(), emoji: '⚡', kind: 'warn',
-        text: iron
-          ? `Previous session was interrupted (app closed mid-focus) — Iron Session: no credit for ${minutes} min`
-          : `Previous session was interrupted (app closed mid-focus) — ${minutes} focused min credited`
-      });
-      if (d.feed.length > 40) d.feed.length = 40;
+/* ---------- interrupted-session recovery (task manager / crash / power loss) ----------
+   The engine persists its exact state to session.json every few seconds.
+   On boot we RESTORE it instead of wiping it: after an "End task" kill the
+   session continues right where it left off (dead time doesn't count), so
+   you never have to start from scratch. Only genuinely unrecoverable states
+   (stale/corrupt file, or a focus whose full length elapsed while dead) are
+   salvaged as credit + a feed note. */
+const SESSION_FILE = () => path.join(DATA_DIR, 'session.json');
+const STALE_MS = 12 * 60 * 60 * 1000;   // older than this → not worth restoring
+
+function readSessionFile() {
+  const f = SESSION_FILE();
+  if (!fs.existsSync(f)) return null;
+  try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { return null; }
+}
+
+/** Credit + feed note for a session that can't be resumed any more. */
+function salvageInterruptedSession(s, why) {
+  try { fs.unlinkSync(SESSION_FILE()); } catch (e) {}
+  if (!s || !s.active) return;
+  const minutes = Math.floor((s.accumSec || 0) / 60);
+  const iron = store.data.settings.timer.iron;
+  if (minutes > 0 && !iron) {
+    store.mutate((d) => progress.focusRewards(d, minutes, false, { abandoned: true }));
+  }
+  store.mutate((d) => {
+    d.feed = d.feed || [];
+    d.feed.unshift({
+      t: Date.now(), emoji: '⚡', kind: 'warn',
+      text: iron
+        ? `Previous session was interrupted (${why}) — Iron Session: no credit for ${minutes} min`
+        : `Previous session was interrupted (${why}) — ${minutes} focused min credited`
     });
-  } catch (e) { console.error('[recover]', e.message); }
+    if (d.feed.length > 40) d.feed.length = 40;
+  });
+}
+
+function recoverInterruptedSession() {
+  const s = readSessionFile();
+  if (!s) return;
+  if (!s.active) { try { fs.unlinkSync(SESSION_FILE()); } catch (e) {} return; }
+  const age = Date.now() - (Number(s.savedAt) || 0);
+  if (!(s.savedAt > 0) || age > STALE_MS) { salvageInterruptedSession(s, 'app closed mid-focus'); return; }
+  // A running FOCUS whose entire length elapsed while the app was dead has
+  // nothing left to resume — bank whatever was actually focused and move on.
+  if (s.phase === 'focus' && s.running) {
+    const pStart = Number(s.phaseStartAt) || Number(s.savedAt) || Date.now();
+    const banked = Math.max(0, Math.round(((Number(s.savedAt) || Date.now()) - pStart) / 1000));
+    const rem = Math.max(0, (Number(s.phaseSec) || 0) - banked);
+    if (rem <= 0) { salvageInterruptedSession(s, 'the focus round finished while the app was closed'); return; }
+  }
+  // Otherwise: restore exactly where it was left off. session.restore()
+  // rebuilds the countdown from the saved state (dead time is free), starts
+  // the tick loop, and re-derives the iron flag — then we keep persisting so
+  // another kill can be recovered again.
+  const st = session.restore(s);
+  if (!st || !st.active) { salvageInterruptedSession(s, 'app closed mid-focus'); return; }
+  session._persist();
+  store.mutate((d) => {
+    d.feed = d.feed || [];
+    d.feed.unshift({
+      t: Date.now(), emoji: '🕯️', kind: 'info',
+      text: 'StudyNook restarted after closing unexpectedly — your focus session picked up right where it left off'
+    });
+    if (d.feed.length > 40) d.feed.length = 40;
+  });
 }
 
 /* ---------- one-time migration from the old folder-based install ---------- */
@@ -129,7 +171,6 @@ app.whenReady().then(() => {
   store = new Store(path.join(DATA_DIR, 'data.json'));
   progress.refreshStreak(store.data);
   ensureBackups();
-  recoverInterruptedSession();
 
   /* --- headless smoke-test hook (used by `npm run smoke`) --- */
   if (process.env.NOOK_SMOKE) {
@@ -148,13 +189,19 @@ app.whenReady().then(() => {
     onPhaseEnd: (info) => handlePhaseEnd(info),
     persist: (st) => {
       try {
-        const f = path.join(DATA_DIR, 'session.json');
+        const f = SESSION_FILE();
         if (!st) { if (fs.existsSync(f)) fs.unlinkSync(f); return; }
         fs.mkdirSync(DATA_DIR, { recursive: true });
         fs.writeFileSync(f, JSON.stringify(st));
       } catch (e) {}
     }
   });
+
+  // After an "End task" kill / crash: resume the persisted session exactly
+  // where it left off (dead time doesn't count) instead of acting like it
+  // never started. Must run after `session` exists — restore() starts the
+  // tick loop and pushes the fresh snapshot to the window once it opens.
+  recoverInterruptedSession();
 
   guardian = new Guardian({
     store,
