@@ -22,7 +22,7 @@ function defaultData() {
     level: 1,
     streak: { current: 0, best: 0, lastFocusDay: null },
     settings: {
-      timer: { workMin: 25, shortMin: 5, longMin: 15, rounds: 4, autoStartBreaks: true, autoStartFocus: false, strict: false },
+      timer: { workMin: 25, shortMin: 5, longMin: 15, rounds: 4, autoStartBreaks: true, autoStartFocus: false, strict: false, iron: false, ironLockDays: 4, ironLockedUntil: 0 },
       sound: { ui: true, chimes: true, volume: 0.6 },
       guardian: { enabled: true, mode: 'block', action: 'gentle', graceSec: 15, scanSec: 3, onlyDuringSessions: true },
       theme: 'auto',       // auto | light | dark
@@ -95,6 +95,16 @@ function sanitizeData(d) {
   g.action = ['gentle', 'instant', 'remind'].includes(g.action) ? g.action : 'gentle';
   g.graceSec = num(g.graceSec, 15, 1, 600); g.scanSec = num(g.scanSec, 3, 1, 60);
   g.onlyDuringSessions = g.onlyDuringSessions !== false;
+  /* Iron strictness at rest: with iron in effect (switch on OR self-lock
+     still running — a hand-edit can't clear the lock), the stored guard/site
+     settings must already BE the hardened ones — otherwise the UI would show
+     "gentle warn" or "site blocking off" while the engine secretly acts
+     differently. Same pure helpers the renderer uses → zero drift. */
+  if (Iron.resolveIron(t.iron, t.ironLockedUntil, Date.now())) {
+    Object.assign(g, Iron.effectiveGuard(g, true));
+    const st = obj(d.sites); d.sites = st;
+    Object.assign(st, Iron.effectiveSites(st, true));
+  }
   const snd = obj(s.sound); s.sound = snd;
   snd.ui = snd.ui !== false; snd.chimes = snd.chimes !== false; snd.volume = num(snd.volume, 0.6, 0, 1);
   s.theme = ['auto', 'light', 'dark'].includes(s.theme) ? s.theme : 'auto';
@@ -287,12 +297,26 @@ class Store {
   /** Re-assert the iron promise on every write: while the self-lock runs,
       settings.timer.iron is always true — even if something (a hand-edited
       file that got loaded, an import, a stray code path) tried to clear it.
-      After the lock expires nothing is forced, so iron can be turned off. */
+      After the lock expires nothing is forced, so iron can be turned off.
+      Iron strictness rides along: with the lock running the guardian & sites
+      settings are re-hardened too (guard ON + instant close, site blocking ON
+      + always), so stored state and enforced state never diverge. */
   enforceIron() {
     try {
-      const t = this.data && this.data.settings && this.data.settings.timer;
+      const d = this.data;
+      const t = d && d.settings && d.settings.timer;
       if (!t) return;
-      if (Iron.isLocked(t.ironLockedUntil, Date.now())) t.iron = true;
+      if (Iron.isLocked(t.ironLockedUntil, Date.now())) {
+        t.iron = true;
+        Object.assign(d.settings.guardian, Iron.effectiveGuard(d.settings.guardian, true));
+        Object.assign(d.sites, Iron.effectiveSites(d.sites, true));
+      } else if (d.__ironSaved) {
+        // The self-lock just expired → restore the guard/site choices the
+        // user had before they made the iron promise.
+        Object.assign(d.settings.guardian, d.__ironSaved.guard || {});
+        Object.assign(d.sites, d.__ironSaved.sites || {});
+        delete d.__ironSaved;
+      }
     } catch (e) {}
   }
   addFeed(text, emoji) {

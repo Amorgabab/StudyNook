@@ -56,10 +56,36 @@
     if (t.ironLockedUntil && t.ironLockedUntil <= now) { t.ironLockedUntil = 0; t.iron = false; }
     return t;
   }
+
+  /* ---------- Iron strictness: one source of truth for every surface ----------
+     Turning Iron on doesn't just mean "no pause & no early stop": it also
+     hardens the guards so what the UI shows and what actually runs can never
+     disagree. effectiveGuard() / effectiveSites() are PURE — both the main
+     process (before writing settings) and the renderer (before drawing the
+     toggles/segments) call them, so the displayed state IS the enforced state.
+       • guardian: guard stays ON, style becomes instant close (gentle/remind
+         would let you stare at a warning card instead of losing the app);
+       • sites: site blocking stays ON and its rules apply always, not only
+         during focus phases (pausing the timer can't sneak past the wall).
+     When Iron is off these are identity functions — user choices untouched. */
+  function effectiveGuard(guard, ironOn) {
+    const g = Object.assign({}, guard || {});
+    if (!ironOn) return g;
+    g.enabled = true;
+    g.action = 'instant';
+    return g;
+  }
+  function effectiveSites(sites, ironOn) {
+    const s = Object.assign({}, sites || {});
+    if (!ironOn) return s;
+    s.enabled = true;
+    s.when = 'always';
+    return s;
+  }
   function objTimer(d) {
     const s = (d && d.settings) || {};
     if (!s.timer || typeof s.timer !== 'object' || Array.isArray(s.timer)) s.timer = {};
     return s.timer;
   }
-  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, normalizeFields };
+  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, normalizeFields, effectiveGuard, effectiveSites };
 });

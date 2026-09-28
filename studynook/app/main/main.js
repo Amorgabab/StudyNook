@@ -471,18 +471,37 @@ function registerIpc() {
   H('settings:set', (p) => {
     const Iron = require('../shared/iron.js');
     store.mutate((d) => {
-      // Iron lock: enabling starts a 4-day settings lock; disabling is
-      // refused while the lock runs (Settings UI is hidden anyway).
+      // Iron lock: enabling starts a self-lock; disabling is refused while
+      // the lock runs (Settings UI hides the switch anyway). Turning Iron on
+      // also hardens the guards — and remembers your pre-iron choices so they
+      // can be restored when the promise ends.
       if (p.section === 'timer' && p.values && p.values.iron !== undefined) {
-        const locked = Iron.isLocked(d.settings.timer.ironLockedUntil, Date.now());
-        if (p.values.iron && !d.settings.timer.iron) d.settings.timer.ironLockedUntil = Iron.makeLock(Date.now(), d.settings.timer.ironLockDays);
+        const t = d.settings.timer;
+        const locked = Iron.isLocked(t.ironLockedUntil, Date.now());
+        if (p.values.iron && !t.iron) {
+          d.__ironSaved = { guard: Object.assign({}, d.settings.guardian), sites: Object.assign({}, d.sites) };
+          t.ironLockedUntil = Iron.makeLock(Date.now(), t.ironLockDays);
+        }
         if (!p.values.iron && locked) return;   // nope.
+        if (!p.values.iron && t.iron && d.__ironSaved) {
+          // Iron off for real → give back the gentle warn / session-only choices
+          Object.assign(d.settings.guardian, d.__ironSaved.guard || {});
+          Object.assign(d.sites, d.__ironSaved.sites || {});
+          delete d.__ironSaved;
+        }
       }
       const sec = d.settings[p.section];
       if (sec && typeof sec === 'object' && !Array.isArray(sec)) Object.assign(sec, p.values || {});
       else d.settings[p.section] = p.values;
+      // Iron strictness: guard/site edits are filtered through the same pure
+      // helpers the engine and the UI use — you cannot soften them mid-promise,
+      // and what gets stored is exactly what will run.
+      if (Iron.resolveIron(d.settings.timer.iron, d.settings.timer.ironLockedUntil, Date.now())) {
+        if (p.section === 'guardian') Object.assign(d.settings.guardian, Iron.effectiveGuard(d.settings.guardian, true));
+        if (p.section === 'sites') Object.assign(d.sites, Iron.effectiveSites(d.sites, true));
+      }
     });
-    if (p.section === 'guardian') guardian._loop();   // apply new scan interval
+    if (p.section === 'guardian' || p.section === 'timer') guardian._loop();   // apply new scan interval / strictness
     pushSnapshot();
     return true;
   });
@@ -670,11 +689,17 @@ function registerIpc() {
 
   /* ---- sites ---- */
   H('sites:set', (p) => {
+    const Iron = require('../shared/iron.js');
     store.mutate((d) => {
       const patch = p.patch || {};
       for (const k of ['enabled', 'mode', 'when']) if (patch[k] !== undefined) d.sites[k] = patch[k];
       // normalizeEntry KEEPS paths (youtube.com/shorts stays youtube.com/shorts)
       for (const k of ['block', 'allow']) if (Array.isArray(patch[k])) d.sites[k] = dedupe(patch[k].map((x) => NookRules.normalizeEntry(x)).filter(Boolean)).slice(0, 500);
+      // Iron strictness: site blocking can't be switched off or limited to
+      // focus-only while the promise runs (UI renders the same view).
+      if (Iron.resolveIron(d.settings.timer.iron, d.settings.timer.ironLockedUntil, Date.now())) {
+        Object.assign(d.sites, Iron.effectiveSites(d.sites, true));
+      }
     });
     pushSnapshot();
     return true;
@@ -721,7 +746,15 @@ function registerIpc() {
   });
 
   /* ---- guardian ---- */
-  H('guardian:pause', (p) => { const m = parseInt(p.min, 10); guardian.pauseFor(isNaN(m) ? 5 : Math.max(0, m)); pushSnapshot(); return true; });
+  H('guardian:pause', (p) => {
+    const m = parseInt(p.min, 10);
+    if (!guardian.pauseFor(isNaN(m) ? 5 : Math.max(0, m))) {
+      // Engine-level refusal: in Iron mode the pause never stops blocking.
+      broadcast('toast', { title: 'Iron mode', msg: 'The guard stays armed while your promise runs.' });
+    }
+    pushSnapshot();
+    return true;
+  });
 
   /* ---- data ---- */
   H('data:export', () => JSON.stringify(store.data, null, 2));

@@ -48,6 +48,15 @@ class SessionEngine {
     return !!this.hooks.getSettings().iron;
   }
 
+  /** Iron "in effect" right now: the switch is on OR the self-lock is still
+      running. While that's true nothing about iron may be relaxed — pausing,
+      guard pauses, or softening the app/site blockers — even if data.json was
+      hand-edited. Outside a lock with the switch off, normal rules apply. */
+  ironActive() {
+    if (this.hooks.isIronLocked && this.hooks.isIronLocked()) return true;
+    return this.isIron();
+  }
+
   isActive() { return !!this.s; }
   isFocusing() { return !!this.s && this.s.phase === 'focus' && this.s.running; }
   isRunning() { return !!this.s && this.s.running; }
@@ -105,6 +114,10 @@ class SessionEngine {
   /** Skip current BREAK to the next focus round. (Skipping focus = give up → use stop.) */
   skip() {
     if (!this.s || this.s.phase === 'focus') return this.stop({ abandon: true });
+    /* Iron strictness: during an iron self-lock, breaks can't be skipped —
+       that would let you fast-forward past a blocked period with the guard
+       asleep. The break simply runs its course. */
+    if (this.ironActive()) return this.publicState();
     return this._endPhase(false);
   }
 
