@@ -8,14 +8,30 @@
    POST /heartbeat     → {ok}                     (header x-nook-token)
    The extension polls /state: every ~5s while you're in a focus
    session (fast sync), every 30s otherwise.
+
+   SECURITY MODEL (hardened):
+   • Host-header validation on EVERY request → DNS-rebinding from
+     a remote website is refused (only 127.0.0.1/localhost names).
+   • No wildcard CORS: cross-origin reads are opt-in per origin via
+     Settings → "Allow browser access" (off by default). With that
+     off, only same-origin callers (the extension's service worker,
+     which sends no Origin header to http URLs) can read anything.
+   • An empty pairing token NEVER matches — requests carrying no
+     token are rejected outright.
+   • Pairing throttles per client IP (so one noisy caller cannot
+     lock out the real user) and fails closed if the token is unset.
    ============================================================ */
 'use strict';
 
 const http = require('http');
+const crypto = require('crypto');
 const NookRules = require('../../extension/rules.js');
 
 const PORT = 47470;
 const dedupe = (arr) => arr.filter((x, i) => arr.indexOf(x) === i);
+/* Only these Host spellings are accepted — kills DNS rebinding: a remote
+   site whose name resolves to 127.0.0.1 still sends ITS OWN host header. */
+const ALLOWED_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
 
 class SyncServer {
   /**
@@ -28,6 +44,7 @@ class SyncServer {
     this.hooks = hooks;
     this.server = null;
     this.lastConnected = false;
+    this.pairAttempts = new Map(); // ip → [timestamps]
   }
 
   start() {
@@ -46,15 +63,33 @@ class SyncServer {
     return Date.now() - last < 90000;
   }
 
-  _json(res, code, obj) {
+  /* ---------- security helpers ---------- */
+  _hostOk(req) {
+    let h = '';
+    try { h = new URL('http://' + (req.headers.host || '')).hostname.toLowerCase(); } catch (e) { return false; }
+    return ALLOWED_HOSTS.has(h);
+  }
+  /** Cross-origin reads allowed ONLY when the user opted in
+      (Settings → "Allow browser access"). Otherwise: same-origin only
+      (null ACAO ⇒ the browser blocks any foreign page from reading). */
+  _cors(req) {
+    const h = {};
+    if (this.hooks.store.data.settings.bridgeAllowOrigins === true && req.headers.origin) {
+      h['Access-Control-Allow-Origin'] = req.headers.origin;
+      h['Access-Control-Allow-Headers'] = 'content-type,x-nook-token';
+      h['Access-Control-Allow-Methods'] = 'GET,POST,OPTIONS';
+      h['Vary'] = 'Origin';
+    }
+    return h;
+  }
+  _json(res, code, obj, req) {
     const body = JSON.stringify(obj);
-    res.writeHead(code, {
+    const headers = Object.assign({
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'content-type,x-nook-token',
-      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-      'Cache-Control': 'no-store'
-    });
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff'
+    }, req ? this._cors(req) : {});
+    res.writeHead(code, headers);
     res.end(body);
   }
 
@@ -66,35 +101,62 @@ class SyncServer {
     });
   }
 
-  _token(req) { return req.headers['x-nook-token'] || ''; }
+  _token(req) { return typeof req.headers['x-nook-token'] === 'string' ? req.headers['x-nook-token'] : ''; }
+  /** Constant-time compare of two ASCII secrets; an EMPTY stored token
+      never matches anything (fail-closed, not accidental open door). */
+  _tokenOk(req) {
+    const given = this._token(req);
+    const want = String(this.hooks.store.data.ext.token || '');
+    if (!want || !given || given.length !== want.length) return false;
+    try {
+      return crypto.timingSafeEqual(Buffer.from(given), Buffer.from(want));
+    } catch (e) { return false; }
+  }
 
   async _handle(req, res) {
     const url = (req.url || '').split('?')[0];
-    if (req.method === 'OPTIONS') return this._json(res, 200, { ok: true });
+
+    // DNS-rebinding guard: refuse any request addressed to another host.
+    if (!this._hostOk(req)) return this._json(res, 403, { ok: false, error: 'Bad host' });
+    if (req.method === 'OPTIONS') return this._json(res, 204, {}, req);
 
     const store = this.hooks.store;
 
     if (url === '/ping' && req.method === 'GET') {
-      return this._json(res, 200, { ok: true, app: 'studynook', port: PORT });
+      return this._json(res, 200, { ok: true, app: 'studynook', port: PORT }, req);
     }
 
     if (url === '/pair' && req.method === 'POST') {
-      // brute-force throttle: max 10 attempts per minute
+      // brute-force throttle PER CLIENT (max 10/min) — one bad actor can no
+      // longer lock the real user out of pairing.
       const now = Date.now();
-      this.pairAttempts = (this.pairAttempts || []).filter((t) => now - t < 60000);
-      if (this.pairAttempts.length >= 10) return this._json(res, 429, { ok: false, error: 'Too many attempts — wait a minute' });
-      this.pairAttempts.push(now);
+      const ip = (req.socket && req.socket.remoteAddress) || 'unknown';
+      const attempts = (this.pairAttempts.get(ip) || []).filter((t) => now - t < 60000);
+      if (attempts.length >= 10) {
+        this.pairAttempts.set(ip, attempts);
+        return this._json(res, 429, { ok: false, error: 'Too many attempts — wait a minute' }, req);
+      }
+      attempts.push(now);
+      this.pairAttempts.set(ip, attempts);
+      if (this.pairAttempts.size > 64) { // keep the map small
+        const oldest = [...this.pairAttempts.entries()].sort((a, b) => (a[1][a[1].length - 1] || 0) - (b[1][b[1].length - 1] || 0));
+        while (this.pairAttempts.size > 64 && oldest.length) this.pairAttempts.delete(oldest.shift()[0]);
+      }
+      const stored = String(store.data.ext.token || '');
+      if (!stored) return this._json(res, 503, { ok: false, error: 'Bridge disabled — restart StudyNook' }, req);
       const body = await this._readBody(req);
       const code = String(body.code || '').toUpperCase().trim();
-      if (code === store.data.ext.code) {
-        return this._json(res, 200, { ok: true, token: store.data.ext.token });
+      const want = String(store.data.ext.code || '');
+      // constant-time-ish compare (both are short fixed-alphabet strings)
+      if (want && code.length === want.length && crypto.timingSafeEqual(Buffer.from(code), Buffer.from(want))) {
+        return this._json(res, 200, { ok: true, token: stored }, req);
       }
-      return this._json(res, 401, { ok: false, error: 'Wrong pairing code' });
+      return this._json(res, 401, { ok: false, error: 'Wrong pairing code' }, req);
     }
 
     // ---- token-protected from here ----
-    if (this._token(req) !== store.data.ext.token) {
-      return this._json(res, 401, { ok: false, error: 'Not paired' });
+    if (!this._tokenOk(req)) {
+      return this._json(res, 401, { ok: false, error: 'Not paired' }, req);
     }
     const wasConnected = this.lastConnected;
     store.data.ext.lastSeen = Date.now();
@@ -120,13 +182,13 @@ class SyncServer {
         guardian: {
           armed: this.hooks.guardianArmed ? this.hooks.guardianArmed() : false
         }
-      });
+      }, req);
     }
 
     if (url === '/heartbeat' && req.method === 'POST') {
       const body = await this._readBody(req);
       store.data.ext.version = String(body.version || '').slice(0, 20);
-      return this._json(res, 200, { ok: true });
+      return this._json(res, 200, { ok: true }, req);
     }
 
     // Extension-side quick edits (e.g. popup "block this site")
@@ -145,10 +207,10 @@ class SyncServer {
         if (body.when === 'session' || body.when === 'always') d.sites.when = body.when;
         if (typeof body.enabled === 'boolean') d.sites.enabled = body.enabled;
       });
-      return this._json(res, 200, { ok: true });
+      return this._json(res, 200, { ok: true }, req);
     }
 
-    return this._json(res, 404, { ok: false, error: 'Not found' });
+    return this._json(res, 404, { ok: false, error: 'Not found' }, req);
   }
 }
 
