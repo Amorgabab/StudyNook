@@ -167,6 +167,50 @@ class SessionEngine {
     return { minutes, abandon };
   }
 
+  /** Compute how many seconds of the saved accum belong to the CURRENT open
+      phase, using the persisted snapshot fields (never the live clock).
+      Shared by restore() and recoverable() so both agree on the math. */
+  static _phaseBankedSec(st, accum) {
+    const savedTime = Number(st.savedAt) || Date.now();
+    const remAtSave = st.running
+      ? Math.max(0, Math.round(((Number(st.endsAt) || savedTime) - savedTime) / 1000))
+      : Math.max(0, Number(st.pausedRemaining) || 0);
+    // A session.json written by an older build may lack phaseStartAt — derive
+    // it from the countdown snapshot (savedAt minus the remaining part of the
+    // phase) so the banked-time math still works.
+    const effPhaseStart = Number(st.phaseStartAt) || (savedTime - remAtSave * 1000);
+    let phaseBanked = 0;
+    if (st.phase === 'focus') {
+      if (st.running) {
+        // focus was ticking: everything since its start already sits in accum
+        phaseBanked = Math.max(0, Math.min(Math.round((savedTime - effPhaseStart) / 1000), accum));
+      } else {
+        // paused focus: pausedRemaining was frozen at pause time
+        phaseBanked = Math.max(0, (Number(st.phaseSec) || 0) - (Number(st.pausedRemaining) || 0));
+        phaseBanked = Math.min(phaseBanked, accum);
+      }
+    }
+    return phaseBanked;
+  }
+
+  /** Pure check used at boot BEFORE any mutation: can this persisted
+      snapshot be resumed, or must it be salvaged? Returns
+      { ok: true } when restore() would produce a live session, otherwise
+      { ok: false, why } with a human-readable reason. Keeps main.js from
+      half-restoring a broken state (e.g. a focus round whose full length
+      elapsed while the app was dead). */
+  static recoverable(st) {
+    if (!st || !st.active) return { ok: false, why: 'no active session' };
+    if (!['focus', 'short', 'long'].includes(st.phase)) return { ok: false, why: 'unknown phase in saved state' };
+    const accum = Math.max(0, Number(st.accumSec) || 0);
+    if (st.phase === 'focus' && st.running) {
+      const phaseBanked = SessionEngine._phaseBankedSec(st, accum);
+      const rem = Math.max(0, (Number(st.phaseSec) || 0) - phaseBanked);
+      if (rem <= 0) return { ok: false, why: 'the focus round finished while the app was closed' };
+    }
+    return { ok: true };
+  }
+
   /** Restore a persisted session after a crash / "End task" kill / restart.
       The engine was built for this (`persist` writes session.json every few
       seconds and `restore` reads it back) — but nobody ever called it, so a
@@ -183,30 +227,14 @@ class SessionEngine {
       iron-less session back in. */
   restore(st) {
     if (!st || !st.active) return null;
+    // Refuse structurally invalid snapshots outright — never half-restore a
+    // corrupt file into a zombie session (main.js salvages these instead).
+    if (!['focus', 'short', 'long'].includes(st.phase)) return null;
     const Iron = require('../shared/iron.js');
     const t = this.hooks.getSettings() || {};
     const iron = Iron.resolveIron(t.iron, t.ironLockedUntil, Date.now());
     const accum = Math.max(0, Number(st.accumSec) || 0);
-    // A session.json written by an older build may lack phaseStartAt — derive
-    // it from the countdown snapshot (savedAt minus the elapsed part of the
-    // phase) so the banked-time math below still works.
-    const savedTime = Number(st.savedAt) || Date.now();
-    const remAtSave = st.running
-      ? Math.max(0, Math.round(((Number(st.endsAt) || savedTime) - savedTime) / 1000))
-      : Math.max(0, Number(st.pausedRemaining) || 0);
-    const effPhaseStart = Number(st.phaseStartAt) || (savedTime - remAtSave * 1000);
-    // How much of the saved accum belongs to the CURRENT open phase?
-    let phaseBanked = 0;
-    if (st.phase === 'focus') {
-      if (st.running) {
-        // focus was ticking: everything since its start already sits in accum
-        phaseBanked = Math.max(0, Math.min(Math.round((savedTime - effPhaseStart) / 1000), accum));
-      } else {
-        // paused focus: pausedRemaining was frozen at pause time
-        phaseBanked = Math.max(0, (Number(st.phaseSec) || 0) - (Number(st.pausedRemaining) || 0));
-        phaseBanked = Math.min(phaseBanked, accum);
-      }
-    }
+    const phaseBanked = SessionEngine._phaseBankedSec(st, accum);
     this.s = {
       mode: st.mode === 'free' ? 'free' : 'pomodoro',
       running: !!st.running,

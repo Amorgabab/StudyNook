@@ -88,19 +88,19 @@ function recoverInterruptedSession() {
   if (!s.active) { try { fs.unlinkSync(SESSION_FILE()); } catch (e) {} return; }
   const age = Date.now() - (Number(s.savedAt) || 0);
   if (!(s.savedAt > 0) || age > STALE_MS) { salvageInterruptedSession(s, 'app closed mid-focus'); return; }
-  // A running FOCUS whose entire length elapsed while the app was dead has
+  // Pure pre-flight check (shared with the engine so both agree on the math):
+  // a running FOCUS whose entire length elapsed while the app was dead has
   // nothing left to resume — bank whatever was actually focused and move on.
-  if (s.phase === 'focus' && s.running) {
-    const pStart = Number(s.phaseStartAt) || Number(s.savedAt) || Date.now();
-    const banked = Math.max(0, Math.round(((Number(s.savedAt) || Date.now()) - pStart) / 1000));
-    const rem = Math.max(0, (Number(s.phaseSec) || 0) - banked);
-    if (rem <= 0) { salvageInterruptedSession(s, 'the focus round finished while the app was closed'); return; }
-  }
+  const chk = SessionEngine.recoverable(s);
+  if (!chk.ok) { salvageInterruptedSession(s, chk.why); return; }
   // Otherwise: restore exactly where it was left off. session.restore()
   // rebuilds the countdown from the saved state (dead time is free), starts
   // the tick loop, and re-derives the iron flag — then we keep persisting so
-  // another kill can be recovered again.
-  const st = session.restore(s);
+  // another kill can be recovered again. Wrapped in try/catch so even a bug
+  // or a half-corrupt snapshot can never block the app from booting: worst
+  // case we fall back to salvaging the earned minutes.
+  let st = null;
+  try { st = session.restore(s); } catch (e) { console.error('[recover]', e); st = null; }
   if (!st || !st.active) { salvageInterruptedSession(s, 'app closed mid-focus'); return; }
   session._persist();
   store.mutate((d) => {
