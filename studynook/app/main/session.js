@@ -24,15 +24,20 @@ class SessionEngine {
     this.timer = null;
     this.lastTickSec = -1;
     this.killsThisSession = [];    // [{label, count}]
-    /* Iron mode is decided by the ENGINE at session start, not by whatever a
-       hand-edited data.json currently claims. `isIron()` / `ironActive()` are
-       the single authorities and they are scoped to the RUNNING FOCUS PHASE:
-         • strictness (no pause, guard never disarms, instant close, sites
-           always-blocked) applies ONLY while an iron focus is running — you
-           choose iron or no-iron when you press Start;
-         • during breaks and after the session ends, your own saved guard /
-           site choices apply again exactly as stored — nothing stays
-           secretly hardened in the background;
+    /* Iron mode is chosen by the USER at session start (or via the iron
+       switch): `isIron()` / `ironActive()` are the single authorities and
+       they are scoped to the RUNNING FOCUS PHASE:
+         • strictness (guard never disarms — not even while the timer is
+           paused, instant close, strict mode on) applies ONLY while an iron
+           focus is running — you choose iron or no-iron when you press Start;
+         • PAUSE IS NOT BLOCKED: pausing an iron focus only stops the clock —
+           the app guard keeps closing distractions the whole time. What iron
+           still refuses is ending early without going through the gate;
+         • your Sites choices ("during focus" vs "always", blocking on/off)
+           are FREE WILL — nothing here rewrites them behind your back;
+         • during breaks and after the session ends, your own saved guard
+           choices apply again exactly as stored — nothing stays secretly
+           hardened in the background;
          • mid-session file edits can neither enable nor disable the promise:
            the flag is frozen at start, and while the multi-day self-lock
            runs a restored/active iron focus keeps it anyway (tamper-proof).
@@ -58,7 +63,10 @@ class SessionEngine {
       once the session ends, your own guard/site choices (gentle warn,
       only-during-focus, blocking off…) apply again exactly as saved.
       A hand-edited data.json can't fake it either — while the self-lock
-      runs, an already-active iron focus keeps its promise. */
+      runs, an already-active iron focus keeps its promise.
+      In effect means: the app guard never disarms (even if you pause the
+      timer), closes instantly, and strict mode is on. Pause itself is
+      allowed — it only stops the clock, never the blocking. */
   ironActive() {
     if (!this.s || this.s.phase !== 'focus') return false;
     if (this.hooks.isIronLocked && this.hooks.isIronLocked()) return true;
@@ -68,6 +76,10 @@ class SessionEngine {
   isActive() { return !!this.s; }
   isFocusing() { return !!this.s && this.s.phase === 'focus' && this.s.running; }
   isRunning() { return !!this.s && this.s.running; }
+  /** True whenever a focus phase of the session exists and it was started
+      as an iron one — RUNNING OR PAUSED. The app guard uses this so that
+      pausing the timer in iron mode stops the CLOCK but never the blocking. */
+  isIronFocus() { return !!(this.s && this.s.phase === 'focus' && this.s.iron); }
 
   start({ mode = 'pomodoro', freeMin = 0, taskId = null, label = '' } = {}) {
     const t = this.hooks.getSettings();
@@ -102,8 +114,10 @@ class SessionEngine {
   }
 
   pause() {
-    // Iron focus: no pausing — the engine refuses, whatever the settings file says.
-    if (this.ironActive()) return this.publicState();
+    /* Iron focus CAN be paused — pausing only stops the clock. The app
+       guard keeps blocking the whole time (guardian.isArmed ignores the
+       timer's running state while an iron focus exists), and ending early
+       still has to go through the gate. */
     if (!this.s || !this.s.running) return this.publicState();
     this.s.sessionFocusSec += this._focusedSecInPhase();
     this.s.pausedRemaining = this.remainingSec();

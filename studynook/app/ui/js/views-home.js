@@ -8,6 +8,36 @@ Views.home = function (c) {
   const S = App.state, d = S.data, ses = S.session;
   const t = d.settings.timer;
 
+  /* ---------- what iron REALLY does right now (one source of truth) ----------
+     Views-home / Apps / Sites all draw from these helpers, and the main
+     process enforces the exact same pure functions (shared/iron.js), so the
+     screen can never show one thing while the background does another:
+       • strict mode is forced ON during an iron focus;
+       • the app guard stays armed + instant-close even while the timer is
+         paused (pause only stops the clock);
+       • pausing itself is ALLOWED in iron — it just doesn't disarm anything;
+       • Sites ("during focus" vs "always") are NEVER rewritten by iron. */
+  const Iron = window.NookIron;
+  App.ironFocusOn = function () {
+    if (!Iron) return false;
+    const ses = App.state.session || {};
+    if (ses.active && ses.phase === 'focus') {
+      if (Iron.isLocked(t.ironLockedUntil, Date.now())) return true;   // tamper-proof
+      return !!t.iron;                                                  // chosen at Start
+    }
+    return false;
+  };
+  App.effTimer = function () { return Iron ? Iron.effectiveTimer(t, App.ironFocusOn()) : t; };
+  App.effGuard = function () { return Iron ? Iron.effectiveGuard(d.settings.guardian, App.ironGuardOn()) : d.settings.guardian; };
+  /** The guard's own view: hardened whenever an iron promise runs — including
+      a PAUSED iron focus (blocking keeps working then too). */
+  App.ironGuardOn = function () {
+    if (!Iron) return false;
+    if (App.ironFocusOn()) return true;
+    const ses = App.state.session || {};
+    return !!(ses.active && ses.phase === 'focus' && Iron.isLocked(t.ironLockedUntil, Date.now()));
+  };
+
   /* ---------- timer card ---------- */
   const timerCard = N.el('div', { class: 'card timer-card area-timer', id: 'timer-card' });
   // status line — quiet session metadata (phase / paused / iron), never a control
@@ -19,7 +49,7 @@ Views.home = function (c) {
   if (d.settings.timer.iron) {
     // drop a leading "0d" when the lock is under 24h — never show zero days
     const ironRem = NookIron.remainingHms(d.settings.timer.ironLockedUntil, Date.now()).replace(/^0d\s+/, '');
-    statusBits.push(N.el('div', { class: 'iron-status', text: 'iron mode · no pause · switch locked for ' + ironRem }));
+    statusBits.push(N.el('div', { class: 'iron-status', text: 'iron mode · pause only stops the clock — blocking continues · switch locked for ' + ironRem }));
   }
   if (statusBits.length) timerCard.appendChild(N.el('div', { class: 'timer-status' }, ...statusBits));
 
@@ -71,25 +101,23 @@ Views.home = function (c) {
     );
     controls.appendChild(taskRow);
   } else {
-    const iron = d.settings.timer.iron && ses.phase === 'focus';
-    // monochrome inline SVG icons (no emoji) — they inherit the button's text color
+    // Pause is allowed in BOTH modes now — an iron pause only stops the
+    // clock; the app guard keeps blocking the whole time (see guardian.js).
     const ICO_PAUSE = '<svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z" fill="currentColor"/></svg>';
     const ICO_RESUME = '<svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
-    const ICO_LOCK = '<svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 1 1 6 0v3z" fill="currentColor"/></svg>';
     const ICO_STOP = '<svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M6 6h12v12H6z" fill="currentColor"/></svg>';
-    // one shared control size for both modes — the iron "no pause" button is a
-    // disabled twin of the regular Pause/Resume button, never a smaller pill;
-    // End session matches it exactly (same fixed width & height via .action-btn)
-    const pp = iron && ses.running
-      ? N.el('button', { class: 'btn btn-primary startbig pause-btn action-btn', disabled: true, title: 'Iron session: no pause', html: ICO_LOCK + ' No pause' })
-      : N.el('button', {
-          class: 'btn btn-primary startbig pause-btn action-btn',
-          html: (ses.running ? ICO_PAUSE + ' Pause' : ICO_RESUME + ' Resume'),
-          onclick: () => nook.invoke(ses.running ? 'session:pause' : 'session:resume')
-        });
-    const giveUp = iron
+    // one shared control size for both modes — Pause/Resume and End session
+    // are exact twins (same fixed width & height via .action-btn)
+    const pp = N.el('button', {
+      class: 'btn btn-primary startbig pause-btn action-btn',
+      title: App.ironFocusOn() ? 'Iron focus: pausing only stops the clock — blocking continues' : '',
+      html: (ses.running ? ICO_PAUSE + ' Pause' : ICO_RESUME + ' Resume'),
+      onclick: () => nook.invoke(ses.running ? 'session:pause' : 'session:resume')
+    });
+    const giveUp = App.ironFocusOn()
       ? N.el('button', {
-          class: 'btn btn-ghost action-btn', html: ICO_LOCK + ' End early',
+          class: 'btn btn-ghost action-btn',
+          html: '<svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 1 0-6 0v3z M9.5 10V7a2.5 2.5 0 1 1 5 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg> End early',
           onclick: () => App.ironGate(() => nook.invoke('session:stop', { abandon: true }))
         })
       : N.el('button', {

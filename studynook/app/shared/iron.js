@@ -58,15 +58,20 @@
   }
 
   /* ---------- Iron strictness: one source of truth for every surface ----------
-     Turning Iron on doesn't just mean "no pause & no early stop": it also
-     hardens the guards so what the UI shows and what actually runs can never
-     disagree. effectiveGuard() / effectiveSites() are PURE — both the main
-     process (before writing settings) and the renderer (before drawing the
-     toggles/segments) call them, so the displayed state IS the enforced state.
+     Choosing Iron when you press Start doesn't just mean "no early stop":
+     while that iron focus runs, the guards harden so what the UI shows and
+     what actually runs can never disagree. effectiveGuard() / effectiveTimer()
+     are PURE — both the main process (before acting/writing) and the renderer
+     (before drawing toggles/segments) call them, so the displayed state IS
+     the enforced state:
        • guardian: guard stays ON, style becomes instant close (gentle/remind
-         would let you stare at a warning card instead of losing the app);
-       • sites: site blocking stays ON and its rules apply always, not only
-         during focus phases (pausing the timer can't sneak past the wall).
+         would let you sit on a warning card instead of losing the app), and
+         "only during focus" is ignored — the guard never disarms mid-promise;
+       • timer: strict mode is forced on (ending early earns zero XP);
+       • pause: the timer may still be paused — pausing only STOPS THE CLOCK.
+     SITES ARE NEVER TOUCHED: your "during focus / always" choice in the
+     Sites section is free will — effectiveSites was removed on purpose, and
+     nothing silently rewrites `when` to 'always' behind your back.
      When Iron is off these are identity functions — user choices untouched. */
   function effectiveGuard(guard, ironOn) {
     const g = Object.assign({}, guard || {});
@@ -75,17 +80,16 @@
     g.action = 'instant';
     return g;
   }
-  function effectiveSites(sites, ironOn) {
-    const s = Object.assign({}, sites || {});
-    if (!ironOn) return s;
-    s.enabled = true;
-    s.when = 'always';
-    return s;
+  function effectiveTimer(timer, ironOn) {
+    const t = Object.assign({}, timer || {});
+    if (!ironOn) return t;
+    t.strict = true;
+    return t;
   }
   function objTimer(d) {
     const s = (d && d.settings) || {};
     if (!s.timer || typeof s.timer !== 'object' || Array.isArray(s.timer)) s.timer = {};
     return s.timer;
   }
-  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, normalizeFields, effectiveGuard, effectiveSites };
+  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, normalizeFields, effectiveGuard, effectiveTimer };
 });

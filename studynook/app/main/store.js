@@ -96,14 +96,16 @@ function sanitizeData(d) {
   g.graceSec = num(g.graceSec, 15, 1, 600); g.scanSec = num(g.scanSec, 3, 1, 60);
   g.onlyDuringSessions = g.onlyDuringSessions !== false;
   /* Iron strictness at rest: with iron in effect (switch on OR self-lock
-     still running — a hand-edit can't clear the lock), the stored guard/site
-     settings must already BE the hardened ones — otherwise the UI would show
-     "gentle warn" or "site blocking off" while the engine secretly acts
-     differently. Same pure helpers the renderer uses → zero drift. */
+     still running — a hand-edit can't clear the lock), the stored guard
+     settings must already BE the hardened ones — otherwise the UI would
+     show "gentle warn" or "guard off" while the engine secretly acts
+     differently. Strict mode is forced on too, so early ends never earn XP
+     during an iron promise. Sites are NEVER touched: your "during focus /
+     always" choice there is free will. Same pure helpers the renderer uses
+     → zero drift between what you see and what runs. */
   if (Iron.resolveIron(t.iron, t.ironLockedUntil, Date.now())) {
     Object.assign(g, Iron.effectiveGuard(g, true));
-    const st = obj(d.sites); d.sites = st;
-    Object.assign(st, Iron.effectiveSites(st, true));
+    Object.assign(t, Iron.effectiveTimer(t, true));
   }
   const snd = obj(s.sound); s.sound = snd;
   snd.ui = snd.ui !== false; snd.chimes = snd.chimes !== false; snd.volume = num(snd.volume, 0.6, 0, 1);
@@ -298,9 +300,10 @@ class Store {
       settings.timer.iron is always true — even if something (a hand-edited
       file that got loaded, an import, a stray code path) tried to clear it.
       After the lock expires nothing is forced, so iron can be turned off.
-      Iron strictness rides along: with the lock running the guardian & sites
-      settings are re-hardened too (guard ON + instant close, site blocking ON
-      + always), so stored state and enforced state never diverge. */
+      Iron strictness rides along: with the lock running the guardian stays
+      hardened (guard ON + instant close) and strict mode stays on, so stored
+      state and enforced state never diverge. Sites are NEVER rewritten —
+      your "during focus / always" choice there is yours alone. */
   enforceIron() {
     try {
       const d = this.data;
@@ -309,12 +312,12 @@ class Store {
       if (Iron.isLocked(t.ironLockedUntil, Date.now())) {
         t.iron = true;
         Object.assign(d.settings.guardian, Iron.effectiveGuard(d.settings.guardian, true));
-        Object.assign(d.sites, Iron.effectiveSites(d.sites, true));
+        Object.assign(t, Iron.effectiveTimer(t, true));
       } else if (d.__ironSaved) {
-        // The self-lock just expired → restore the guard/site choices the
-        // user had before they made the iron promise.
+        // The self-lock just expired → restore the guard choices the
+        // user had before they made the iron promise. (Sites were never
+        // changed by iron, so there is nothing to restore for them.)
         Object.assign(d.settings.guardian, d.__ironSaved.guard || {});
-        Object.assign(d.sites, d.__ironSaved.sites || {});
         delete d.__ironSaved;
       }
     } catch (e) {}

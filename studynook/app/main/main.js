@@ -217,7 +217,7 @@ function createMainWindow() {
   // Any running session: the window is unclosable (nook stays open).
   win.on('close', (e) => {
     if (!store) return;
-    if (store.data.settings.timer.iron && session && session.isFocusing() && !gateCleared) {
+    if (session && session.isIronFocus() && !gateCleared) {
       e.preventDefault();
       broadcast('iron-gate', {});
       return;
@@ -330,7 +330,12 @@ function handlePhaseEnd(info) {
   }
   else if (info.phase === 'focus' && !info.completed) {
     // ended early (gave up / stopped mid-round)
-    const strict = d.settings.timer.strict && info.abandon;
+    /* Strict mode decides XP — and an IRON session is always strict while
+       it runs (Iron.effectiveTimer), even if the saved switch says off.
+       The UI shows the same view through the same pure helper, so there is
+       no "gentle on screen, strict in background" mismatch. */
+    const effT = Iron.effectiveTimer(d.settings.timer, session && session.ironAtStart === true);
+    const strict = effT.strict && info.abandon;
     const minutes = strict ? 0 : info.minutes;
     const res = store.mutate((dd) => {
       if (info.abandon) dd.counters.abandons = (dd.counters.abandons || 0) + 1;
@@ -475,32 +480,33 @@ function registerIpc() {
     store.mutate((d) => {
       // Iron lock: enabling starts a self-lock; disabling is refused while
       // the lock runs (Settings UI hides the switch anyway). Turning Iron on
-      // also hardens the guards — and remembers your pre-iron choices so they
-      // can be restored when the promise ends.
+      // also hardens the guard + strict mode — and remembers your pre-iron
+      // guard choices so they can be restored when the promise ends.
+      // Sites are never touched: "during focus / always" stays YOUR choice.
       if (p.section === 'timer' && p.values && p.values.iron !== undefined) {
         const t = d.settings.timer;
         const locked = Iron.isLocked(t.ironLockedUntil, Date.now());
         if (p.values.iron && !t.iron) {
-          d.__ironSaved = { guard: Object.assign({}, d.settings.guardian), sites: Object.assign({}, d.sites) };
+          d.__ironSaved = { guard: Object.assign({}, d.settings.guardian) };
           t.ironLockedUntil = Iron.makeLock(Date.now(), t.ironLockDays);
         }
         if (!p.values.iron && locked) return;   // nope.
         if (!p.values.iron && t.iron && d.__ironSaved) {
           // Iron off for real → give back the gentle warn / session-only choices
           Object.assign(d.settings.guardian, d.__ironSaved.guard || {});
-          Object.assign(d.sites, d.__ironSaved.sites || {});
           delete d.__ironSaved;
         }
       }
       const sec = d.settings[p.section];
       if (sec && typeof sec === 'object' && !Array.isArray(sec)) Object.assign(sec, p.values || {});
       else d.settings[p.section] = p.values;
-      // Iron strictness: guard/site edits are filtered through the same pure
-      // helpers the engine and the UI use — you cannot soften them mid-promise,
-      // and what gets stored is exactly what will run.
+      // Iron strictness: timer/guardian edits are filtered through the same
+      // pure helpers the engine and the UI use — you cannot soften them
+      // mid-promise, and what gets stored is exactly what will run.
+      // (Sites are deliberately NOT filtered — free will there.)
       if (Iron.resolveIron(d.settings.timer.iron, d.settings.timer.ironLockedUntil, Date.now())) {
         if (p.section === 'guardian') Object.assign(d.settings.guardian, Iron.effectiveGuard(d.settings.guardian, true));
-        if (p.section === 'sites') Object.assign(d.sites, Iron.effectiveSites(d.sites, true));
+        if (p.section === 'timer') Object.assign(d.settings.timer, Iron.effectiveTimer(d.settings.timer, true));
       }
     });
     if (p.section === 'guardian' || p.section === 'timer') guardian._loop();   // apply new scan interval / strictness
@@ -697,11 +703,9 @@ function registerIpc() {
       for (const k of ['enabled', 'mode', 'when']) if (patch[k] !== undefined) d.sites[k] = patch[k];
       // normalizeEntry KEEPS paths (youtube.com/shorts stays youtube.com/shorts)
       for (const k of ['block', 'allow']) if (Array.isArray(patch[k])) d.sites[k] = dedupe(patch[k].map((x) => NookRules.normalizeEntry(x)).filter(Boolean)).slice(0, 500);
-      // Iron strictness: site blocking can't be switched off or limited to
-      // focus-only while the promise runs (UI renders the same view).
-      if (Iron.resolveIron(d.settings.timer.iron, d.settings.timer.ironLockedUntil, Date.now())) {
-        Object.assign(d.sites, Iron.effectiveSites(d.sites, true));
-      }
+      /* No iron filtering here — the Sites section is FREE WILL. Iron never
+         flips site blocking on/off or rewrites "during focus" to "always";
+         your choice is exactly what runs (the extension reads it directly). */
     });
     pushSnapshot();
     return true;

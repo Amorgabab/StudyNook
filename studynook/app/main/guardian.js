@@ -49,11 +49,19 @@ class Guardian {
     return Iron.effectiveGuard(g, true);
   }
 
-  /** Iron in effect = self-lock running OR the switch on. Falls back to the
-      raw stored flag when no session hook is wired (plain unit tests). */
+  /** Iron in effect for the GUARD = an iron focus phase exists right now
+      (running OR paused) or the self-lock is running. Falls back to the raw
+      stored flag when no session hook is wired (plain unit tests).
+      NOTE: we use isIronFocus(), not isFocusing() — pausing an iron timer
+      stops the CLOCK but must never stop the blocking. */
   _ironActive() {
     const s = this.hooks.session;
-    if (s && typeof s.ironActive === 'function') return s.ironActive();
+    if (s && typeof s.isIronFocus === 'function') {
+      if (s.isIronFocus()) return true;
+      // paused-iron sessions still honour a live self-lock
+      if (s.ironActive && typeof s.ironActive === 'function') return !!s.ironActive();
+      return false;
+    }
     const t = (this.hooks.store.data.settings || {}).timer || {};
     return !!t.iron;
   }
@@ -65,10 +73,13 @@ class Guardian {
   isArmed() {
     const g = this.effCfg();
     if (!g.enabled) return false;
-    /* "Blocked pause" is gone by design: pausing the timer never stops
-       blocking in Iron mode — a breathing-room request is simply ignored. */
-    if (!this._ironActive() && Date.now() < this.pausedUntil) return false;
-    if (g.onlyDuringSessions && !this._ironActive()) return this.hooks.session.isFocusing();
+    /* Iron promise: the guard NEVER disarms while an iron focus runs — not
+       for a breathing-room request, not for "only during focus", and NOT
+       even when you pause the timer (pause only stops the clock). Outside
+       iron, your own saved choices apply exactly as stored. */
+    if (this._ironActive()) return true;
+    if (Date.now() < this.pausedUntil) return false;
+    if (g.onlyDuringSessions) return this.hooks.session.isFocusing();
     return true;
   }
 
@@ -98,9 +109,10 @@ class Guardian {
     }
   }
 
-  /** Breathe-room pause. In Iron mode this is a no-op: the pause never stops
-      blocking while iron is in effect (the UI hides the button, and even a
-      direct IPC call lands here and gets refused). */
+  /** Breathe-room pause of the GUARD itself (the "let me breathe" button).
+      Refused while an iron focus is running — that would switch blocking
+      off, and in iron mode nothing stops the blocking. Pausing the TIMER
+      is a different thing and IS allowed: it only stops the clock. */
   pauseFor(min) {
     if (this._ironActive()) return false;
     this.pausedUntil = Date.now() + min * 60000;
