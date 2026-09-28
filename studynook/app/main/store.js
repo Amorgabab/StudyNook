@@ -26,7 +26,8 @@ function defaultData() {
       sound: { ui: true, chimes: true, volume: 0.6 },
       guardian: { enabled: true, mode: 'block', action: 'gentle', graceSec: 15, scanSec: 3, onlyDuringSessions: true },
       theme: 'auto',       // auto | light | dark
-      miniWindow: true
+      miniWindow: true,
+      bridgeAllowOrigins: false   // SECURITY: cross-origin access to the localhost bridge (off = extension-only)
     },
     apps: { block: [], allow: [], allowOnce: {} },   // allowOnce: {norm: untilMs} (temporary)
     subjects: ['Math', 'Science', 'English', 'History', 'Computer science', 'Other'],
@@ -73,8 +74,17 @@ function num(v, def, min, max) { if (v === null || v === undefined || v === '') 
 function str(v, def, max) { return typeof v === 'string' ? v.slice(0, max) : def; }
 function arr(v) { return Array.isArray(v) ? v : []; }
 function obj(v) { return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; }
+/* SECURITY: study-source URLs must be plain http(s) links. Anything else
+   (file:, javascript:, custom schemes, garbage) is dropped at load/import —
+   the same rule tasks:addSource applies when you add a link. */
+const NookLinks = require('../shared/links.js');
+function sanitizeSourceUrl(u) {
+  const s = NookLinks.normalize(u);
+  return s ? s.slice(0, 500) : '';
+}
 function sanitizeData(d) {
   d = obj(d);
+  const nowMs = Date.now();   // used for allowOnce expiry pruning below
   d.xp = num(d.xp, 0, 0, 1e9);
   d.level = num(d.level, 1, 1, 999);
   const s = obj(d.settings); d.settings = s;
@@ -111,6 +121,7 @@ function sanitizeData(d) {
   snd.ui = snd.ui !== false; snd.chimes = snd.chimes !== false; snd.volume = num(snd.volume, 0.6, 0, 1);
   s.theme = ['auto', 'light', 'dark'].includes(s.theme) ? s.theme : 'auto';
   s.miniWindow = s.miniWindow !== false;
+  s.bridgeAllowOrigins = s.bridgeAllowOrigins === true;   // SECURITY: explicit opt-in only
   d.profile = obj(d.profile); d.profile.name = str(d.profile.name, '', 40);
   d.pet = obj(d.pet);
   d.pet.name = str(d.pet.name, 'Mochi', 20);
@@ -132,7 +143,7 @@ function sanitizeData(d) {
     done: !!t.done, pomosDone: num(t.pomosDone, 0, 0, 1e6),
     date: TaskDays.normDate(t.date) || null, // optional planned day (kept for legacy data; the schedule UI is gone)
     at: normAt(t.at),                          // optional start time 'HH:MM' — garbage becomes null
-    sources: arr(t.sources).filter((x) => x && typeof x.url === 'string').map((x) => ({ url: String(x.url).slice(0, 500), addedAt: num(x.addedAt, 0, 0, 8.64e15) }))
+    sources: arr(t.sources).filter((x) => x && typeof x.url === 'string').map((x) => ({ url: sanitizeSourceUrl(x.url), addedAt: num(x.addedAt, 0, 0, 8.64e15) })).filter((x) => x.url)
   }));
   migrateLegacySchedule(d);
   const sites = obj(d.sites); d.sites = sites;
@@ -150,6 +161,21 @@ function sanitizeData(d) {
     }));
   }
   apps.allowOnce = obj(apps.allowOnce);
+  /* SECURITY: allowOnce directly gates process kills — validate every value
+     (numbers only), drop expired grants, and cap the map size so a hostile
+     import can neither bloat memory nor plant forever-valid kill exemptions. */
+  {
+    const ao = {};
+    let kept = 0;
+    for (const k of Object.keys(apps.allowOnce)) {
+      if (kept >= 200) break;
+      const v = Number(apps.allowOnce[k]);
+      if (!Number.isFinite(v) || v <= nowMs) continue;   // garbage or already expired → gone
+      ao[String(k).slice(0, 60)] = Math.min(v, 8.64e15);
+      kept++;
+    }
+    apps.allowOnce = ao;
+  }
   d.sessions = arr(d.sessions).slice(0, 500);
   d.daily = obj(d.daily);
   d.counters = obj(d.counters);
