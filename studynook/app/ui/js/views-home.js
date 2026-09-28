@@ -68,10 +68,12 @@ Views.home = function (c) {
     controls.appendChild(taskRow);
   } else {
     const iron = d.settings.timer.iron && ses.phase === 'focus';
+    // one shared control size for both modes — the iron "no pause" button is a
+    // disabled twin of the regular Pause/Resume button, never a smaller pill
     const pp = iron && ses.running
-      ? N.el('button', { class: 'btn startbig', disabled: true, title: 'Iron session: no pause', text: '🔒 no pause (iron)' })
+      ? N.el('button', { class: 'btn btn-primary startbig pause-btn', disabled: true, title: 'Iron session: no pause', text: '🔒 no pause (iron)' })
       : N.el('button', {
-          class: 'btn btn-primary startbig',
+          class: 'btn btn-primary startbig pause-btn',
           text: ses.running ? '⏸ Pause' : '▶ Resume',
           onclick: () => nook.invoke(ses.running ? 'session:pause' : 'session:resume')
         });
