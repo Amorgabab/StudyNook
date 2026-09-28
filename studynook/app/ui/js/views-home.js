@@ -8,20 +8,57 @@ Views.home = function (c) {
   const S = App.state, d = S.data, ses = S.session;
   const t = d.settings.timer;
 
-  /* ---------- timer card ---------- */
-  const timerCard = N.el('div', { class: 'card timer-card', id: 'timer-card' });
-  const phaseLabel = ses.active
-    ? (ses.phase === 'focus' ? 'Focus' : ses.phase === 'short' ? 'Short break' : 'Long break')
-    : 'Ready when you are';
-  const pill = N.el('div', { class: 'phase-pill' + (!ses.active ? ' idle' : ses.phase !== 'focus' ? ' break' : ''), id: 'phase-pill', text: phaseLabel + (ses.active && !ses.running ? ' · paused' : '') });
-  timerCard.appendChild(pill);
+  /* ---------- what iron REALLY does right now (one source of truth) ----------
+     Views-home / Apps / Sites all draw from these helpers, and the main
+     process enforces the exact same pure functions (shared/iron.js), so the
+     screen can never show one thing while the background does another:
+       • strict mode is forced ON during an iron focus;
+       • the app guard stays armed + instant-close even while the timer is
+         paused (pause only stops the clock);
+       • pausing itself is ALLOWED in iron — it just doesn't disarm anything;
+       • Sites ("during focus" vs "always") are NEVER rewritten by iron. */
+  const Iron = window.NookIron;
+  App.ironFocusOn = function () {
+    if (!Iron) return false;
+    const ses = App.state.session || {};
+    if (ses.active && ses.phase === 'focus') {
+      if (Iron.isLocked(t.ironLockedUntil, Date.now())) return true;   // tamper-proof
+      return !!t.iron;                                                  // chosen at Start
+    }
+    return false;
+  };
+  App.effTimer = function () { return Iron ? Iron.effectiveTimer(t, App.ironFocusOn()) : t; };
+  App.effGuard = function () { return Iron ? Iron.effectiveGuard(d.settings.guardian, App.ironGuardOn()) : d.settings.guardian; };
+  /** The guard's own view: hardened whenever an iron promise runs — including
+      a PAUSED iron focus (blocking keeps working then too). */
+  App.ironGuardOn = function () {
+    if (!Iron) return false;
+    if (App.ironFocusOn()) return true;
+    const ses = App.state.session || {};
+    return !!(ses.active && ses.phase === 'focus' && Iron.isLocked(t.ironLockedUntil, Date.now()));
+  };
 
-  // ring
+  /* ---------- timer card ---------- */
+  const timerCard = N.el('div', { class: 'card timer-card area-timer', id: 'timer-card' });
+  // status line — quiet session metadata (phase / paused / iron), never a control
+  const statusBits = [];
+  if (ses.active) {
+    const phaseLabel = ses.phase === 'focus' ? 'Focus' : ses.phase === 'short' ? 'Short break' : 'Long break';
+    statusBits.push(N.el('div', { class: 'phase-pill' + (ses.phase !== 'focus' ? ' break' : ''), id: 'phase-pill', text: phaseLabel + (ses.running ? '' : ' · paused') }));
+  }
+  if (d.settings.timer.iron) {
+    // drop a leading "0d" when the lock is under 24h — never show zero days
+    const ironRem = NookIron.remainingHms(d.settings.timer.ironLockedUntil, Date.now()).replace(/^0d\s+/, '');
+    statusBits.push(N.el('div', { class: 'iron-status', text: 'iron mode · pause only stops the clock — blocking continues · switch locked for ' + ironRem }));
+  }
+  if (statusBits.length) timerCard.appendChild(N.el('div', { class: 'timer-status' }, ...statusBits));
+
+  // ring — thin subtle progress ring, large readable time
   const R = 110, CIRC = 2 * Math.PI * R;
   const frac = ses.active && ses.totalSec ? ses.remainingSec / ses.totalSec : 1;
   const svg = N.svgEl('svg', { width: 250, height: 250, viewBox: '0 0 250 250' });
-  svg.appendChild(N.svgEl('circle', { class: 'ring-bg', cx: 125, cy: 125, r: R, fill: 'none', 'stroke-width': 14 }));
-  const fg = N.svgEl('circle', { class: 'ring-fg' + (ses.active && ses.phase !== 'focus' ? ' break' : ''), id: 'ring-fg', cx: 125, cy: 125, r: R, fill: 'none', 'stroke-width': 14, 'stroke-dasharray': CIRC, 'stroke-dashoffset': CIRC * (1 - frac) });
+  svg.appendChild(N.svgEl('circle', { class: 'ring-bg', cx: 125, cy: 125, r: R, fill: 'none', 'stroke-width': 8 }));
+  const fg = N.svgEl('circle', { class: 'ring-fg' + (ses.active && ses.phase !== 'focus' ? ' break' : ''), id: 'ring-fg', cx: 125, cy: 125, r: R, fill: 'none', 'stroke-width': 8, 'stroke-dasharray': CIRC, 'stroke-dashoffset': CIRC * (1 - frac) });
   svg.appendChild(fg);
   const wrap = N.el('div', { class: 'ring-wrap' });
   wrap.appendChild(svg);
@@ -34,16 +71,7 @@ Views.home = function (c) {
   wrap.appendChild(center);
   timerCard.appendChild(wrap);
 
-  // round dots (pomodoro)
-  const dots = N.el('div', { class: 'round-dots', id: 'round-dots' });
-  const rounds = ses.active && ses.mode === 'pomodoro' ? ses.rounds : t.rounds;
-  for (let i = 0; i < rounds; i++) {
-    const cls = i < ses.roundIdx ? 'dot done' : (ses.active && i === ses.roundIdx && ses.phase === 'focus' ? 'dot now' : 'dot');
-    dots.appendChild(N.el('div', { class: cls }));
-  }
-  timerCard.appendChild(dots);
-
-  // controls
+  // controls — ONE cohesive focus group: mode → start → studying
   const controls = N.el('div', { class: 'timer-controls' });
   if (!ses.active) {
     const modeSeg = N.el('div', { class: 'seg' });
@@ -51,46 +79,12 @@ Views.home = function (c) {
     const bFree = N.el('button', { class: App.freeMode ? 'on accent' : '', text: '🌙 Free focus', onclick: () => { App.freeMode = true; App.render(); } });
     modeSeg.append(bPomo, bFree);
     controls.appendChild(modeSeg);
-    const start = N.el('button', { class: 'btn btn-primary startbig', text: '▶ Start focusing', onclick: () => startSession() });
+    // monochrome SVG play icon (no emoji) — inherits currentColor
+    const ICON_PLAY = '<svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
+    const start = N.el('button', { class: 'btn glass-btn startbig', html: ICON_PLAY + ' Start focusing', onclick: () => startSession() });
     controls.appendChild(start);
-  } else {
-    const iron = d.settings.timer.iron && ses.phase === 'focus';
-    const pp = iron && ses.running
-      ? N.el('button', { class: 'btn startbig', disabled: true, title: 'Iron session: no pause', text: '🔒 no pause (iron)' })
-      : N.el('button', {
-          class: 'btn btn-primary startbig',
-          text: ses.running ? '⏸ Pause' : '▶ Resume',
-          onclick: () => nook.invoke(ses.running ? 'session:pause' : 'session:resume')
-        });
-    const giveUp = iron
-      ? N.el('button', {
-          class: 'btn btn-ghost', text: '🔒 End early (iron gate)',
-          onclick: () => App.ironGate(() => nook.invoke('session:stop', { abandon: true }))
-        })
-      : N.el('button', {
-          class: 'btn btn-ghost', text: '🌧️ End session', onclick: () => App.confirm('End this session?', ses.phase === 'focus' ? 'Focused minutes still count for XP (unless strict mode is on), but you lose the completion bonus.' : 'Your break ends and the session stops.', () => nook.invoke('session:stop', { abandon: ses.phase === 'focus' }))
-        });
-    controls.append(pp, giveUp);
-    if (ses.phase !== 'focus') controls.appendChild(N.el('button', { class: 'btn btn-sage', text: '⏭ Skip break', onclick: () => nook.invoke('session:skip') }));
-  }
-  timerCard.appendChild(controls);
-
-  if (d.settings.timer.iron) {
-    timerCard.appendChild(N.el('div', { class: 'small mt', style: 'text-align:center', text: '🔒 Iron session: no pause · switch locked for ' + NookIron.remainingHms(d.settings.timer.ironLockedUntil, Date.now()) }));
-  }
-
-  // free-mode length chips + task picker (only when idle)
-  if (!ses.active) {
-    const freeRow = N.el('div', { class: 'free-row' });
-    if (App.freeMode) {
-      for (const m of [15, 25, 45, 60, 90]) {
-        freeRow.appendChild(N.el('button', { class: 'btn btn-sm' + (App.freeMin === m ? ' on' : ''), text: m + ' min', onclick: () => { App.freeMin = m; App.render(); } }));
-      }
-      const custom = N.stepper(App.freeMin, 1, 600, (v) => { App.freeMin = v; App.render(); });
-      freeRow.appendChild(N.el('span', { class: 'row', style: 'gap:4px' }, custom, N.el('span', { class: 'small', text: 'min' })));
-    }
-    timerCard.appendChild(freeRow);
-    const taskRow = N.el('div', { class: 'row mt', style: 'justify-content:center' });
+    // task picker — immediately follows Start focusing inside the same group
+    const taskRow = N.el('div', { class: 'task-pick' });
     const sel = N.el('select', { class: 'input', id: 'home-task' });
     sel.appendChild(N.el('option', { value: '', text: '🎯 no specific task' }));
     for (const tk of d.tasks.filter((x) => !x.done)) sel.appendChild(N.el('option', { value: tk.id, text: (tk.subject ? tk.subject + ' · ' : '') + tk.text, selected: App.lastTaskId === tk.id }));
@@ -100,27 +94,75 @@ Views.home = function (c) {
       if (tk && tk.min > 0 && App.freeMode) App.freeMin = tk.min;   // plan pre-fills free length
       App.render();
     });
-    taskRow.appendChild(N.el('span', { class: 'small', text: 'Studying:' }));
-    taskRow.appendChild(sel);
-    timerCard.appendChild(taskRow);
+    taskRow.append(
+      N.el('span', { class: 'tp-label', text: 'Studying' }),
+      sel,
+      N.el('span', { class: 'tp-hint', text: 'optional' })
+    );
+    controls.appendChild(taskRow);
+  } else {
+    // Pause is allowed in BOTH modes now — an iron pause only stops the
+    // clock; the app guard keeps blocking the whole time (see guardian.js).
+    const ICO_PAUSE = '<svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z" fill="currentColor"/></svg>';
+    const ICO_RESUME = '<svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
+    const ICO_STOP = '<svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M6 6h12v12H6z" fill="currentColor"/></svg>';
+    // one shared control size for both modes — Pause/Resume and End session
+    // are exact twins (same fixed width & height via .action-btn)
+    const pp = N.el('button', {
+      class: 'btn btn-primary startbig pause-btn action-btn',
+      title: App.ironFocusOn() ? 'Iron focus: pausing only stops the clock — blocking continues' : '',
+      html: (ses.running ? ICO_PAUSE + ' Pause' : ICO_RESUME + ' Resume'),
+      onclick: () => nook.invoke(ses.running ? 'session:pause' : 'session:resume')
+    });
+    const giveUp = App.ironFocusOn()
+      ? N.el('button', {
+          class: 'btn btn-ghost action-btn',
+          html: '<svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 1 0-6 0v3z M9.5 10V7a2.5 2.5 0 1 1 5 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg> End early',
+          onclick: () => App.ironGate(() => nook.invoke('session:stop', { abandon: true }))
+        })
+      : N.el('button', {
+          class: 'btn btn-ghost action-btn', html: ICO_STOP + ' End session', onclick: () => App.confirm('End this session?', ses.phase === 'focus' ? 'Focused minutes still count for XP (unless strict mode is on), but you lose the completion bonus.' : 'Your break ends and the session stops.', () => nook.invoke('session:stop', { abandon: ses.phase === 'focus' }))
+        });
+    // running actions share one group row — equal-size primary & secondary buttons
+    const actions = N.el('div', { class: 'running-actions' });
+    actions.append(pp, giveUp);
+    controls.appendChild(actions);
+    if (ses.phase !== 'focus') controls.appendChild(N.el('button', { class: 'btn btn-sage', html: '<svg class="btn-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M5 5l8 7-8 7zM16 5h3v14h-3z" fill="currentColor"/></svg> Skip break', onclick: () => nook.invoke('session:skip') }));
+  }
+  timerCard.appendChild(controls);
+
+  // secondary settings row — duration chips / plan tag share one quiet line
+  // under the control group so nothing competes with the primary flow
+  const auxBits = [];
+  if (!ses.active) {
+    if (App.freeMode) {
+      const freeRow = N.el('div', { class: 'free-row' });
+      for (const m of [15, 25, 45, 60, 90]) {
+        freeRow.appendChild(N.el('button', { class: 'dur-chip' + (App.freeMin === m ? ' on' : ''), text: m + 'm', onclick: () => { App.freeMin = m; App.render(); } }));
+      }
+      const custom = N.stepper(App.freeMin, 1, 600, (v) => { App.freeMin = v; App.render(); });
+      freeRow.appendChild(N.el('span', { class: 'dur-stepper' }, custom, N.el('span', { class: 'dur-unit', text: 'min' })));
+      auxBits.push(freeRow);
+    }
     // task plan → one-click session length
     const selTask = d.tasks.find((x) => x.id === App.lastTaskId);
     if (selTask && selTask.min > 0) {
-      const planRow = N.el('div', { class: 'row', style: 'justify-content:center;margin-top:8px' });
-      planRow.appendChild(N.el('span', { class: 'tag', text: `📋 plan: ${selTask.min} min` }));
-      planRow.appendChild(N.el('button', {
+      auxBits.push(N.el('span', { class: 'tag', text: `📋 plan: ${selTask.min} min` }));
+      auxBits.push(N.el('button', {
         class: 'btn btn-sm btn-honey',
         text: App.freeMode && App.freeMin === selTask.min ? '✓ session will run ' + selTask.min + ' min' : 'Use as session length',
         onclick: () => { App.freeMode = true; App.freeMin = selTask.min; App.render(); }
       }));
-      timerCard.appendChild(planRow);
     }
   }
+  if (auxBits.length) timerCard.appendChild(N.el('div', { class: 'timer-aux' }, ...auxBits));
 
-  /* ---------- right column: pet + today ---------- */
-  const right = N.el('div', { style: 'display:flex;flex-direction:column;gap:16px' });
+  /* ---------- page columns (one deliberate grid) ---------- */
+  const leftCol = N.el('div', { class: 'home-col' });   // timer + ambience
+  const right = N.el('div', { class: 'home-col' });     // mochi + today + journal
 
-  const petCard = N.el('div', { class: 'card pet-card' });
+  const petCard = N.el('div', { class: 'card pet-card area-pet' });
+  const petHead = N.el('h2', { class: 'sec-h pet-h', text: '🧸 Mochi' });
   const stage = NookProgress.PET_STAGES[d.pet.stage] || NookProgress.PET_STAGES[0];
   const next = NookProgress.PET_STAGES[d.pet.stage + 1];
   const box = N.el('div', { class: 'mochi-box', id: 'mochi-box', title: 'Pet ' + d.pet.name });
@@ -135,63 +177,105 @@ Views.home = function (c) {
     box.appendChild(h);
     setTimeout(() => h.remove(), 1000);
   });
-  petCard.appendChild(box);
-  petCard.appendChild(N.el('div', { class: 'pet-name', text: d.pet.name }));
-  petCard.appendChild(N.el('div', { class: 'pet-stage', text: stage.emoji + ' ' + stage.name + (next ? ` · ${N.fmtMin(next.min - d.pet.totalFocusMin)} to evolve` : ' · fully evolved!') }));
+  petCard.appendChild(petHead);
+  // character + identity grouped together, centered in the remaining space
+  const petMid = N.el('div', { class: 'pet-mid' });
+  petMid.appendChild(box);
+  petCard.appendChild(petMid);
+  petMid.appendChild(N.el('div', { class: 'pet-name', text: d.pet.name }));
+  petMid.appendChild(N.el('div', { class: 'pet-stage', text: stage.emoji + ' ' + stage.name + (next ? ` · ${N.fmtMin(next.min - d.pet.totalFocusMin)} to evolve` : ' · fully evolved!') }));
   const sbar = N.el('div', { class: 'stage-bar' });
   const pct = next ? Math.min(1, (d.pet.totalFocusMin - stage.min) / (next.min - stage.min)) : 1;
   sbar.appendChild(N.el('div', { class: 'stage-fill', style: `width:${Math.round(pct * 100)}%` }));
-  petCard.appendChild(sbar);
-  petCard.appendChild(N.el('div', { class: 'pet-mood', id: 'pet-mood', text: App.moodLine() }));
+  petMid.appendChild(sbar);
+  petMid.appendChild(N.el('div', { class: 'pet-mood', id: 'pet-mood', text: App.moodLine() }));
   right.appendChild(petCard);
 
   const todayKey = N.todayKey();
   const today = d.daily[todayKey] || { min: 0, sessions: 0, kills: 0, tasks: 0 };
-  const todayCard = N.el('div', { class: 'card' });
-  todayCard.appendChild(N.el('h2', { text: '🌤️ Today' }));
+  const todayCard = N.el('div', { class: 'card area-today' });
+  todayCard.appendChild(N.el('h2', { class: 'sec-h', text: '🌤️ Today' }));
   const tg = N.el('div', { class: 'today-grid' });
-  for (const [v, k] of [[N.fmtMin(today.min), 'focused'], [today.sessions, 'sessions'], [today.kills, 'closes'], [d.streak.current + '🔥', 'streak']]) {
-    tg.appendChild(N.el('div', { class: 'stat-tile' }, N.el('div', { class: 'v', text: String(v) }), N.el('div', { class: 'k', text: k })));
+  const stats = [
+    [N.fmtMin(today.min), 'Focused', ''],
+    [today.sessions, 'Sessions', ''],
+    [today.kills, 'Closes', ''],
+    [d.streak.current, 'Streak', ' streak']
+  ];
+  for (const [v, k, extra] of stats) {
+    tg.appendChild(N.el('div', { class: 'stat-tile' + (extra ? ' streak' : '') },
+      N.el('div', { class: 'v', text: String(v) + (extra ? ' 🔥' : '') }),
+      N.el('div', { class: 'k', text: k.toLowerCase() })));
   }
   todayCard.appendChild(tg);
   right.appendChild(todayCard);
 
-  /* ---------- ambience + feed ---------- */
-  const bottom = N.el('div', { class: 'grid2b mt' });
-  const ambCard = N.el('div', { class: 'card' });
-  ambCard.appendChild(N.el('h2', { text: '🎧 Ambience' }));
-  ambCard.appendChild(N.el('div', { class: 'sub', text: 'Plays real recordings from assets/sounds when present, synthesized versions otherwise.' }));
-  const ambBar = N.el('div', { class: 'amb-bar' });
-  const AMB = [['rain', '🌧️ Rain'], ['fire', '🔥 Fireplace'], ['waves', '🌊 Waves'], ['cafe', '☕ Café'], ['off', '🔕 Off']];
+  /* ---------- ambience (left, compact) + today (right) ---------- */
+  const ambCard = N.el('div', { class: 'card amb-card area-amb' });
+  ambCard.appendChild(N.el('h2', { class: 'sec-h', text: '🎧 Ambience' }));
+  // no explanatory text and no dead spacer — header keeps its normal rhythm
+  // and the control group follows directly, keeping the card genuinely
+  // compact (any row-stretch goes to the card's bottom edge, not into a
+  // giant hole between the title and the buttons).
+  const ambRow = N.el('div', { class: 'amb-row' });
+  const AMB = [['rain', '🌧️ Rain'], ['fire', '🔥 Fireplace'], ['waves', '🌊 Waves'], ['cafe', '☕ Café']];
   for (const [id, lbl] of AMB) {
-    ambBar.appendChild(N.el('button', {
-      class: 'amb-btn' + (App.ambience === id ? ' on' : ''), text: lbl,
+    ambRow.appendChild(N.el('button', {
+      class: 'amb-btn' + (App.ambience === id ? ' on' : ''), text: lbl, 'aria-pressed': App.ambience === id ? 'true' : 'false',
       onclick: () => App.setAmbience(id)
     }));
   }
-  const vol = N.el('input', { class: 'amb-vol', type: 'range', min: 0, max: 100, value: Math.round(d.settings.sound.volume * 100) });
+  // Off reads as "disable", not as another sound source
+  ambRow.appendChild(N.el('button', {
+    class: 'amb-off' + (App.ambience === 'off' || !App.ambience ? ' on' : ''), text: '🔕 Off', title: 'Turn ambience off', 'aria-pressed': (App.ambience === 'off' || !App.ambience) ? 'true' : 'false',
+    onclick: () => App.setAmbience('off')
+  }));
+  ambCard.appendChild(ambRow);
+  // volume belongs to the current selection — one quiet row with it
+  const volRow = N.el('div', { class: 'amb-volrow' });
+  const volName = (AMB.find((a) => a[0] === App.ambience) || [, 'Ambience'])[1];
+  const vol = N.el('input', { class: 'amb-vol', type: 'range', min: 0, max: 100, value: Math.round(d.settings.sound.volume * 100), 'aria-label': 'Ambience volume' });
   vol.addEventListener('input', () => {
     Audio2.setVolume(vol.value / 100);
     nook.invoke('settings:set', { section: 'sound', values: { volume: vol.value / 100 } });
   });
-  ambBar.appendChild(vol);
-  ambCard.appendChild(ambBar);
-  const quote = N.el('div', { class: 'small mt', style: 'font-style:italic', text: '“' + NookQuotes.pick(NookQuotes.QUOTES) + '”' });
-  ambCard.appendChild(quote);
-  bottom.appendChild(ambCard);
+  volRow.append(N.el('span', { class: 'amb-vol-name', text: volName }), vol);
+  ambCard.appendChild(volRow);
 
-  const feedCard = N.el('div', { class: 'card' });
-  feedCard.appendChild(N.el('h2', { text: 'Journal' }));
-  const feed = N.el('div', { class: 'feed mt' });
+  /* ---------- journal: ONE chronological vertical stream (never columns).
+     Full-width card, full-width entries: icon → event (+ reward line) → time.
+     The wide space is used by the entry itself, not by extra text columns. ---------- */
+  const feedCard = N.el('div', { class: 'card journal-card area-journal' });
+  feedCard.appendChild(N.el('h2', { class: 'sec-h', text: '📖 Journal' }));
+  const feed = N.el('div', { class: 'feed' });
   const rows = (d.feed || []).slice(0, 9);
   if (!rows.length) feed.appendChild(N.el('div', { class: 'small', text: 'Your cozy story starts with the first session…' }));
   for (const r of rows) {
-    feed.appendChild(N.el('div', { class: 'feed-row' }, N.el('span', { text: r.text }), N.el('span', { class: 'ft', text: N.timeAgo(r.t) })));
+    const kind = r.kind === 'good' ? 'good' : r.kind === 'warn' ? 'warn' : 'info';
+    // one chronological stream row: [icon] [event → reward underneath] [time].
+    // The event's emoji rides with the text so nothing is lost from the data layer.
+    const icon = kind === 'good' ? '✓' : kind === 'warn' ? '!' : '·';
+    const body = N.el('div', { class: 'fe-body' },
+      N.el('div', { class: 'fe-text' },
+        N.el('span', { class: 'fe-emoji', text: r.emoji || '🌱' }),
+        document.createTextNode(r.text)),
+      r.xp > 0 ? N.el('div', { class: 'fe-reward', text: '+' + r.xp + ' XP' }) : null
+    );
+    feed.appendChild(N.el('div', { class: 'feed-entry ' + kind },
+      N.el('span', { class: 'fe-icon', 'aria-hidden': 'true', text: icon }),
+      body,
+      N.el('span', { class: 'ft', text: N.timeAgo(r.t) })
+    ));
   }
   feedCard.appendChild(feed);
-  bottom.appendChild(feedCard);
 
-  c.append(N.el('div', { class: 'home-top' }, timerCard, right), bottom);
+  /* ---------- compose the grid: cards place themselves via named grid areas
+     (timer | pet / amb | today / journal band) — columns stay aligned at
+     every width. The column wrappers use display:contents, so DOM grouping
+     is preserved without breaking the single deliberate grid. ---------- */
+  leftCol.append(timerCard, ambCard);
+  right.append(petCard, todayCard, feedCard);
+  c.appendChild(N.el('div', { class: 'home-grid' }, leftCol, right));
 
   function startSession() {
     const selEl = document.getElementById('home-task');

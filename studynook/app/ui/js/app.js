@@ -42,6 +42,13 @@ window.App = (function () {
   });
 
   function bindChrome() {
+    // App.render() — re-run the current view (used by Tasks/Home/Schedule controls).
+    // The snapshot listener refreshes state, so a render is safe from anywhere.
+    App.render = function () { renderView(true); };
+    App.go = function (view) {
+      const b = document.querySelector('.navbtn[data-view="' + view + '"]');
+      if (b) b.click();
+    };
     document.querySelectorAll('.navbtn').forEach((b) => {
       b.addEventListener('click', () => {
         Audio2.click();
@@ -95,9 +102,12 @@ window.App = (function () {
     // titlebar chips + sidebar pills
     const d = App.state.data;
     const lp = NookProgress.levelProgress(d.xp);
-    document.getElementById('chip-level').textContent = `Lv ${lp.level} · ${lp.title}`;
-    document.getElementById('chip-streak').textContent = '🔥 ' + d.streak.current;
+    // combined progression component (level + evolution title + xp bar)
+    document.getElementById('prog-lv').textContent = 'Lv ' + lp.level;
+    document.getElementById('prog-title').textContent = lp.title;
+    document.getElementById('prog-ico').textContent = NookProgress.PET_STAGES[0].emoji; // cozy brand mark (level titles are the progression)
     document.getElementById('xp-fill').style.width = Math.round(lp.pct * 100) + '%';
+    document.getElementById('chip-streak').textContent = String(d.streak.current);
     const gp = document.getElementById('pill-guard');
     const g = d.settings.guardian;
     gp.textContent = App.state.guardian.armed ? 'guard: active' : (App.state.guardian.pausedMinLeft > 0 ? `guard: paused ${App.state.guardian.pausedMinLeft}m` : g.enabled ? 'guard: idle' : 'guard: off');

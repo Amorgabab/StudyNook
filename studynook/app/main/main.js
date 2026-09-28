@@ -19,10 +19,12 @@ const fs = require('fs');
 
 const { Store } = require('./store.js');
 const { SessionEngine } = require('./session.js');
+const Iron = require('../shared/iron.js');
 const { Guardian } = require('./guardian.js');
 const { SyncServer } = require('./sync-server.js');
 const processes = require('./processes.js');
 const progress = require('../shared/progress.js');
+
 const catalog = require('../shared/catalog.js');
 const NookRules = require('../../extension/rules.js');
 const NookLinks = require('../shared/links.js');
@@ -43,30 +45,72 @@ let lastAmbientAward = 0;
 let gateCleared = false;   // iron session: window-close gate passed?
 const SOUND_IDS = new Set(['rain', 'waves', 'fire', 'cafe']);
 
-/* ---------- interrupted-session recovery (task manager / crash / power loss) ---------- */
-function recoverInterruptedSession() {
-  const f = path.join(DATA_DIR, 'session.json');
-  if (!fs.existsSync(f)) return;
-  try {
-    const s = JSON.parse(fs.readFileSync(f, 'utf8'));
-    fs.unlinkSync(f);
-    if (!s || !s.active) return;
-    const minutes = Math.floor((s.accumSec || 0) / 60);
-    const iron = store.data.settings.timer.iron;
-    if (minutes > 0 && !iron) {
-      store.mutate((d) => progress.focusRewards(d, minutes, false, { abandoned: true }));
-    }
-    store.mutate((d) => {
-      d.feed = d.feed || [];
-      d.feed.unshift({
-        t: Date.now(), emoji: '⚡',
-        text: iron
-          ? `Previous session was interrupted (app closed mid-focus) — Iron Session: no credit for ${minutes} min`
-          : `Previous session was interrupted (app closed mid-focus) — ${minutes} focused min credited`
-      });
-      if (d.feed.length > 40) d.feed.length = 40;
+/* ---------- interrupted-session recovery (task manager / crash / power loss) ----------
+   The engine persists its exact state to session.json every few seconds.
+   On boot we RESTORE it instead of wiping it: after an "End task" kill the
+   session continues right where it left off (dead time doesn't count), so
+   you never have to start from scratch. Only genuinely unrecoverable states
+   (stale/corrupt file, or a focus whose full length elapsed while dead) are
+   salvaged as credit + a feed note. */
+const SESSION_FILE = () => path.join(DATA_DIR, 'session.json');
+const STALE_MS = 12 * 60 * 60 * 1000;   // older than this → not worth restoring
+
+function readSessionFile() {
+  const f = SESSION_FILE();
+  if (!fs.existsSync(f)) return null;
+  try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { return null; }
+}
+
+/** Credit + feed note for a session that can't be resumed any more. */
+function salvageInterruptedSession(s, why) {
+  try { fs.unlinkSync(SESSION_FILE()); } catch (e) {}
+  if (!s || !s.active) return;
+  const minutes = Math.floor((s.accumSec || 0) / 60);
+  const iron = store.data.settings.timer.iron;
+  if (minutes > 0 && !iron) {
+    store.mutate((d) => progress.focusRewards(d, minutes, false, { abandoned: true }));
+  }
+  store.mutate((d) => {
+    d.feed = d.feed || [];
+    d.feed.unshift({
+      t: Date.now(), emoji: '⚡', kind: 'warn',
+      text: iron
+        ? `Previous session was interrupted (${why}) — Iron Session: no credit for ${minutes} min`
+        : `Previous session was interrupted (${why}) — ${minutes} focused min credited`
     });
-  } catch (e) { console.error('[recover]', e.message); }
+    if (d.feed.length > 40) d.feed.length = 40;
+  });
+}
+
+function recoverInterruptedSession() {
+  const s = readSessionFile();
+  if (!s) return;
+  if (!s.active) { try { fs.unlinkSync(SESSION_FILE()); } catch (e) {} return; }
+  const age = Date.now() - (Number(s.savedAt) || 0);
+  if (!(s.savedAt > 0) || age > STALE_MS) { salvageInterruptedSession(s, 'app closed mid-focus'); return; }
+  // Pure pre-flight check (shared with the engine so both agree on the math):
+  // a running FOCUS whose entire length elapsed while the app was dead has
+  // nothing left to resume — bank whatever was actually focused and move on.
+  const chk = SessionEngine.recoverable(s);
+  if (!chk.ok) { salvageInterruptedSession(s, chk.why); return; }
+  // Otherwise: restore exactly where it was left off. session.restore()
+  // rebuilds the countdown from the saved state (dead time is free), starts
+  // the tick loop, and re-derives the iron flag — then we keep persisting so
+  // another kill can be recovered again. Wrapped in try/catch so even a bug
+  // or a half-corrupt snapshot can never block the app from booting: worst
+  // case we fall back to salvaging the earned minutes.
+  let st = null;
+  try { st = session.restore(s); } catch (e) { console.error('[recover]', e); st = null; }
+  if (!st || !st.active) { salvageInterruptedSession(s, 'app closed mid-focus'); return; }
+  session._persist();
+  store.mutate((d) => {
+    d.feed = d.feed || [];
+    d.feed.unshift({
+      t: Date.now(), emoji: '🕯️', kind: 'info',
+      text: 'StudyNook restarted after closing unexpectedly — your focus session picked up right where it left off'
+    });
+    if (d.feed.length > 40) d.feed.length = 40;
+  });
 }
 
 /* ---------- one-time migration from the old folder-based install ---------- */
@@ -127,7 +171,6 @@ app.whenReady().then(() => {
   store = new Store(path.join(DATA_DIR, 'data.json'));
   progress.refreshStreak(store.data);
   ensureBackups();
-  recoverInterruptedSession();
 
   /* --- headless smoke-test hook (used by `npm run smoke`) --- */
   if (process.env.NOOK_SMOKE) {
@@ -140,18 +183,25 @@ app.whenReady().then(() => {
 
   session = new SessionEngine({
     getSettings: () => store.data.settings.timer,
+    isIronLocked: () => Iron.isLocked(store.data.settings.timer.ironLockedUntil, Date.now()),
     onTick: (st) => broadcast('tick', st),
     onState: () => pushSnapshot(),
     onPhaseEnd: (info) => handlePhaseEnd(info),
     persist: (st) => {
       try {
-        const f = path.join(DATA_DIR, 'session.json');
+        const f = SESSION_FILE();
         if (!st) { if (fs.existsSync(f)) fs.unlinkSync(f); return; }
         fs.mkdirSync(DATA_DIR, { recursive: true });
         fs.writeFileSync(f, JSON.stringify(st));
       } catch (e) {}
     }
   });
+
+  // After an "End task" kill / crash: resume the persisted session exactly
+  // where it left off (dead time doesn't count) instead of acting like it
+  // never started. Must run after `session` exists — restore() starts the
+  // tick loop and pushes the fresh snapshot to the window once it opens.
+  recoverInterruptedSession();
 
   guardian = new Guardian({
     store,
@@ -214,7 +264,7 @@ function createMainWindow() {
   // Any running session: the window is unclosable (nook stays open).
   win.on('close', (e) => {
     if (!store) return;
-    if (store.data.settings.timer.iron && session && session.isFocusing() && !gateCleared) {
+    if (session && session.isIronFocus() && !gateCleared) {
       e.preventDefault();
       broadcast('iron-gate', {});
       return;
@@ -317,7 +367,7 @@ function handlePhaseEnd(info) {
       (dd.daily[day] = dd.daily[day] || { min: 0, sessions: 0, kills: 0, tasks: 0 }).kills += killCount(info.kills);
       if (info.taskId) { const t = dd.tasks.find((t) => t.id === info.taskId); if (t) t.pomosDone = (t.pomosDone || 0) + 1; }
       dd.feed = dd.feed || [];
-      dd.feed.unshift({ t: now, emoji: '🍅', text: `Completed a ${info.minutes} min focus${info.label ? ' · ' + info.label : ''} (+${r.xpGained} XP)` });
+      dd.feed.unshift({ t: now, emoji: '🍅', kind: 'good', xp: r.xpGained, text: `Completed a ${info.minutes} min focus${info.label ? ' · ' + info.label : ''}` });
       if (dd.feed.length > 40) dd.feed.length = 40;
       return r;
     });
@@ -327,7 +377,12 @@ function handlePhaseEnd(info) {
   }
   else if (info.phase === 'focus' && !info.completed) {
     // ended early (gave up / stopped mid-round)
-    const strict = d.settings.timer.strict && info.abandon;
+    /* Strict mode decides XP — and an IRON session is always strict while
+       it runs (Iron.effectiveTimer), even if the saved switch says off.
+       The UI shows the same view through the same pure helper, so there is
+       no "gentle on screen, strict in background" mismatch. */
+    const effT = Iron.effectiveTimer(d.settings.timer, session && session.ironAtStart === true);
+    const strict = effT.strict && info.abandon;
     const minutes = strict ? 0 : info.minutes;
     const res = store.mutate((dd) => {
       if (info.abandon) dd.counters.abandons = (dd.counters.abandons || 0) + 1;
@@ -337,7 +392,7 @@ function handlePhaseEnd(info) {
         if (dd.sessions.length > 500) dd.sessions.length = 500;
       }
       dd.feed = dd.feed || [];
-      dd.feed.unshift({ t: now, emoji: strict ? '🌧️' : '🌤️', text: strict ? `Session ended early — strict mode, no XP this time (${info.minutes} min)` : `Session ended early after ${info.minutes} min (+${r.xpGained} XP for the time focused)` });
+      dd.feed.unshift({ t: now, emoji: strict ? '🌧️' : '🌤️', kind: strict ? 'warn' : 'good', xp: strict ? 0 : r.xpGained, text: strict ? `Session ended early — strict mode, no XP this time (${info.minutes} min)` : `Session ended early after ${info.minutes} min (XP for the time focused)` });
       if (dd.feed.length > 40) dd.feed.length = 40;
       return r;
     });
@@ -348,7 +403,7 @@ function handlePhaseEnd(info) {
     if (info.completed) {
       broadcast('session-event', { kind: 'break-end', phase: info.phase });
       notify('Break over ☀️', 'Stretch, sip water, and begin the next round when ready.');
-      store.mutate((dd) => { dd.feed = dd.feed || []; dd.feed.unshift({ t: now, emoji: '☀️', text: 'Break finished — next round is waiting' }); if (dd.feed.length > 40) dd.feed.length = 40; });
+      store.mutate((dd) => { dd.feed = dd.feed || []; dd.feed.unshift({ t: now, emoji: '☀️', kind: 'info', text: 'Break finished — next round is waiting' }); if (dd.feed.length > 40) dd.feed.length = 40; });
     } else {
       broadcast('session-event', { kind: 'break-skipped' });
     }
@@ -367,7 +422,7 @@ function handleGuardEvent(ev) {
       const day = progress.dayStr();
       (d.daily[day] = d.daily[day] || { min: 0, sessions: 0, kills: 0, tasks: 0 }).kills += ev.count;
       d.feed = d.feed || [];
-      d.feed.unshift({ t: now, emoji: '🧸', text: `Gently closed ${ev.label} (${ev.count} process${ev.count > 1 ? 'es' : ''})` });
+      d.feed.unshift({ t: now, emoji: '🧸', kind: 'info', text: `Gently closed ${ev.label} (${ev.count} process${ev.count > 1 ? 'es' : ''})` });
       if (d.feed.length > 40) d.feed.length = 40;
     });
     broadcast('guard', ev);
@@ -389,7 +444,7 @@ function grantAchievements(ctx) {
   for (const id of res) {
     const a = byId[id];
     broadcast('reward', { kind: 'achievement', id, emoji: a.emoji, name: a.name, desc: a.desc });
-    store.mutate((d) => { d.feed = d.feed || []; d.feed.unshift({ t: Date.now(), emoji: a.emoji, text: 'Achievement unlocked: ' + a.name }); if (d.feed.length > 40) d.feed.length = 40; });
+    store.mutate((d) => { d.feed = d.feed || []; d.feed.unshift({ t: Date.now(), emoji: a.emoji, kind: 'good', text: 'Achievement unlocked: ' + a.name }); if (d.feed.length > 40) d.feed.length = 40; });
   }
   return res;
 }
@@ -457,7 +512,7 @@ function registerIpc() {
     gateCleared = false;
     const task = p.taskId ? store.data.tasks.find((t) => t.id === p.taskId) : null;
     const st = session.start({ mode: p.mode || 'pomodoro', freeMin: p.freeMin || 0, taskId: p.taskId || null, label: task ? task.text : (p.label || '') });
-    store.mutate((d) => { d.feed = d.feed || []; d.feed.unshift({ t: Date.now(), emoji: '🌱', text: `Focus session started (${st.mode === 'free' ? 'free' : 'pomodoro'})${task ? ' · ' + task.text : ''}` }); if (d.feed.length > 40) d.feed.length = 40; });
+    store.mutate((d) => { d.feed = d.feed || []; d.feed.unshift({ t: Date.now(), emoji: '🌱', kind: 'info', text: `Focus session started (${st.mode === 'free' ? 'free' : 'pomodoro'})${task ? ' · ' + task.text : ''}` }); if (d.feed.length > 40) d.feed.length = 40; });
     pushSnapshot();
     return st;
   });
@@ -470,18 +525,38 @@ function registerIpc() {
   H('settings:set', (p) => {
     const Iron = require('../shared/iron.js');
     store.mutate((d) => {
-      // Iron lock: enabling starts a 4-day settings lock; disabling is
-      // refused while the lock runs (Settings UI is hidden anyway).
+      // Iron lock: enabling starts a self-lock; disabling is refused while
+      // the lock runs (Settings UI hides the switch anyway). Turning Iron on
+      // also hardens the guard + strict mode — and remembers your pre-iron
+      // guard choices so they can be restored when the promise ends.
+      // Sites are never touched: "during focus / always" stays YOUR choice.
       if (p.section === 'timer' && p.values && p.values.iron !== undefined) {
-        const locked = Iron.isLocked(d.settings.timer.ironLockedUntil, Date.now());
-        if (p.values.iron && !d.settings.timer.iron) d.settings.timer.ironLockedUntil = Iron.makeLock(Date.now(), d.settings.timer.ironLockDays);
+        const t = d.settings.timer;
+        const locked = Iron.isLocked(t.ironLockedUntil, Date.now());
+        if (p.values.iron && !t.iron) {
+          d.__ironSaved = { guard: Object.assign({}, d.settings.guardian) };
+          t.ironLockedUntil = Iron.makeLock(Date.now(), t.ironLockDays);
+        }
         if (!p.values.iron && locked) return;   // nope.
+        if (!p.values.iron && t.iron && d.__ironSaved) {
+          // Iron off for real → give back the gentle warn / session-only choices
+          Object.assign(d.settings.guardian, d.__ironSaved.guard || {});
+          delete d.__ironSaved;
+        }
       }
       const sec = d.settings[p.section];
       if (sec && typeof sec === 'object' && !Array.isArray(sec)) Object.assign(sec, p.values || {});
       else d.settings[p.section] = p.values;
+      // Iron strictness: timer/guardian edits are filtered through the same
+      // pure helpers the engine and the UI use — you cannot soften them
+      // mid-promise, and what gets stored is exactly what will run.
+      // (Sites are deliberately NOT filtered — free will there.)
+      if (Iron.resolveIron(d.settings.timer.iron, d.settings.timer.ironLockedUntil, Date.now())) {
+        if (p.section === 'guardian') Object.assign(d.settings.guardian, Iron.effectiveGuard(d.settings.guardian, true));
+        if (p.section === 'timer') Object.assign(d.settings.timer, Iron.effectiveTimer(d.settings.timer, true));
+      }
     });
-    if (p.section === 'guardian') guardian._loop();   // apply new scan interval
+    if (p.section === 'guardian' || p.section === 'timer') guardian._loop();   // apply new scan interval / strictness
     pushSnapshot();
     return true;
   });
@@ -497,11 +572,66 @@ function registerIpc() {
 
   /* ---- tasks ---- */
   H('tasks:add', (p) => {
-    const t = { id: 't' + Date.now() + Math.floor(Math.random() * 999), text: String(p.text || '').slice(0, 200), subject: String(p.subject || '').slice(0, 40), est: Math.max(1, parseInt(p.est, 10) || 1), min: Math.max(0, parseInt(p.min, 10) || 0), done: false, pomosDone: 0, createdAt: Date.now(), completedAt: null };
+    const payload = (p && typeof p === 'object') ? p : {};
+    const TaskDays = require('../shared/taskdays.js');
+    const { normAt } = require('./store.js'); // sanitizer-owned time validation — one source of truth
+    const t = { id: 't' + Date.now() + Math.floor(Math.random() * 999), text: String(payload.text || '').slice(0, 200), subject: String(payload.subject || '').slice(0, 40), est: Math.max(1, parseInt(payload.est, 10) || 1), min: Math.max(0, parseInt(payload.min, 10) || 0), done: false, pomosDone: 0, date: null, createdAt: Date.now(), completedAt: null };
     if (!t.text) return null;
+    // A planned day is part of the task now — optional, one field, no second store.
+    if (payload.date != null && payload.date !== '') {
+      const key = TaskDays.normDate(String(payload.date));
+      if (!key) return null; // refuse to create a half-planned task on a bad date
+      const planned = store.data.tasks.reduce((n, x) => n + (x.date ? 1 : 0), 0);
+      if (planned >= TaskDays.MAX_PLANNED) return null; // sanity cap
+      t.date = key;
+      t.at = normAt(payload.at); // optional start time; garbage → null
+    }
     store.mutate((d) => { d.tasks.unshift(t); });
     pushSnapshot();
     return t;
+  });
+  H('tasks:setDate', (p) => {
+    // Plan a task for a calendar day ('YYYY-MM-DD'), or clear the plan with
+    // date:null ("Remove from This Week" — the task itself always stays).
+    // Validation is delegated to the shared pure module + store sanitizer.
+    const TaskDays = require('../shared/taskdays.js');
+    const { normAt } = require('./store.js');
+    const payload = (p && typeof p === 'object') ? p : {};
+    let key = null;
+    if (payload.date != null && payload.date !== '') {
+      key = TaskDays.normDate(String(payload.date));
+      if (!key) return false; // reject malformed dates explicitly
+    }
+    const at = key ? normAt(payload.at) : null; // time only travels with a date
+    let hit = false;
+    store.mutate((d) => {
+      const t = d.tasks.find((x) => x.id === payload.id);
+      if (!t) return;
+      if (key && !t.date) {
+        const planned = d.tasks.reduce((n, x) => n + (x.date ? 1 : 0), 0);
+        if (planned >= TaskDays.MAX_PLANNED) return; // sanity cap
+      }
+      t.date = key;
+      t.at = at;
+      hit = true;
+    });
+    if (hit) pushSnapshot();
+    return hit;
+  });
+  H('tasks:unschedule', (p) => {
+    // "Remove from This Week": clears ONLY the scheduling fields (date + at).
+    // The task itself always stays in the list — this is not Delete.
+    const payload = (p && typeof p === 'object') ? p : {};
+    let hit = false;
+    store.mutate((d) => {
+      const t = d.tasks.find((x) => x && x.id === payload.id);
+      if (!t) return;
+      t.date = null;
+      t.at = null;
+      hit = true;
+    });
+    if (hit) pushSnapshot();
+    return hit;
   });
   H('tasks:toggle', (p) => {
     const done = store.mutate((d) => {
@@ -521,7 +651,7 @@ function registerIpc() {
       const evs = store.mutate((d) => grantXp(d, 5));
       sendRewardEvents(evs);
       grantAchievements({});
-      store.mutate((d) => { d.feed = d.feed || []; d.feed.unshift({ t: Date.now(), emoji: '✅', text: 'Task done: ' + done.text + ' (+5 XP)' }); if (d.feed.length > 40) d.feed.length = 40; });
+      store.mutate((d) => { d.feed = d.feed || []; d.feed.unshift({ t: Date.now(), emoji: '✅', kind: 'good', xp: 5, text: 'Task done: ' + done.text }); if (d.feed.length > 40) d.feed.length = 40; });
     }
     pushSnapshot();
     return true;
@@ -550,6 +680,22 @@ function registerIpc() {
   H('open:url', (p) => {
     const u = String(p.url || '');
     if (/^https?:\/\//i.test(u)) shell.openExternal(u);
+    return true;
+  });
+
+  /* ---- Week-plan actions on tasks (same task record — no second store) ----
+     The old recurring-block IPC (schedule:add/update/remove/toggle) is gone:
+     planned items ARE tasks now. "Remove from This Week" is simply
+     tasks:setDate with date:null — it clears the plan but keeps the task.
+     "Delete Task" remains tasks:remove, which deletes it permanently. */
+  H('tasks:focusNow', (p) => {
+    // Start focusing right from a week-plan row. Refuses politely while a
+    // session is already running so this can never hijack an active focus block.
+    if (session.isRunning()) return false;
+    const payload = (p && typeof p === 'object') ? p : {};
+    const t = store.data.tasks.find((x) => x.id === payload.id);
+    if (!t || t.done) return false;
+    broadcast('focus-request', { taskId: t.id, minutes: Math.max(0, parseInt(t.min, 10) || 0) });
     return true;
   });
 
@@ -598,11 +744,15 @@ function registerIpc() {
 
   /* ---- sites ---- */
   H('sites:set', (p) => {
+    const Iron = require('../shared/iron.js');
     store.mutate((d) => {
       const patch = p.patch || {};
       for (const k of ['enabled', 'mode', 'when']) if (patch[k] !== undefined) d.sites[k] = patch[k];
       // normalizeEntry KEEPS paths (youtube.com/shorts stays youtube.com/shorts)
       for (const k of ['block', 'allow']) if (Array.isArray(patch[k])) d.sites[k] = dedupe(patch[k].map((x) => NookRules.normalizeEntry(x)).filter(Boolean)).slice(0, 500);
+      /* No iron filtering here — the Sites section is FREE WILL. Iron never
+         flips site blocking on/off or rewrites "during focus" to "always";
+         your choice is exactly what runs (the extension reads it directly). */
     });
     pushSnapshot();
     return true;
@@ -649,7 +799,15 @@ function registerIpc() {
   });
 
   /* ---- guardian ---- */
-  H('guardian:pause', (p) => { const m = parseInt(p.min, 10); guardian.pauseFor(isNaN(m) ? 5 : Math.max(0, m)); pushSnapshot(); return true; });
+  H('guardian:pause', (p) => {
+    const m = parseInt(p.min, 10);
+    if (!guardian.pauseFor(isNaN(m) ? 5 : Math.max(0, m))) {
+      // Engine-level refusal: in Iron mode the pause never stops blocking.
+      broadcast('toast', { title: 'Iron mode', msg: 'The guard stays armed while your promise runs.' });
+    }
+    pushSnapshot();
+    return true;
+  });
 
   /* ---- data ---- */
   H('data:export', () => JSON.stringify(store.data, null, 2));

@@ -35,7 +35,7 @@ Views.garden = function (c) {
   c.appendChild(hero);
 
   /* ---------- charts row ---------- */
-  const charts = N.el('div', { class: 'grid2b mt' });
+  const charts = N.el('div', { class: 'grid2b garden-charts mt' });
 
   const week = N.el('div', { class: 'card' });
   week.appendChild(N.el('h2', { text: '📊 Last 7 days' }));
@@ -69,7 +69,8 @@ Views.garden = function (c) {
   c.appendChild(charts);
 
   /* ---------- evolution + achievements ---------- */
-  const evoCard = N.el('div', { class: 'card mt' });
+  /* tighter transition from the charts row → journey: one consistent gap */
+  const evoCard = N.el('div', { class: 'card garden-journey' });
   evoCard.appendChild(N.el('h2', { text: '🐾 ' + d.pet.name + "'s journey" }));
   evoCard.appendChild(N.el('div', { class: 'sub', text: NookProgress.PET_STAGES[d.pet.stage].blurb }));
   const track = N.el('div', { class: 'evo-track mt' });
