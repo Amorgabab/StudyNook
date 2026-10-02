@@ -319,27 +319,22 @@ class Store {
   mutate(fn) {
     /* Snapshot the site-blocking switches BEFORE the mutation runs, so a
        flip that slips past the handlers (a stray code path, an import, a
-       hand-edited file loaded mid-focus) can be snapped back to the choice
-       that was in effect when this iron FOCUS began. The session engine is
-       consulted lazily via the `ironFocusActive` flag main keeps mirrored —
-       store has no direct session reference. */
+       hand-edited file loaded mid-lock) can be snapped back to the choice
+       that was in effect when this promise began. */
     this._captureSitesFreeze();
     const r = fn(this.data);
     this.enforceIron();
     this.save();
     return r;
   }
-  /** Remember sites.enabled/mode before every mutation while a LIVE iron
-      focus runs (cheap: two primitives). enforceIron() compares the
-      snapshot against the post-mutation state and restores it on drift.
-      NOT during the bare multi-day lock: with no iron focus in progress
-      the site switches are free will (locking them for days stranded
-      users who turned iron on with blocking OFF / Blocklist chosen). */
+  /** Remember sites.enabled/mode before every mutation while an iron
+      self-lock runs (cheap: two primitives). enforceIron() compares the
+      snapshot against the post-mutation state and restores it on drift. */
   _captureSitesFreeze() {
     try {
       const d = this.data;
       const t = d && d.settings && d.settings.timer;
-      this._sitesBefore = !!(t && t.ironFocusActive && d.sites);
+      this._sitesBefore = !!(t && Iron.isLocked(t.ironLockedUntil, Date.now()) && d.sites);
       if (this._sitesBefore) {
         this._sitesFrozen = { enabled: !!d.sites.enabled, mode: d.sites.mode === 'allow' ? 'allow' : 'block' };
       }
@@ -352,12 +347,9 @@ class Store {
       Iron strictness rides along: with the lock running the guardian stays
       hardened (guard ON + instant close) and strict mode stays on, so stored
       state and enforced state never diverge. The Site-blocking ON/OFF switch
-      and the Blocklist↔Allowlist MODE are frozen ONLY while a live iron
-      focus runs (snapped back to the pre-mutation snapshot on any drift) —
-      never for the bare multi-day lock, which would strand the switches at
-      whatever they were when iron was switched on. Sites LISTS and the
-      "during focus / always" timing stay free will — only the two big
-      switches are guarded, and only mid-focus. */
+      and the Blocklist↔Allowlist MODE are frozen too (snapped back to the
+      pre-mutation snapshot on any drift). Sites LISTS and the "during focus /
+      always" timing stay free will — only the two big switches are guarded. */
   enforceIron() {
     try {
       const d = this.data;

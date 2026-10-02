@@ -185,17 +185,7 @@ app.whenReady().then(() => {
     getSettings: () => store.data.settings.timer,
     isIronLocked: () => Iron.isLocked(store.data.settings.timer.ironLockedUntil, Date.now()),
     onTick: (st) => broadcast('tick', st),
-    onState: () => {
-      /* Mirror "a live iron focus exists" into settings.timer so EVERY
-         store.mutate — from any path (IPC handler, localhost bridge,
-         imports) — can freeze/snap-back the two big site switches without
-         the store needing a session reference. Purely derived runtime
-         state; sanitize strips it at load and never persists it. The
-         multi-day lock alone does NOT freeze sites (see shared/iron.js). */
-      const tt = store.data.settings.timer;
-      if (tt) tt.ironFocusActive = !!(session && session.isIronFocus());
-      pushSnapshot();
-    },
+    onState: () => pushSnapshot(),
     onPhaseEnd: (info) => handlePhaseEnd(info),
     persist: (st) => {
       try {
@@ -810,20 +800,16 @@ function registerIpc() {
   /* ---- sites ---- */
   H('sites:set', (p) => {
     const Iron = require('../shared/iron.js');
-    /* IRON FREEZE: while a LIVE iron focus runs — running OR paused — the
-       Site-blocking ON/OFF switch and the Blocklist↔Allowlist mode are
-       FROZEN: that is the state you committed to when you pressed Start.
-       The gate is the shared pure helper (sitePatchAllowed); the UI draws
-       the same locked state, and store.enforceIron() snaps back any drift
-       on every mutate. The multi-day switch lock alone does NOT freeze
-       sites — otherwise choosing "blocking OFF + Blocklist" before turning
-       iron on would strand both switches for days with no focus running
-       (the stuck-settings bug). Lists stay editable everywhere. */
+    /* IRON FREEZE: while an iron promise runs — the multi-day switch lock
+       OR a live iron focus (running or paused) — the Site-blocking ON/OFF
+       switch and the Blocklist↔Allowlist mode are FROZEN. The gate is the
+       shared pure helper (sitePatchAllowed); the UI draws the same locked
+       state, and store.enforceIron() snaps back any drift on every write. */
     const sesNow = session.publicState();
     const ironFocusNow = !!(sesNow && sesNow.active && sesNow.phase === 'focus' && sesNow.iron);
     const patchIn = (p && p.patch && typeof p.patch === 'object' && !Array.isArray(p.patch)) ? p.patch : {};
     if (!Iron.sitePatchAllowed(store.data.settings.timer, ironFocusNow, Date.now(), patchIn)) {
-      broadcast('toast', { title: '🔒 Frozen during your iron focus', msg: 'Site blocking stays as it is and the block/allow mode can\u2019t flip while an iron focus runs. Lists stay editable — that only ever strengthens the promise.' });
+      broadcast('toast', { title: '🔒 Frozen by your iron promise', msg: 'Site blocking stays ON and the block/allow mode can\u2019t flip while iron runs. Lists stay editable — that only ever strengthens the promise.' });
       pushSnapshot();
       return false;
     }

@@ -34,24 +34,7 @@
        • once the lock has expired → the stored value wins again, so the
          user can genuinely switch iron off in Settings.
      applyIron() is the matching write guard: the flag may only change
-     when the lock is not running. Pure helpers — no fs, no electron.
-
-     WHAT IRON FREEZES (promise scope): turning iron on means "no flipping
-     the big switches mid-promise", so during an iron FOCUS the Site-blocking
-     ON/OFF switch and the Blocklist↔Allowlist mode are frozen — exactly the
-     state you committed to when you pressed Start. Choosing iron for a
-     session was free will; backing out of the two big switches halfway is
-     not. Everything else (the lists, during-focus/always) stays editable.
-
-     THE LOCK IS NOT AN ACTIVE PROMISE: the multi-day switch lock exists to
-     stop the iron toggle from being flipped off-and-on as a loophole — it
-     keeps `resolveIron()` true until it expires. It must NEVER freeze the
-     site switches: with sites.enabled=false and mode=Blocklist chosen
-     BEFORE turning iron on, freezing those switches for days would leave
-     blocking stuck OFF (and the mode stuck) long after every focus ended —
-     a dead lockout, not a kept promise. So the freeze follows the live
-     iron focus (running OR paused), which is what "while iron runs" means
-     everywhere else in the app (see session.ironActive / App.ironFocusOn). */
+     when the lock is not running. Pure helpers — no fs, no electron. */
   function resolveIron(stored, until, now) {
     if (isLocked(until, now)) return true;
     return !!stored;
@@ -66,27 +49,20 @@
   }
   /** THE gate every site-blocking write must pass through (main handler,
       localhost bridge and the store's last line of defence all call it).
-      While a LIVE iron focus runs — running OR paused, never just because
-      the multi-day switch lock ticks — the Site-blocking ON/OFF switch and
-      the Blocklist↔Allowlist mode are FROZEN: patches carrying those fields
-      are dropped entirely (lists stay editable — adding blocked sites only
-      ever strengthens the promise). With no iron focus in progress the gate
-      is transparent: every choice is free will, even while the iron switch
-      stays locked ON (that lock only guards the iron toggle itself — see
-      the promise-scope note above, and bug: freezing for the whole lock
-      stranded users who turned iron on with blocking OFF / Blocklist).
-      Returns true when the patch may be applied.
+      While an iron promise runs — the multi-day switch lock OR a live iron
+      focus — the Site-blocking ON/OFF switch and the Blocklist↔Allowlist
+      mode are FROZEN: patches carrying those fields are dropped entirely
+      (lists stay editable — adding blocked sites only ever strengthens the
+      promise). With no iron promise in effect the gate is transparent:
+      every choice is free will. Returns true when the patch may be applied.
       `ironFocus` = an iron focus phase exists right now (live session view;
-      pass false/undefined when there is none). The stored `timer` is read
-      as a belt-and-braces fallback: if the caller couldn't consult the
-      session engine but the file still says an iron focus was underway,
-      the freeze holds. The LOCK alone never freezes anything here. */
+      pass false/undefined if unknown — the lock alone still freezes). */
   function sitePatchAllowed(timer, ironFocus, now, patch) {
     const p = (patch && typeof patch === 'object' && !Array.isArray(patch)) ? patch : {};
     const t = (timer && typeof timer === 'object' && !Array.isArray(timer)) ? timer : {};
-    const focusOn = !!ironFocus || !!t.ironFocusActive;
-    if (!focusOn) return true;
-    if ('enabled' in p || 'mode' in p) return false;   // 🔒 frozen during an iron focus
+    const promiseOn = resolveIron(t.iron, t.ironLockedUntil, now) || !!ironFocus;
+    if (!promiseOn) return true;
+    if ('enabled' in p || 'mode' in p) return false;   // 🔒 frozen during iron
     return true;
   }
   /** Normalize the three iron fields to safe values (used by store sanitize). */
