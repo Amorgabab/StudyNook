@@ -536,23 +536,16 @@ function registerIpc() {
     const Iron = require('../shared/iron.js');
     store.mutate((d) => {
       // Iron lock: enabling starts a self-lock; disabling is refused while
-      // the lock runs (Settings UI hides the switch anyway). Turning Iron on
-      // also hardens the guard + strict mode — and remembers your pre-iron
-      // guard choices so they can be restored when the promise ends.
-      // Sites are never touched: "during focus / always" stays YOUR choice.
+      // the lock runs (Settings UI hides the switch anyway). The WRITE goes
+      // through Iron.applyIron — the single authority — so rapid toggling
+      // can never slip past the lock check, and the pre-iron gentle guard +
+      // sites choices are snapshotted exactly once (inside applyIron) before
+      // anything gets hardened. Sites are deliberately left alone here:
+      // store.enforceIron() hardens them on every write while the promise
+      // runs and hands your old choices back when it ends.
       if (p.section === 'timer' && p.values && p.values.iron !== undefined) {
-        const t = d.settings.timer;
-        const locked = Iron.isLocked(t.ironLockedUntil, Date.now());
-        if (p.values.iron && !t.iron) {
-          d.__ironSaved = { guard: Object.assign({}, d.settings.guardian) };
-          t.ironLockedUntil = Iron.makeLock(Date.now(), t.ironLockDays);
-        }
-        if (!p.values.iron && locked) return;   // nope.
-        if (!p.values.iron && t.iron && d.__ironSaved) {
-          // Iron off for real → give back the gentle warn / session-only choices
-          Object.assign(d.settings.guardian, d.__ironSaved.guard || {});
-          delete d.__ironSaved;
-        }
+        Iron.applyIron(d, !!p.values.iron, Date.now());
+        if (!p.values.iron && Iron.isLocked(d.settings.timer.ironLockedUntil, Date.now())) return;   // nope.
       }
       const sec = d.settings[p.section];
       /* SECURITY FIX: settings:set used to Object.assign renderer values with
@@ -602,13 +595,19 @@ function registerIpc() {
           Object.assign(sec, clean);
         }
       }
-      // Iron strictness: timer/guardian edits are filtered through the same
-      // pure helpers the engine and the UI use — you cannot soften them
-      // mid-promise, and what gets stored is exactly what will run.
-      // (Sites are deliberately NOT filtered — free will there.)
+      /* Iron strictness: timer/guardian edits are filtered through the same
+         pure helpers the engine and the UI use — you cannot soften them
+         mid-promise, and what gets stored is exactly what will run.
+         Sites too: while the promise runs the master switch stays ON
+         (store.enforceIron re-asserts this on every write anyway; filtering
+         here keeps the returned/stored value honest). The list MODE
+         (blocklist/allowlist) and `when` (during focus / always) stay free will. */
       if (Iron.resolveIron(d.settings.timer.iron, d.settings.timer.ironLockedUntil, Date.now())) {
         if (p.section === 'guardian') Object.assign(d.settings.guardian, Iron.effectiveGuard(d.settings.guardian, true));
         if (p.section === 'timer') Object.assign(d.settings.timer, Iron.effectiveTimer(d.settings.timer, true));
+      }
+      if (p.section === 'sites' || Iron.isLocked(d.settings.timer.ironLockedUntil, Date.now())) {
+        Object.assign(d.sites, Iron.effectiveSites(d.sites, true));
       }
     });
     if (p.section === 'guardian' || p.section === 'timer') guardian._loop();   // apply new scan interval / strictness
@@ -799,7 +798,6 @@ function registerIpc() {
 
   /* ---- sites ---- */
   H('sites:set', (p) => {
-    const Iron = require('../shared/iron.js');
     store.mutate((d) => {
       const patch = (p && p.patch && typeof p.patch === 'object' && !Array.isArray(p.patch)) ? p.patch : {};
       /* SECURITY FIX: enums/booleans were assigned unvalidated — a buggy or
@@ -811,9 +809,14 @@ function registerIpc() {
       if (patch.when === 'session' || patch.when === 'always') d.sites.when = patch.when;
       // normalizeEntry KEEPS paths (youtube.com/shorts stays youtube.com/shorts)
       for (const k of ['block', 'allow']) if (Array.isArray(patch[k])) d.sites[k] = dedupe(patch[k].map((x) => NookRules.normalizeEntry(x)).filter(Boolean)).slice(0, 500);
-      /* No iron filtering here — the Sites section is FREE WILL. Iron never
-         flips site blocking on/off or rewrites "during focus" to "always";
-         your choice is exactly what runs (the extension reads it directly). */
+      /* Iron promise: while the self-lock runs you can NOT switch site
+         blocking off — the write is filtered through Iron.effectiveSites
+         (the same pure helper the UI renders from), so what you see is
+         exactly what the extension gets. The list MODE (blocklist/allowlist)
+         and `when` (during focus / always) stay YOUR choice.
+         store.enforceIron() re-asserts this on every other write too, so no
+         path softens it. */
+      Object.assign(d.sites, Iron.effectiveSites(d.sites, Iron.isLocked(d.settings.timer.ironLockedUntil, Date.now())));
     });
     pushSnapshot();
     return true;

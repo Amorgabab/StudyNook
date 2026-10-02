@@ -43,7 +43,18 @@
     const t = objTimer(d);
     if (isLocked(t.ironLockedUntil, now)) return false;   // refuse the flip
     const v = !!wanted;
-    if (v && !t.iron) t.ironLockedUntil = makeLock(now, t.ironLockDays);
+    if (v && !t.iron) {
+      /* Snapshot the gentle choices BEFORE hardening — exactly once per
+         promise. store.enforceIron() re-asserts strictness on every write;
+         it only fills this snapshot when missing, so rapid toggling can
+         never overwrite it with already-hardened values. */
+      const sites = (d && d.sites) || {};
+      d.__ironSaved = {
+        guard: Object.assign({}, (d.settings || {}).guardian),
+        sites: { enabled: sites.enabled !== false, mode: sites.mode === 'allow' ? 'allow' : 'block' }
+      };
+      t.ironLockedUntil = makeLock(now, t.ironLockDays);
+    }
     t.iron = v;
     return true;
   }
@@ -66,19 +77,33 @@
      the enforced state:
        • guardian: guard stays ON, style becomes instant close (gentle/remind
          would let you sit on a warning card instead of losing the app), and
-         "only during focus" is ignored — the guard never disarms mid-promise;
+         "only during focus" is ignored — the guard never disarms mid-promise.
+         The list MODE (blocklist vs allowlist) stays YOUR choice in iron too;
        • timer: strict mode is forced on (ending early earns zero XP);
        • pause: the timer may still be paused — pausing only STOPS THE CLOCK.
-     SITES ARE NEVER TOUCHED: your "during focus / always" choice in the
-     Sites section is free will — effectiveSites was removed on purpose, and
-     nothing silently rewrites `when` to 'always' behind your back.
+     SITES: the master switch is not free will during an iron promise —
+     effectiveSites() forces site blocking ON whenever the self-lock runs
+     (the whole point of the promise is that distractions get blocked, and
+     the switch used to be flip-able mid-session). The list MODE and your
+     "during focus / always" timing choice stay YOURS — `mode` and `when`
+     are never rewritten. Outside iron, sites settings pass through
+     untouched.
      When Iron is off these are identity functions — user choices untouched. */
   function effectiveGuard(guard, ironOn) {
     const g = Object.assign({}, guard || {});
     if (!ironOn) return g;
     g.enabled = true;
     g.action = 'instant';
+    /* MODE stays YOURS in iron too — pick blocklist or allowlist freely.
+       (It used to be forced to 'allow', which made the choice disappear.) */
     return g;
+  }
+  /** Iron lock → site blocking is always ON. The list MODE (block vs allow)
+      is deliberately left alone — free will, like `when`. */
+  function effectiveSites(sites, locked) {
+    const s = Object.assign({}, sites || {});
+    if (locked) s.enabled = true;
+    return s;
   }
   function effectiveTimer(timer, ironOn) {
     const t = Object.assign({}, timer || {});
@@ -91,5 +116,5 @@
     if (!s.timer || typeof s.timer !== 'object' || Array.isArray(s.timer)) s.timer = {};
     return s.timer;
   }
-  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, normalizeFields, effectiveGuard, effectiveTimer };
+  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, normalizeFields, effectiveGuard, effectiveSites, effectiveTimer };
 });
