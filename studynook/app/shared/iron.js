@@ -65,41 +65,41 @@
     if ('enabled' in p || 'mode' in p) return false;   // 🔒 frozen during iron
     return true;
   }
-  /** THE freeze authority for the FOCUS ITEMS — the full focus configuration:
-      Site blocking ON + Allowlist mode + App blocking (guard) ON + Strict mode
-      ON (+ of course a live/paused iron focus or the multi-day switch lock).
-      Once those items are configured this way they stay locked ALL THE TIME —
-      even across closing the app or reinstalling a new version mid-session:
-      the saved config itself is the promise, not the running session.
-      Turning any item OFF is only allowed through the dedicated escape hatch
-      below (focusItemsOff) while no iron focus / self-lock runs. */
-  function focusItemsOn(sites, guard, strict, opts) {
+  /** THE freeze authority for the FOCUS ITEMS — the FULL focus kit:
+       • Site blocking ON
+       • Allowlist mode
+       • App blocking (guard) ON
+       • Strict mode ON
+     The switches are locked ALL THE TIME, but ONLY while the whole kit is
+     configured this way (AND, never OR). This matters: if you set your
+     promise up as "blocking ON + Blocklist mode" (or leave blocking off),
+     the mode switch was NEVER part of a focus promise — locking it would
+     trap you in a configuration you never promised. So partial setups stay
+     freely editable; completing the kit is what engages the freeze.
+     A live/paused iron focus or the multi-day iron self-lock ALWAYS freezes
+     the switches regardless of the kit (that promise was made explicitly).
+     The saved config itself is the promise — closing the app or installing
+     a new version mid-session can never unlock them. Sites LISTS and the
+     "during focus / always" timing stay editable forever: adding blocked
+     sites / trimming the allowlist only ever strengthens the promise. */
+  function focusItemsFrozen(sites, guard, strict, opts) {
     const o = opts || {};
     const s = (sites && typeof sites === 'object' && !Array.isArray(sites)) ? sites : {};
     const g = (guard && typeof guard === 'object' && !Array.isArray(guard)) ? guard : {};
-    const sitePart = !!s.enabled && s.mode === 'allow';
-    return sitePart || !!g.enabled || !!strict || !!o.ironFocus ||
-      resolveIron(o.timerIron, o.timerIronLockedUntil, o.now);
+    if (o.ironFocus || resolveIron(o.timerIron, o.timerIronLockedUntil, o.now)) return true;
+    return !!s.enabled && s.mode === 'allow' && !!g.enabled && !!strict;
   }
-  /** Escape hatch: with NO iron focus running and NO self-lock active, the
-      user may turn the focus items off (patches that only clear switches).
-      Anything else — flipping modes back on, enabling, editing while locked —
-      is refused while the focus-items freeze is in effect. Lists stay
-      editable forever: adding blocked sites / trimming the allowlist only
-      ever strengthens the promise. Returns true when the patch may apply. */
-  function focusItemsPatchAllowed(frozen, patch, escape) {
+  /** Patch gate for the focus items: while the freeze holds, the two big
+      switches (Site-blocking ON/OFF and Blocklist↔Allowlist MODE) cannot be
+      flipped — no escape hatch, they stay locked as long as the kit is on.
+      To change them, first break the kit through its own controls (turn
+      Strict mode off in Settings, or the guard off on the Apps tab): then
+      the switches unlock automatically. Everything else passes untouched.
+      Returns true when the patch may apply. */
+  function focusItemsPatchAllowed(frozen, patch) {
     const p = (patch && typeof patch === 'object' && !Array.isArray(patch)) ? patch : {};
     if (!frozen) return true;
-    if (escape && (('enabled' in p && p.enabled === false) || ('mode' in p && p.mode === 'block'))) {
-      // turning site blocking OFF, or stepping back from Allowlist to
-      // Blocklist — the ONLY writes allowed while the freeze holds.
-      const clearsOnly = Object.keys(p).every((k) =>
-        k === 'enabled' || k === 'mode' || k === 'when' || k === 'block' || k === 'allow');
-      if (clearsOnly && (!('mode' in p) || p.mode === 'block') && (!('enabled' in p) || p.enabled === false)) {
-        return true;
-      }
-    }
-    if ('enabled' in p || 'mode' in p) return false;   // 🔒 frozen while focus items run
+    if ('enabled' in p || 'mode' in p) return false;   // 🔒 frozen while the focus kit is on
     return true;
   }
   /** Normalize the three iron fields to safe values (used by store sanitize). */
@@ -146,5 +146,5 @@
     if (!s.timer || typeof s.timer !== 'object' || Array.isArray(s.timer)) s.timer = {};
     return s.timer;
   }
-  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, sitePatchAllowed, focusItemsOn, focusItemsPatchAllowed, normalizeFields, effectiveGuard, effectiveTimer };
+  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, sitePatchAllowed, focusItemsFrozen, focusItemsPatchAllowed, normalizeFields, effectiveGuard, effectiveTimer };
 });

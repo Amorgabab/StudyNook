@@ -521,6 +521,14 @@ function registerIpc() {
   H('session:start', (p) => {
     gateCleared = false;
     const task = p.taskId ? store.data.tasks.find((t) => t.id === p.taskId) : null;
+    /* A focus is already live? Then the length was chosen when it started —
+       a second Start press (e.g. after closing and reinstalling mid-session,
+       when the UI chips fall back to the default length) must never rewrite
+       that countdown. Return the current state untouched; the engine keeps
+       its own frozen freeMin / phaseSec and raises workMin to match if the
+       stale request was shorter ("2 hours reset to 1h40" bug). */
+    const cur = session.publicState();
+    if (cur && cur.active && cur.phase === 'focus') return cur;
     const st = session.start({ mode: p.mode || 'pomodoro', freeMin: p.freeMin || 0, taskId: p.taskId || null, label: task ? task.text : (p.label || '') });
     store.mutate((d) => { d.feed = d.feed || []; d.feed.unshift({ t: Date.now(), emoji: '🌱', kind: 'info', text: `Focus session started (${st.mode === 'free' ? 'free' : 'pomodoro'})${task ? ' · ' + task.text : ''}` }); if (d.feed.length > 40) d.feed.length = 40; });
     pushSnapshot();
@@ -800,28 +808,28 @@ function registerIpc() {
   /* ---- sites ---- */
   H('sites:set', (p) => {
     const Iron = require('../shared/iron.js');
-    /* FOCUS ITEMS FREEZE: the full focus configuration — Site blocking ON +
-       Allowlist mode + App blocking ON + Strict mode ON (+ any live/paused
-       iron focus or the multi-day switch lock) — locks these switches ALL
-       THE TIME, not just while a session happens to be running. Closing the
-       app or installing a new version mid-session can never unlock them:
-       the saved config itself is the promise. Turning blocking OFF / stepping
-       back to Blocklist is allowed only through the escape hatch below, and
-       only when no iron focus or self-lock runs. The shared pure helpers
-       (focusItemsOn / focusItemsPatchAllowed) are the single authority; the
-       UI draws the same locked state and store.enforceIron() snaps back any
-       drift on every write. Sites LISTS stay editable forever. */
+    /* FOCUS ITEMS FREEZE: the Site-blocking ON/OFF switch and the
+       Blocklist↔Allowlist MODE are locked ALL THE TIME while the full focus
+       kit is configured — blocking ON + Allowlist mode + App blocking ON +
+       Strict mode ON — or an iron focus / multi-day self-lock runs. Closing
+       the app or installing a new version can never unlock them: the saved
+       config itself is the promise. Partial setups (e.g. blocking ON but
+       still Blocklist mode) do NOT lock the switches — you can't be trapped
+       in a configuration you never promised. The shared pure helpers
+       (focusItemsFrozen / focusItemsPatchAllowed) are the single authority;
+       the UI draws the same locked state via snapshot.focusItemsFrozen and
+       store.enforceIron() snaps back any drift on every write. Sites LISTS
+       and the "during focus / always" timing stay editable forever. */
     const sesNow = session.publicState();
     const ironFocusNow = !!(sesNow && sesNow.active && sesNow.phase === 'focus' && sesNow.iron);
     const st = store.data.settings.timer;
-    const frozen = Iron.focusItemsOn(store.data.sites, store.data.settings.guardian, st.strict, {
+    const frozen = Iron.focusItemsFrozen(store.data.sites, store.data.settings.guardian, st.strict, {
       ironFocus: ironFocusNow, timerIron: st.iron, timerIronLockedUntil: st.ironLockedUntil, now: Date.now()
     });
-    const escape = !ironFocusNow && !Iron.isLocked(st.ironLockedUntil, Date.now()) && !(p && p.escape === true && false);
     const patchIn = (p && p.patch && typeof p.patch === 'object' && !Array.isArray(p.patch)) ? p.patch : {};
-    if (!Iron.focusItemsPatchAllowed(frozen, patchIn, escape) ||
+    if (!Iron.focusItemsPatchAllowed(frozen, patchIn) ||
         !Iron.sitePatchAllowed(st, ironFocusNow, Date.now(), patchIn)) {
-      broadcast('toast', { title: '🔒 Frozen by your focus items', msg: 'Site blocking stays ON and the block/allow mode can\u2019t flip while your focus items run (blocking + allowlist + apps + strict). Turn the items off first — lists stay editable.' });
+      broadcast('toast', { title: '🔒 Frozen by your focus items', msg: 'Site blocking stays ON and the block/allow mode can\u2019t flip while your focus items run (blocking + allowlist + apps + strict). Turn one of those items off first — lists stay editable.' });
       pushSnapshot();
       return false;
     }

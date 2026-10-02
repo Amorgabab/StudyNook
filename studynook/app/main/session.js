@@ -98,16 +98,33 @@ class SessionEngine {
       : (Number.isFinite(savedFreeMin) && savedFreeMin > 0 ? savedFreeMin : t.workMin);
     const workSec = (mode === 'free' ? effFreeMin : t.workMin) * 60;
     /* A focus can be STARTED while another is still live (e.g. a restored
-       session that survived a crash/reinstall). Without this guard, starting
-       a shorter one would silently overwrite the longer countdown — the
-       "2 hours became 1h40" bug. If the running focus has MORE time left
-       than what's about to start, keep the existing session untouched. */
+       session that survived a crash/reinstall). Two protections here:
+       1) NEVER shorten the countdown — the "2 hours reset to 1h40" bug. If
+          the live focus has MORE time left than what's about to start, the
+          request cannot override the promise; keep the existing session.
+       2) REMEMBER the chosen length across restarts: after closing the app
+          and installing a new version mid-session, the UI chips fall back
+          to Settings' workMin (default 25m), so pressing Start feeds that
+          fallback into the engine. Persisted free sessions carry their own
+          freeMin; pomodoro rounds are governed by workMin — raise the
+          stored value to at least the frozen round length instead of
+          letting the stale/default setting clobber the running focus. */
     const prev = this.s;
     if (prev && prev.active !== false && prev.phase === 'focus') {
       const prevRem = prev.running
         ? Math.max(0, Math.round((prev.endsAt - Date.now()) / 1000))
         : Math.max(0, Number(prev.pausedRemaining) || 0);
-      if (prevRem > workSec) return this.publicState();
+      if (prevRem > workSec) return this.publicState();   // never shorten
+      const reqMin = Math.ceil(workSec / 60);
+      if (mode === 'free' && prev.mode === 'free') {
+        const curFree = Number(prev.freeMin) || 0;
+        if (reqMin > curFree) prev.freeMin = reqMin;      // lengthen the live free focus
+      } else if (mode !== 'free') {
+        const curWork = Number(t.workMin) || 0;
+        if (reqMin > curWork) t.workMin = Math.min(600, reqMin);  // keep rounds ≥ the live focus
+      }
+      this._persist();
+      return this.publicState();                          // live focus stays untouched
     }
     this.s = {
       mode,
