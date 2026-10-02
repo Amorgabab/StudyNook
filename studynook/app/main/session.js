@@ -88,9 +88,30 @@ class SessionEngine {
        into the session. Editing data.json mid-session can't change it. */
     const Iron = require('../shared/iron.js');
     const ironOn = Iron.resolveIron(t.iron, t.ironLockedUntil, Date.now());
-    const workSec = (mode === 'free' ? (freeMin || t.workMin) : t.workMin) * 60;
+    /* The chosen length is FROZEN at start: a free session keeps its own
+       freeMin inside the snapshot, so changing workMin in Settings later —
+       or restoring after a reinstall of a new build — can never rewrite the
+       countdown of a session that is already running. */
+    const reqFreeMin = Number(freeMin);
+    const savedFreeMin = Number(this.s && this.s.mode === 'free' ? this.s.freeMin : NaN);
+    const effFreeMin = Number.isFinite(reqFreeMin) && reqFreeMin > 0 ? reqFreeMin
+      : (Number.isFinite(savedFreeMin) && savedFreeMin > 0 ? savedFreeMin : t.workMin);
+    const workSec = (mode === 'free' ? effFreeMin : t.workMin) * 60;
+    /* A focus can be STARTED while another is still live (e.g. a restored
+       session that survived a crash/reinstall). Without this guard, starting
+       a shorter one would silently overwrite the longer countdown — the
+       "2 hours became 1h40" bug. If the running focus has MORE time left
+       than what's about to start, keep the existing session untouched. */
+    const prev = this.s;
+    if (prev && prev.active !== false && prev.phase === 'focus') {
+      const prevRem = prev.running
+        ? Math.max(0, Math.round((prev.endsAt - Date.now()) / 1000))
+        : Math.max(0, Number(prev.pausedRemaining) || 0);
+      if (prevRem > workSec) return this.publicState();
+    }
     this.s = {
       mode,
+      freeMin: mode === 'free' ? Math.round(effFreeMin) : undefined,
       running: true,
       phase: 'focus',
       phaseSec: workSec,
@@ -203,6 +224,11 @@ class SessionEngine {
     if (!st || !st.active) return { ok: false, why: 'no active session' };
     if (!['focus', 'short', 'long'].includes(st.phase)) return { ok: false, why: 'unknown phase in saved state' };
     const accum = Math.max(0, Number(st.accumSec) || 0);
+    /* A snapshot from an older build (or a hand-edited file) may lack
+       phaseSec. Without it we can't rebuild the countdown honestly —
+       restoring would silently reset e.g. a 2-hour focus to the default
+       workMin. Refuse; main.js salvages it as credit + feed note instead. */
+    if (!(Number(st.phaseSec) > 0)) return { ok: false, why: 'saved session has no phase length to resume' };
     if (st.phase === 'focus' && st.running) {
       const phaseBanked = SessionEngine._phaseBankedSec(st, accum);
       const rem = Math.max(0, (Number(st.phaseSec) || 0) - phaseBanked);
@@ -237,6 +263,7 @@ class SessionEngine {
     const phaseBanked = SessionEngine._phaseBankedSec(st, accum);
     this.s = {
       mode: st.mode === 'free' ? 'free' : 'pomodoro',
+      freeMin: Number(st.freeMin) > 0 ? Number(st.freeMin) : undefined,
       running: !!st.running,
       phase: ['focus', 'short', 'long'].includes(st.phase) ? st.phase : 'focus',
       phaseSec: Math.max(0, Number(st.phaseSec) || 0),
@@ -319,7 +346,7 @@ class SessionEngine {
     if (!this.s) return null;
     const s = this.s;
     return {
-      active: true, mode: s.mode, running: s.running, phase: s.phase,
+      active: true, mode: s.mode, freeMin: s.freeMin, running: s.running, phase: s.phase,
       phaseSec: s.phaseSec, endsAt: s.endsAt, pausedRemaining: s.pausedRemaining,
       roundIdx: s.roundIdx, rounds: s.rounds, taskId: s.taskId, label: s.label,
       startedAt: s.startedAt,

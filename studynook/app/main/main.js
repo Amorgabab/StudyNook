@@ -800,16 +800,28 @@ function registerIpc() {
   /* ---- sites ---- */
   H('sites:set', (p) => {
     const Iron = require('../shared/iron.js');
-    /* IRON FREEZE: while an iron promise runs — the multi-day switch lock
-       OR a live iron focus (running or paused) — the Site-blocking ON/OFF
-       switch and the Blocklist↔Allowlist mode are FROZEN. The gate is the
-       shared pure helper (sitePatchAllowed); the UI draws the same locked
-       state, and store.enforceIron() snaps back any drift on every write. */
+    /* FOCUS ITEMS FREEZE: the full focus configuration — Site blocking ON +
+       Allowlist mode + App blocking ON + Strict mode ON (+ any live/paused
+       iron focus or the multi-day switch lock) — locks these switches ALL
+       THE TIME, not just while a session happens to be running. Closing the
+       app or installing a new version mid-session can never unlock them:
+       the saved config itself is the promise. Turning blocking OFF / stepping
+       back to Blocklist is allowed only through the escape hatch below, and
+       only when no iron focus or self-lock runs. The shared pure helpers
+       (focusItemsOn / focusItemsPatchAllowed) are the single authority; the
+       UI draws the same locked state and store.enforceIron() snaps back any
+       drift on every write. Sites LISTS stay editable forever. */
     const sesNow = session.publicState();
     const ironFocusNow = !!(sesNow && sesNow.active && sesNow.phase === 'focus' && sesNow.iron);
+    const st = store.data.settings.timer;
+    const frozen = Iron.focusItemsOn(store.data.sites, store.data.settings.guardian, st.strict, {
+      ironFocus: ironFocusNow, timerIron: st.iron, timerIronLockedUntil: st.ironLockedUntil, now: Date.now()
+    });
+    const escape = !ironFocusNow && !Iron.isLocked(st.ironLockedUntil, Date.now()) && !(p && p.escape === true && false);
     const patchIn = (p && p.patch && typeof p.patch === 'object' && !Array.isArray(p.patch)) ? p.patch : {};
-    if (!Iron.sitePatchAllowed(store.data.settings.timer, ironFocusNow, Date.now(), patchIn)) {
-      broadcast('toast', { title: '🔒 Frozen by your iron promise', msg: 'Site blocking stays ON and the block/allow mode can\u2019t flip while iron runs. Lists stay editable — that only ever strengthens the promise.' });
+    if (!Iron.focusItemsPatchAllowed(frozen, patchIn, escape) ||
+        !Iron.sitePatchAllowed(st, ironFocusNow, Date.now(), patchIn)) {
+      broadcast('toast', { title: '🔒 Frozen by your focus items', msg: 'Site blocking stays ON and the block/allow mode can\u2019t flip while your focus items run (blocking + allowlist + apps + strict). Turn the items off first — lists stay editable.' });
       pushSnapshot();
       return false;
     }

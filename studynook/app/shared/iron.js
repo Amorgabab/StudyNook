@@ -65,6 +65,43 @@
     if ('enabled' in p || 'mode' in p) return false;   // 🔒 frozen during iron
     return true;
   }
+  /** THE freeze authority for the FOCUS ITEMS — the full focus configuration:
+      Site blocking ON + Allowlist mode + App blocking (guard) ON + Strict mode
+      ON (+ of course a live/paused iron focus or the multi-day switch lock).
+      Once those items are configured this way they stay locked ALL THE TIME —
+      even across closing the app or reinstalling a new version mid-session:
+      the saved config itself is the promise, not the running session.
+      Turning any item OFF is only allowed through the dedicated escape hatch
+      below (focusItemsOff) while no iron focus / self-lock runs. */
+  function focusItemsOn(sites, guard, strict, opts) {
+    const o = opts || {};
+    const s = (sites && typeof sites === 'object' && !Array.isArray(sites)) ? sites : {};
+    const g = (guard && typeof guard === 'object' && !Array.isArray(guard)) ? guard : {};
+    const sitePart = !!s.enabled && s.mode === 'allow';
+    return sitePart || !!g.enabled || !!strict || !!o.ironFocus ||
+      resolveIron(o.timerIron, o.timerIronLockedUntil, o.now);
+  }
+  /** Escape hatch: with NO iron focus running and NO self-lock active, the
+      user may turn the focus items off (patches that only clear switches).
+      Anything else — flipping modes back on, enabling, editing while locked —
+      is refused while the focus-items freeze is in effect. Lists stay
+      editable forever: adding blocked sites / trimming the allowlist only
+      ever strengthens the promise. Returns true when the patch may apply. */
+  function focusItemsPatchAllowed(frozen, patch, escape) {
+    const p = (patch && typeof patch === 'object' && !Array.isArray(patch)) ? patch : {};
+    if (!frozen) return true;
+    if (escape && (('enabled' in p && p.enabled === false) || ('mode' in p && p.mode === 'block'))) {
+      // turning site blocking OFF, or stepping back from Allowlist to
+      // Blocklist — the ONLY writes allowed while the freeze holds.
+      const clearsOnly = Object.keys(p).every((k) =>
+        k === 'enabled' || k === 'mode' || k === 'when' || k === 'block' || k === 'allow');
+      if (clearsOnly && (!('mode' in p) || p.mode === 'block') && (!('enabled' in p) || p.enabled === false)) {
+        return true;
+      }
+    }
+    if ('enabled' in p || 'mode' in p) return false;   // 🔒 frozen while focus items run
+    return true;
+  }
   /** Normalize the three iron fields to safe values (used by store sanitize). */
   function normalizeFields(t, now) {
     t.iron = !!t.iron;
@@ -109,5 +146,5 @@
     if (!s.timer || typeof s.timer !== 'object' || Array.isArray(s.timer)) s.timer = {};
     return s.timer;
   }
-  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, sitePatchAllowed, normalizeFields, effectiveGuard, effectiveTimer };
+  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, sitePatchAllowed, focusItemsOn, focusItemsPatchAllowed, normalizeFields, effectiveGuard, effectiveTimer };
 });
