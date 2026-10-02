@@ -598,10 +598,10 @@ function registerIpc() {
       /* Iron strictness: timer/guardian edits are filtered through the same
          pure helpers the engine and the UI use — you cannot soften them
          mid-promise, and what gets stored is exactly what will run.
-         Sites too: while the promise runs the master switch stays ON and
-         the mode stays allowlist (store.enforceIron re-asserts this on every
-         write anyway; filtering here keeps the returned/stored value honest).
-         `when` (during focus / always) stays free will. */
+         Sites too: while the promise runs the master switch stays ON
+         (store.enforceIron re-asserts this on every write anyway; filtering
+         here keeps the returned/stored value honest). The list MODE
+         (blocklist/allowlist) and `when` (during focus / always) stay free will. */
       if (Iron.resolveIron(d.settings.timer.iron, d.settings.timer.ironLockedUntil, Date.now())) {
         if (p.section === 'guardian') Object.assign(d.settings.guardian, Iron.effectiveGuard(d.settings.guardian, true));
         if (p.section === 'timer') Object.assign(d.settings.timer, Iron.effectiveTimer(d.settings.timer, true));
@@ -810,11 +810,12 @@ function registerIpc() {
       // normalizeEntry KEEPS paths (youtube.com/shorts stays youtube.com/shorts)
       for (const k of ['block', 'allow']) if (Array.isArray(patch[k])) d.sites[k] = dedupe(patch[k].map((x) => NookRules.normalizeEntry(x)).filter(Boolean)).slice(0, 500);
       /* Iron promise: while the self-lock runs you can NOT switch site
-         blocking off and you can NOT leave it in blocklist mode — the write
-         is filtered through Iron.effectiveSites (the same pure helper the UI
-         renders from), so what you see is exactly what the extension gets.
-         `when` (during focus / always) stays YOUR choice. store.enforceIron()
-         re-asserts this on every other write too, so no path softens it. */
+         blocking off — the write is filtered through Iron.effectiveSites
+         (the same pure helper the UI renders from), so what you see is
+         exactly what the extension gets. The list MODE (blocklist/allowlist)
+         and `when` (during focus / always) stay YOUR choice.
+         store.enforceIron() re-asserts this on every other write too, so no
+         path softens it. */
       Object.assign(d.sites, Iron.effectiveSites(d.sites, Iron.isLocked(d.settings.timer.ironLockedUntil, Date.now())));
     });
     pushSnapshot();

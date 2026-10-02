@@ -110,9 +110,9 @@ function sanitizeData(d) {
      settings must already BE the hardened ones — otherwise the UI would
      show "gentle warn" or "guard off" while the engine secretly acts
      differently. Strict mode is forced on too, so early ends never earn XP
-     during an iron promise. Sites get the same treatment for `enabled` and
-     `mode` (blocking ON + allowlist while the promise runs); your "during
-     focus / always" choice there stays free will. Same pure helpers the
+     during an iron promise. Sites get the same treatment for `enabled`
+     (blocking ON while the promise runs); your list MODE (block/allow) and
+     "during focus / always" choice stay free will. Same pure helpers the
      renderer uses → zero drift between what you see and what runs. */
   if (Iron.resolveIron(t.iron, t.ironLockedUntil, Date.now())) {
     Object.assign(g, Iron.effectiveGuard(g, true));
@@ -154,10 +154,10 @@ function sanitizeData(d) {
   sites.block = arr(sites.block).filter((x) => typeof x === 'string').map((x) => x.slice(0, 200)).slice(0, 500);
   sites.allow = arr(sites.allow).filter((x) => typeof x === 'string').map((x) => x.slice(0, 200)).slice(0, 500);
   /* Iron strictness for the tab guardian too: while the self-lock runs,
-     site blocking is always ON in allowlist mode — the extension reads this
-     object verbatim, so hardening it HERE (before the sites lines above are
-     normalized) guarantees "off / blocklist" can never survive a load, an
-     import, or a hand-edit mid-promise. `when` stays the user's choice. */
+     site blocking is always ON — the extension reads this object verbatim,
+     so hardening it HERE (before the sites lines above are normalized)
+     guarantees "off" can never survive a load, an import, or a hand-edit
+     mid-promise. `mode` (blocklist/allowlist) and `when` stay user choices. */
   Object.assign(sites, Iron.effectiveSites(sites, Iron.isLocked(t.ironLockedUntil, Date.now())));
   const apps = obj(d.apps); d.apps = apps;
   for (const k of ['block', 'allow']) {
@@ -334,9 +334,10 @@ class Store {
       file that got loaded, an import, a stray code path) tried to clear it.
       After the lock expires nothing is forced, so iron can be turned off.
       Iron strictness rides along: with the lock running the guardian stays
-      hardened (guard ON + allowlist mode + instant close), site blocking
-      stays ON in allowlist mode, and strict mode stays on, so stored state
-      and enforced state never diverge. The pre-iron gentle-guard AND
+      hardened (guard ON + instant close), site blocking stays ON, and
+      strict mode stays on, so stored state and enforced state never
+      diverge. The list MODE (blocklist/allowlist) is never touched — free
+      will. The pre-iron gentle-guard AND
       pre-iron sites choices are remembered in __ironSaved and handed back
       when the promise ends. */
   enforceIron() {

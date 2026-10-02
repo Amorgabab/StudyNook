@@ -76,18 +76,17 @@
      (before drawing toggles/segments) call them, so the displayed state IS
      the enforced state:
        • guardian: guard stays ON, style becomes instant close (gentle/remind
-         would let you sit on a warning card instead of losing the app), the
-         MODE snaps to allowlist (block everything not explicitly allowed —
-         in iron, browsing is opt-IN, not opt-out), and "only during focus"
-         is ignored — the guard never disarms mid-promise;
+         would let you sit on a warning card instead of losing the app), and
+         "only during focus" is ignored — the guard never disarms mid-promise.
+         The list MODE (blocklist vs allowlist) stays YOUR choice in iron too;
        • timer: strict mode is forced on (ending early earns zero XP);
        • pause: the timer may still be paused — pausing only STOPS THE CLOCK.
-     SITES: neither the master switch nor the mode is free will during an
-     iron promise — effectiveSites() forces site blocking ON and the mode to
-     allowlist whenever the self-lock runs (the whole point of the promise is
-     that distractions get blocked, and both controls used to be switchable
-     mid-session). Your "during focus / always" timing choice stays YOURS —
-     `when` is never rewritten. Outside iron, sites settings pass through
+     SITES: the master switch is not free will during an iron promise —
+     effectiveSites() forces site blocking ON whenever the self-lock runs
+     (the whole point of the promise is that distractions get blocked, and
+     the switch used to be flip-able mid-session). The list MODE and your
+     "during focus / always" timing choice stay YOURS — `mode` and `when`
+     are never rewritten. Outside iron, sites settings pass through
      untouched.
      When Iron is off these are identity functions — user choices untouched. */
   function effectiveGuard(guard, ironOn) {
@@ -95,15 +94,15 @@
     if (!ironOn) return g;
     g.enabled = true;
     g.action = 'instant';
-    g.mode = 'allow';   // iron = allowlist mode: everything closed unless allowed
+    /* MODE stays YOURS in iron too — pick blocklist or allowlist freely.
+       (It used to be forced to 'allow', which made the choice disappear.) */
     return g;
   }
-  /** Iron lock → site blocking is always ON in ALLOWLIST mode (both controls
-      disabled in the UI). `when` (session vs always) is deliberately left
-      alone — free will. */
+  /** Iron lock → site blocking is always ON. The list MODE (block vs allow)
+      is deliberately left alone — free will, like `when`. */
   function effectiveSites(sites, locked) {
     const s = Object.assign({}, sites || {});
-    if (locked) { s.enabled = true; s.mode = 'allow'; }
+    if (locked) s.enabled = true;
     return s;
   }
   function effectiveTimer(timer, ironOn) {
