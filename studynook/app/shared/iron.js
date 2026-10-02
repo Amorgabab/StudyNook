@@ -47,6 +47,24 @@
     t.iron = v;
     return true;
   }
+  /** THE gate every site-blocking write must pass through (main handler,
+      localhost bridge and the store's last line of defence all call it).
+      While an iron promise runs — the multi-day switch lock OR a live iron
+      focus — the Site-blocking ON/OFF switch and the Blocklist↔Allowlist
+      mode are FROZEN: patches carrying those fields are dropped entirely
+      (lists stay editable — adding blocked sites only ever strengthens the
+      promise). With no iron promise in effect the gate is transparent:
+      every choice is free will. Returns true when the patch may be applied.
+      `ironFocus` = an iron focus phase exists right now (live session view;
+      pass false/undefined if unknown — the lock alone still freezes). */
+  function sitePatchAllowed(timer, ironFocus, now, patch) {
+    const p = (patch && typeof patch === 'object' && !Array.isArray(patch)) ? patch : {};
+    const t = (timer && typeof timer === 'object' && !Array.isArray(timer)) ? timer : {};
+    const promiseOn = resolveIron(t.iron, t.ironLockedUntil, now) || !!ironFocus;
+    if (!promiseOn) return true;
+    if ('enabled' in p || 'mode' in p) return false;   // 🔒 frozen during iron
+    return true;
+  }
   /** Normalize the three iron fields to safe values (used by store sanitize). */
   function normalizeFields(t, now) {
     t.iron = !!t.iron;
@@ -91,5 +109,5 @@
     if (!s.timer || typeof s.timer !== 'object' || Array.isArray(s.timer)) s.timer = {};
     return s.timer;
   }
-  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, normalizeFields, effectiveGuard, effectiveTimer };
+  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, sitePatchAllowed, normalizeFields, effectiveGuard, effectiveTimer };
 });

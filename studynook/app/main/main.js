@@ -800,8 +800,21 @@ function registerIpc() {
   /* ---- sites ---- */
   H('sites:set', (p) => {
     const Iron = require('../shared/iron.js');
+    /* IRON FREEZE: while an iron promise runs — the multi-day switch lock
+       OR a live iron focus (running or paused) — the Site-blocking ON/OFF
+       switch and the Blocklist↔Allowlist mode are FROZEN. The gate is the
+       shared pure helper (sitePatchAllowed); the UI draws the same locked
+       state, and store.enforceIron() snaps back any drift on every write. */
+    const sesNow = session.publicState();
+    const ironFocusNow = !!(sesNow && sesNow.active && sesNow.phase === 'focus' && sesNow.iron);
+    const patchIn = (p && p.patch && typeof p.patch === 'object' && !Array.isArray(p.patch)) ? p.patch : {};
+    if (!Iron.sitePatchAllowed(store.data.settings.timer, ironFocusNow, Date.now(), patchIn)) {
+      broadcast('toast', { title: '🔒 Frozen by your iron promise', msg: 'Site blocking stays ON and the block/allow mode can\u2019t flip while iron runs. Lists stay editable — that only ever strengthens the promise.' });
+      pushSnapshot();
+      return false;
+    }
     store.mutate((d) => {
-      const patch = (p && p.patch && typeof p.patch === 'object' && !Array.isArray(p.patch)) ? p.patch : {};
+      const patch = patchIn;
       /* SECURITY FIX: enums/booleans were assigned unvalidated — a buggy or
          hostile renderer could persist mode:'banana', which makes rule
          matching fail open (nothing blocks) until the next restart. Same
@@ -811,9 +824,9 @@ function registerIpc() {
       if (patch.when === 'session' || patch.when === 'always') d.sites.when = patch.when;
       // normalizeEntry KEEPS paths (youtube.com/shorts stays youtube.com/shorts)
       for (const k of ['block', 'allow']) if (Array.isArray(patch[k])) d.sites[k] = dedupe(patch[k].map((x) => NookRules.normalizeEntry(x)).filter(Boolean)).slice(0, 500);
-      /* No iron filtering here — the Sites section is FREE WILL. Iron never
-         flips site blocking on/off or rewrites "during focus" to "always";
-         your choice is exactly what runs (the extension reads it directly). */
+      /* Iron DOES freeze the two big switches now (see the gate above).
+         Everything else in Sites stays FREE WILL: "during focus / always"
+         and the lists themselves are yours to edit mid-promise. */
     });
     pushSnapshot();
     return true;
