@@ -141,10 +141,11 @@ class SessionEngine {
   /** Skip current BREAK to the next focus round. (Skipping focus = give up → use stop.) */
   skip() {
     if (!this.s || this.s.phase === 'focus') return this.stop({ abandon: true });
-    /* Iron strictness: during an iron self-lock, breaks can't be skipped —
+    /* Iron strictness: while an iron session runs, breaks can't be skipped —
        that would let you fast-forward past a blocked period with the guard
-       asleep. The break simply runs its course. */
-    if (this.ironActive()) return this.publicState();
+       asleep. Checked on the SESSION flag (not ironActive(), which is scoped
+       to the focus phase) so it also holds during breaks. */
+    if (this.s.iron) return this.publicState();
     return this._endPhase(false);
   }
 
@@ -161,6 +162,9 @@ class SessionEngine {
     this.s = null;
     this._stopLoop();
     this.killsThisSession = [];
+    // null snapshot → the persist hook DELETES session.json, so a later
+    // boot can never resurrect an ended session ("started from scratch"
+    // bug after repeated open/close cycles).
     this._persist();
     this.hooks.onPhaseEnd && this.hooks.onPhaseEnd(info);
     this.hooks.onState && this.hooks.onState();
@@ -221,10 +225,12 @@ class SessionEngine {
       resumes exactly where it was left, as if no time passed. For a RUNNING
       focus we keep only the focused seconds accrued up to the last persist
       (`accumSec` minus what the open phase had banked at save time) and
-      rebuild `endsAt` from that remainder. The iron flag is NOT trusted from
-      the file — it's re-derived live (switch on OR self-lock still running →
-      iron stays on), so a hand-edited data.json can't smuggle a paused,
-      iron-less session back in. */
+      rebuild `endsAt` from that remainder. The iron promise is FROZEN AT
+      START — restore honours the flag persisted in the snapshot instead of
+      re-deriving it from live settings, so a self-lock that expired (or got
+      cleared) while the app was dead can't silently soften an active iron
+      focus back to gentle mode. Tamper-proofing still wins upward: while a
+      live self-lock runs, iron stays on even if the file says false. */
   restore(st) {
     if (!st || !st.active) return null;
     // Refuse structurally invalid snapshots outright — never half-restore a
@@ -232,7 +238,8 @@ class SessionEngine {
     if (!['focus', 'short', 'long'].includes(st.phase)) return null;
     const Iron = require('../shared/iron.js');
     const t = this.hooks.getSettings() || {};
-    const iron = Iron.resolveIron(t.iron, t.ironLockedUntil, Date.now());
+    const locked = Iron.isLocked(t.ironLockedUntil, Date.now());
+    const iron = locked ? true : !!st.iron;   // frozen flag + lock override
     const accum = Math.max(0, Number(st.accumSec) || 0);
     const phaseBanked = SessionEngine._phaseBankedSec(st, accum);
     this.s = {
@@ -325,12 +332,16 @@ class SessionEngine {
       startedAt: s.startedAt,
       phaseStartAt: s.phaseStartAt,
       accumSec: s.sessionFocusSec + this._focusedSecInPhase(),
+      /* The promise is FROZEN at Start — persist it with the snapshot so a
+         crash-restart restores the exact strictness you chose, even if the
+         multi-day self-lock expired (or was cleared) while the app was dead. */
+      iron: !!s.iron,
       savedAt: Date.now()
     };
   }
   _persist() {
     if (!this.hooks.persist) return;
-    try { this.hooks.persist(this.persistState()); } catch (e) {}
+    try { this.hooks.persist(this.s ? this.persistState() : null); } catch (e) {}
   }
 
   /** A phase finished naturally (completed=true) or was skipped (false). */
@@ -357,6 +368,9 @@ class SessionEngine {
     if (s.mode === 'free') {
       this.s = null;
       this._stopLoop();
+      // free mode ends with the first focus → delete session.json (null
+      // snapshot) so a later boot can't resurrect a finished session.
+      this._persist();
       this.hooks.onState && this.hooks.onState();
       return this.publicState();
     }
@@ -379,10 +393,15 @@ class SessionEngine {
       if (s.roundIdx >= s.rounds) {          // whole plan finished 🎉
         this.s = null;
         this._stopLoop();
+        this._persist();                     // delete session.json — done for good
         this.hooks.onState && this.hooks.onState();
         return this.publicState();
       }
       beginPhase('focus', t.workMin * 60);
+      /* A NEW focus round = a NEW promise: the close-gate re-arms every
+         round, so clearing it once can't let you Alt+F4 through rounds 2+
+         of the same iron session. */
+      if (this.hooks.onFocusStart) this.hooks.onFocusStart();
     }
     this.lastTickSec = -1;
     this._persist();
@@ -391,7 +410,7 @@ class SessionEngine {
   }
 
   publicState() {
-    if (!this.s) return { active: false, running: false, phase: 'idle', remainingSec: 0, totalSec: 0, roundIdx: 0, rounds: 0, mode: null, taskId: null, label: '' };
+    if (!this.s) return { active: false, running: false, phase: 'idle', remainingSec: 0, totalSec: 0, roundIdx: 0, rounds: 0, mode: null, taskId: null, label: '', iron: false };
     const s = this.s;
     return {
       active: true,
@@ -403,7 +422,12 @@ class SessionEngine {
       rounds: s.rounds,
       mode: s.mode,
       taskId: s.taskId,
-      label: s.label
+      label: s.label,
+      /* The frozen-at-Start promise travels to the renderer here, so the UI
+         (End early gate, hardened toggles) agrees with the engine instead of
+         re-guessing from live settings — they can diverge when the self-lock
+         expires or iron is edited mid-session. */
+      iron: !!s.iron
     };
   }
 }

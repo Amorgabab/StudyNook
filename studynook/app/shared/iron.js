@@ -69,9 +69,12 @@
          "only during focus" is ignored — the guard never disarms mid-promise;
        • timer: strict mode is forced on (ending early earns zero XP);
        • pause: the timer may still be paused — pausing only STOPS THE CLOCK.
-     SITES ARE NEVER TOUCHED: your "during focus / always" choice in the
-     Sites section is free will — effectiveSites was removed on purpose, and
-     nothing silently rewrites `when` to 'always' behind your back.
+     SITES: the master switch is NOT free will during an iron promise —
+     effectiveSites() forces site blocking ON whenever the self-lock runs
+     (the whole point of the promise is that distractions get blocked, and
+     the toggle used to be switchable off mid-session). Your "during focus /
+     always" timing choice stays YOURS — `when` is never rewritten. Outside
+     iron, sites settings pass through untouched.
      When Iron is off these are identity functions — user choices untouched. */
   function effectiveGuard(guard, ironOn) {
     const g = Object.assign({}, guard || {});
@@ -79,6 +82,13 @@
     g.enabled = true;
     g.action = 'instant';
     return g;
+  }
+  /** Iron lock → site blocking is always ON (toggle disabled in the UI).
+      `when` (session vs always) is deliberately left alone — free will. */
+  function effectiveSites(sites, locked) {
+    const s = Object.assign({}, sites || {});
+    if (locked) s.enabled = true;
+    return s;
   }
   function effectiveTimer(timer, ironOn) {
     const t = Object.assign({}, timer || {});
@@ -91,5 +101,5 @@
     if (!s.timer || typeof s.timer !== 'object' || Array.isArray(s.timer)) s.timer = {};
     return s.timer;
   }
-  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, normalizeFields, effectiveGuard, effectiveTimer };
+  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, normalizeFields, effectiveGuard, effectiveSites, effectiveTimer };
 });
