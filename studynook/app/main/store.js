@@ -110,9 +110,10 @@ function sanitizeData(d) {
      settings must already BE the hardened ones — otherwise the UI would
      show "gentle warn" or "guard off" while the engine secretly acts
      differently. Strict mode is forced on too, so early ends never earn XP
-     during an iron promise. Sites are NEVER touched: your "during focus /
-     always" choice there is free will. Same pure helpers the renderer uses
-     → zero drift between what you see and what runs. */
+     during an iron promise. Sites get the same treatment for `enabled` and
+     `mode` (blocking ON + allowlist while the promise runs); your "during
+     focus / always" choice there stays free will. Same pure helpers the
+     renderer uses → zero drift between what you see and what runs. */
   if (Iron.resolveIron(t.iron, t.ironLockedUntil, Date.now())) {
     Object.assign(g, Iron.effectiveGuard(g, true));
     Object.assign(t, Iron.effectiveTimer(t, true));
@@ -152,6 +153,12 @@ function sanitizeData(d) {
   sites.when = sites.when === 'always' ? 'always' : 'session';
   sites.block = arr(sites.block).filter((x) => typeof x === 'string').map((x) => x.slice(0, 200)).slice(0, 500);
   sites.allow = arr(sites.allow).filter((x) => typeof x === 'string').map((x) => x.slice(0, 200)).slice(0, 500);
+  /* Iron strictness for the tab guardian too: while the self-lock runs,
+     site blocking is always ON in allowlist mode — the extension reads this
+     object verbatim, so hardening it HERE (before the sites lines above are
+     normalized) guarantees "off / blocklist" can never survive a load, an
+     import, or a hand-edit mid-promise. `when` stays the user's choice. */
+  Object.assign(sites, Iron.effectiveSites(sites, Iron.isLocked(t.ironLockedUntil, Date.now())));
   const apps = obj(d.apps); d.apps = apps;
   for (const k of ['block', 'allow']) {
     apps[k] = arr(apps[k]).filter((e) => e && typeof e === 'object').map((e) => ({
@@ -327,9 +334,11 @@ class Store {
       file that got loaded, an import, a stray code path) tried to clear it.
       After the lock expires nothing is forced, so iron can be turned off.
       Iron strictness rides along: with the lock running the guardian stays
-      hardened (guard ON + instant close) and strict mode stays on, so stored
-      state and enforced state never diverge. Sites are NEVER rewritten —
-      your "during focus / always" choice there is yours alone. */
+      hardened (guard ON + allowlist mode + instant close), site blocking
+      stays ON in allowlist mode, and strict mode stays on, so stored state
+      and enforced state never diverge. The pre-iron gentle-guard AND
+      pre-iron sites choices are remembered in __ironSaved and handed back
+      when the promise ends. */
   enforceIron() {
     try {
       const d = this.data;
@@ -337,13 +346,32 @@ class Store {
       if (!t) return;
       if (Iron.isLocked(t.ironLockedUntil, Date.now())) {
         t.iron = true;
+        // Remember the gentle-guard AND gentle-sites choices exactly ONCE —
+        // only when the snapshot is missing (first hardening of this promise,
+        // or an older build that saved guard only). Re-saving every write
+        // would capture the already-hardened values and permanently corrupt
+        // the user's settings when the lock expires.
+        if (!d.__ironSaved || !d.__ironSaved.guard) {
+          d.__ironSaved = {
+            guard: Object.assign({}, d.settings.guardian),
+            sites: { enabled: d.sites.enabled, mode: d.sites.mode }
+          };
+        } else if (!d.__ironSaved.sites) {
+          d.__ironSaved.sites = { enabled: d.sites.enabled, mode: d.sites.mode };
+        }
         Object.assign(d.settings.guardian, Iron.effectiveGuard(d.settings.guardian, true));
         Object.assign(t, Iron.effectiveTimer(t, true));
+        Object.assign(d.sites, Iron.effectiveSites(d.sites, true));
       } else if (d.__ironSaved) {
-        // The self-lock just expired → restore the guard choices the
-        // user had before they made the iron promise. (Sites were never
-        // changed by iron, so there is nothing to restore for them.)
-        Object.assign(d.settings.guardian, d.__ironSaved.guard || {});
+        // The self-lock just expired → restore the guard + sites choices the
+        // user had before they made the iron promise. (`when` was never
+        // changed by iron, so it is deliberately not restored.)
+        const saved = d.__ironSaved;
+        Object.assign(d.settings.guardian, saved.guard || {});
+        if (saved.sites) {
+          d.sites.enabled = !!saved.sites.enabled;
+          d.sites.mode = saved.sites.mode === 'allow' ? 'allow' : 'block';
+        }
         delete d.__ironSaved;
       }
     } catch (e) {}
