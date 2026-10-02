@@ -317,28 +317,10 @@ class Store {
   }
   /** mutate(fn) — change data then save. Returns fn's result. */
   mutate(fn) {
-    /* Snapshot the site-blocking switches BEFORE the mutation runs, so a
-       flip that slips past the handlers (a stray code path, an import, a
-       hand-edited file loaded mid-lock) can be snapped back to the choice
-       that was in effect when this promise began. */
-    this._captureSitesFreeze();
     const r = fn(this.data);
     this.enforceIron();
     this.save();
     return r;
-  }
-  /** Remember sites.enabled/mode before every mutation while an iron
-      self-lock runs (cheap: two primitives). enforceIron() compares the
-      snapshot against the post-mutation state and restores it on drift. */
-  _captureSitesFreeze() {
-    try {
-      const d = this.data;
-      const t = d && d.settings && d.settings.timer;
-      this._sitesBefore = !!(t && Iron.isLocked(t.ironLockedUntil, Date.now()) && d.sites);
-      if (this._sitesBefore) {
-        this._sitesFrozen = { enabled: !!d.sites.enabled, mode: d.sites.mode === 'allow' ? 'allow' : 'block' };
-      }
-    } catch (e) { this._sitesBefore = false; }
   }
   /** Re-assert the iron promise on every write: while the self-lock runs,
       settings.timer.iron is always true — even if something (a hand-edited
@@ -346,10 +328,8 @@ class Store {
       After the lock expires nothing is forced, so iron can be turned off.
       Iron strictness rides along: with the lock running the guardian stays
       hardened (guard ON + instant close) and strict mode stays on, so stored
-      state and enforced state never diverge. The Site-blocking ON/OFF switch
-      and the Blocklist↔Allowlist MODE are frozen too (snapped back to the
-      pre-mutation snapshot on any drift). Sites LISTS and the "during focus /
-      always" timing stay free will — only the two big switches are guarded. */
+      state and enforced state never diverge. Sites are NEVER rewritten —
+      your "during focus / always" choice there is yours alone. */
   enforceIron() {
     try {
       const d = this.data;
@@ -359,10 +339,6 @@ class Store {
         t.iron = true;
         Object.assign(d.settings.guardian, Iron.effectiveGuard(d.settings.guardian, true));
         Object.assign(t, Iron.effectiveTimer(t, true));
-        if (this._sitesBefore && this._sitesFrozen && d.sites) {
-          d.sites.enabled = !!this._sitesFrozen.enabled;
-          d.sites.mode = this._sitesFrozen.mode;
-        }
       } else if (d.__ironSaved) {
         // The self-lock just expired → restore the guard choices the
         // user had before they made the iron promise. (Sites were never
@@ -370,7 +346,6 @@ class Store {
         Object.assign(d.settings.guardian, d.__ironSaved.guard || {});
         delete d.__ironSaved;
       }
-      this._sitesBefore = false;   // snapshot consumed — recaptured next mutate
     } catch (e) {}
   }
   addFeed(text, emoji) {
