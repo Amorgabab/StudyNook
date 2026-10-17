@@ -111,6 +111,38 @@
     t.strict = true;
     return t;
   }
+  /** Iron list-freeze: while an iron FOCUS is running (or the multi-day
+      self-lock runs), the block LISTS are part of the promise too — you may
+      add distractions to the blocked side, but nothing on either list can be
+      disabled or removed mid-promise. Adding to the allow list is refused by
+      the same rule (it would disarm blocking). Outside iron everything
+      passes through untouched. */
+  function listsFrozen(ironFocusOn, locked) {
+    return !!ironFocusOn || !!locked;
+  }
+  /** Filter a proposed apps-list against the frozen one: entries that exist
+      in the frozen snapshot keep their frozen id/enabled state; new entries
+      are only kept when they belong to the BLOCK list (adding more blocking
+      is always allowed). Returns { ok, list } — ok=false when the change
+      tried to disable/remove an existing entry or touch the allow list. */
+  function filterFrozenList(frozen, wanted, listKey) {
+    const f = Array.isArray(frozen) ? frozen : [];
+    const w = Array.isArray(wanted) ? wanted : [];
+    const out = f.slice();
+    const byId = new Map(f.map((e) => [e.id, e]));
+    for (const e of w) {
+      const orig = e && byId.get(e.id);
+      if (orig) {
+        if (orig.enabled !== false && e && e.enabled === false) return { ok: false, list: f }; // unblock attempt
+        continue; // existing entry — stays exactly as frozen
+      }
+      if (listKey === 'allow') return { ok: false, list: f }; // new exemption — refused
+      out.push(e); // new block entry — welcome aboard
+    }
+    // Removals of existing entries are invisible here because `out` starts
+    // from the FULL frozen list — anything missing from `wanted` survives.
+    return { ok: true, list: out };
+  }
   function objTimer(d) {
     const s = (d && d.settings) || {};
     if (!s.timer || typeof s.timer !== 'object' || Array.isArray(s.timer)) s.timer = {};
