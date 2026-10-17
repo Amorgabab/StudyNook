@@ -75,7 +75,17 @@ class SessionEngine {
 
   isActive() { return !!this.s; }
   isFocusing() { return !!this.s && this.s.phase === 'focus' && this.s.running; }
-  isRunning() { return !!this.s && this.s.running; }
+  /** TRUE for the WHOLE life of a session — running OR paused, focus phase
+      or break. This is the authority for every "you can't do that while a
+      session exists" gate (close the window, quit from tray, edit the frozen
+      lists, reset data, start another session): pausing only stops the
+      CLOCK, it must never unlock any of those. The old clock-aware version
+      (`!!this.s && this.s.running`) made a paused session invisible to the
+      gates — which is exactly why closing / unblocking worked while paused. */
+  isRunning() { return !!this.s; }
+  /** Clock-true: the timer is actually ticking right now (not paused). Only
+      for display-ish checks — never for iron enforcement gates. */
+  isTicking() { return !!this.s && this.s.running; }
   /** True whenever a focus phase of the session exists and it was started
       as an iron one — RUNNING OR PAUSED. The app guard uses this so that
       pausing the timer in iron mode stops the CLOCK but never the blocking. */
