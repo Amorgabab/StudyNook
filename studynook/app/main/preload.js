@@ -27,7 +27,7 @@ const INVOKE = new Set([
 // Events the UI may listen to ← main process
 const ON = new Set([
   'snapshot', 'tick', 'session-event', 'reward', 'guard', 'reminder', 'ext-status', 'iron-gate', 'focus-request',
-  'close-blocked', 'data-blocked'
+  'close-blocked', 'data-blocked', 'list-frozen'
 ]);
 
 contextBridge.exposeInMainWorld('nook', {

@@ -57,7 +57,11 @@ async function syncOnce() {
     const s = await deskFetch('/state');
     if (!s.ok) throw new Error('bad state');
     const wasConnected = st.connected;
-    const sessionActive = !!(s.session && s.session.active && s.session.phase === 'focus' && s.session.running);
+    /* "Blocking should be ON right now" as the desktop sees it: a focus
+       phase that is ticking, OR an iron focus that merely EXISTS (paused
+       counts — pausing stops the clock, never the blocking). Mirrors
+       guardian._ironActive / session.ironActive on the app side. */
+    const sessionActive = !!(s.session && s.session.active && s.session.phase === 'focus' && (s.session.running || s.session.blockActive));
     if (!wasConnected) {
       // returning from standalone: don't clobber pins/blocks added locally while offline
       const localPins = (st.sites.allow || []).filter((e) => R.parseRule(e).path).filter((e) => !(s.sites.allow || []).includes(e));
@@ -128,7 +132,14 @@ async function updateRules() {
   }
 }
 function sessionIsActive(st) {
-  if (st.connected) return !!(st.session && st.session.active && st.session.phase === 'focus' && st.session.running);
+  if (st.connected) {
+    const s = st.session;
+    /* Iron promise: while an iron focus EXISTS — running OR paused — the
+       browser keeps blocking. The desktop sends `blockActive` for exactly
+       this (session.ironActive()). Pausing the timer stops the clock, never
+       the website guard. */
+    return !!(s && s.active && s.phase === 'focus' && (s.running || s.blockActive));
+  }
   return !!(st.timer && st.timer.running && st.timer.phase === 'focus');
 }
 
@@ -281,7 +292,8 @@ async function handle(msg) {
       await db.set({ timer: t });
       await updateRules();
       updateBadgeFromTimer(t);
-      if (t.running) auditOpenTabs();   // AFTER storage write: sweep sees the fresh timer
+      const sessionActive = sessionIsActive(await db.get(DEFAULTS));
+      if (sessionActive) auditOpenTabs();   // AFTER storage write: sweep sees the fresh timer
       return { ok: true };
     }
     default:

@@ -262,6 +262,10 @@ function createMainWindow() {
   win.on('closed', () => { win = null; });
   // Iron session: Alt+F4 / OS close during focus → open the gate instead.
   // Any running session: the window is unclosable (nook stays open).
+  // Any existing session (RUNNING OR PAUSED) makes the window unclosable —
+  // pausing only stops the clock, it must never let you bail out of the
+  // nook mid-promise. Iron focus additionally routes through the typed
+  // good-bye gate (iron.js) before an early end is allowed.
   win.on('close', (e) => {
     if (!store) return;
     if (session && session.isIronFocus() && !gateCleared) {
@@ -269,7 +273,7 @@ function createMainWindow() {
       broadcast('iron-gate', {});
       return;
     }
-    if (session && session.isRunning()) {
+    if (session && session.isActive()) {
       e.preventDefault();
       broadcast('close-blocked', {});
     }
@@ -330,7 +334,9 @@ function createTray() {
     { label: 'Let me breathe (pause guard 5 min)', click: () => { guardian.pauseFor(5); pushSnapshot(); } },
     { type: 'separator' },
     { label: 'Quit StudyNook', click: () => {
-      if (session && session.isRunning()) { notify('Session running', 'End or finish your focus session before quitting StudyNook.'); return; }
+      // isActive() — a PAUSED session is still a session. Quitting (or the
+      // window-close gate it relies on) must wait until the focus truly ends.
+      if (session && session.isActive()) { notify('Session running', 'End or finish your focus session before quitting StudyNook.'); return; }
       app.quit();
     } }
   ]);
@@ -754,7 +760,15 @@ function registerIpc() {
   });
 
   /* ---- apps (blocklists / allowlists) ---- */
+  /* Iron list-freeze gate: while an iron focus EXISTS (running OR paused) or
+     the multi-day self-lock runs, the lists are part of the promise — you may
+     ADD distractions to the block side, but nothing can be removed, disabled,
+     or exempted mid-promise. Both the UI buttons and these IPC handlers check
+     the same authority (shared/iron.js listsFrozenState), so what's greyed
+     out is exactly what the backend refuses anyway. */
+  const listsFrozenNow = () => Iron.listsFrozenState(session.isIronFocus(), Iron.isLocked(store.data.settings.timer.ironLockedUntil, Date.now()));
   H('apps:add', (p) => {
+    if (listsFrozenNow() && p.list === 'allow') { pushSnapshot(); return null; }   // new exemption refused mid-promise
     const list = p.list === 'allow' ? 'allow' : 'block';
     const entry = { id: 'a' + Date.now() + Math.floor(Math.random() * 999), label: String(p.label || '').slice(0, 60), emoji: p.emoji || '📦', procs: (p.procs || []).map((x) => catalog.normalizeProcName(x)).filter(Boolean), enabled: true };
     if (!entry.label || !entry.procs.length) return null;
@@ -765,6 +779,7 @@ function registerIpc() {
   H('apps:addCatalog', (p) => {
     const c = catalog.DISTRACTION_CATALOG.find((c) => c.id === p.id);
     if (!c) return null;
+    if (listsFrozenNow() && p.list === 'allow') return null;   // new exemption refused mid-promise
     const plat = process.platform === 'darwin' ? 'mac' : process.platform === 'linux' ? 'linux' : 'win';
     const procs = (c.procs[plat] && c.procs[plat].length ? c.procs[plat] : c.procs.win).slice();
     const list = p.list === 'allow' ? 'allow' : 'block';
@@ -776,8 +791,18 @@ function registerIpc() {
     pushSnapshot();
     return entry;
   });
-  H('apps:remove', (p) => { store.mutate((d) => { const l = p.list === 'allow' ? 'allow' : 'block'; d.apps[l] = d.apps[l].filter((e) => e.id !== p.id); }); pushSnapshot(); return true; });
-  H('apps:toggle', (p) => { store.mutate((d) => { const l = p.list === 'allow' ? 'allow' : 'block'; const e = d.apps[l].find((e) => e.id === p.id); if (e) e.enabled = !e.enabled; }); pushSnapshot(); return true; });
+  H('apps:remove', (p) => {
+    if (listsFrozenNow()) { broadcast('list-frozen', {}); return false; }   // removals are part of the promise
+    store.mutate((d) => { const l = p.list === 'allow' ? 'allow' : 'block'; d.apps[l] = d.apps[l].filter((e) => e.id !== p.id); });
+    pushSnapshot();
+    return true;
+  });
+  H('apps:toggle', (p) => {
+    if (listsFrozenNow()) { broadcast('list-frozen', {}); return false; }   // disabling is part of the promise
+    store.mutate((d) => { const l = p.list === 'allow' ? 'allow' : 'block'; const e = d.apps[l].find((e) => e.id === p.id); if (e) e.enabled = !e.enabled; });
+    pushSnapshot();
+    return true;
+  });
   H('apps:scan', async () => {
     const procs = await processes.listProcesses();
     const d = store.data;
@@ -923,7 +948,12 @@ function registerIpc() {
   /* ---- windows ---- */
   H('win:min', () => { win && win.minimize(); return true; });
   H('win:close', () => {
-    if (session && session.isRunning()) { broadcast('close-blocked', {}); return false; }
+    // isActive() covers PAUSED sessions too — the window only closes (to
+    // tray) when no session exists at all. During an IRON focus even that
+    // isn't free: closing must go through the typed gate first, so the X
+    // button raises the gate instead of hiding straight to the tray.
+    if (session && session.isActive()) { broadcast('close-blocked', {}); return false; }
+    if (session && session.isIronFocus() && !gateCleared) { broadcast('iron-gate', {}); return false; }
     win && win.hide();   // hiding keeps timer+guard alive in tray
     return true;
   });

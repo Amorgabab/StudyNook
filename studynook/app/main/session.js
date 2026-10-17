@@ -75,7 +75,17 @@ class SessionEngine {
 
   isActive() { return !!this.s; }
   isFocusing() { return !!this.s && this.s.phase === 'focus' && this.s.running; }
-  isRunning() { return !!this.s && this.s.running; }
+  /** TRUE for the WHOLE life of a session — running OR paused, focus phase
+      or break. This is the authority for every "you can't do that while a
+      session exists" gate (close the window, quit from tray, edit the frozen
+      lists, reset data, start another session): pausing only stops the
+      CLOCK, it must never unlock any of those. The old clock-aware version
+      (`!!this.s && this.s.running`) made a paused session invisible to the
+      gates — which is exactly why closing / unblocking worked while paused. */
+  isRunning() { return !!this.s; }
+  /** Clock-true: the timer is actually ticking right now (not paused). Only
+      for display-ish checks — never for iron enforcement gates. */
+  isTicking() { return !!this.s && this.s.running; }
   /** True whenever a focus phase of the session exists and it was started
       as an iron one — RUNNING OR PAUSED. The app guard uses this so that
       pausing the timer in iron mode stops the CLOCK but never the blocking. */
@@ -239,7 +249,16 @@ class SessionEngine {
     const Iron = require('../shared/iron.js');
     const t = this.hooks.getSettings() || {};
     const locked = Iron.isLocked(t.ironLockedUntil, Date.now());
-    const iron = locked ? true : !!st.iron;   // frozen flag + lock override
+    /* Re-derived LIVE on restore, never trusted from the file: while the
+       self-lock runs the promise holds even if session.json was hand-edited
+       to smuggle iron off; once the lock expired, a hand-edited FALSE can't
+       survive either — resolveIron re-asserts it from the stored switch
+       (data.json), which store.sanitizeData/enforceIron keep tamper-proof.
+       The snapshot's own `iron` field is only consulted when NEITHER the
+       lock nor the stored switch says true (e.g. the switch was genuinely
+       flipped off after the lock expired → the restored session follows
+       the user's new choice). */
+    const iron = locked || Iron.resolveIron(t.iron, t.ironLockedUntil, Date.now()) || !!st.iron;
     const accum = Math.max(0, Number(st.accumSec) || 0);
     const phaseBanked = SessionEngine._phaseBankedSec(st, accum);
     this.s = {
@@ -334,11 +353,20 @@ class SessionEngine {
       accumSec: s.sessionFocusSec + this._focusedSecInPhase(),
       /* The promise is FROZEN at Start — persist it with the snapshot so a
          crash-restart restores the exact strictness you chose, even if the
-         multi-day self-lock expired (or was cleared) while the app was dead. */
-      iron: !!s.iron,
+         multi-day self-lock expired (or was cleared) while the app was dead.
+         A live self-lock ALSO forces the flag true here: while the promise
+         runs, a hand-edited session.json can never smuggle iron off during
+         a restart — restore() re-derives `locked || st.iron` anyway, but
+         writing the truth keeps the file consistent with the lock. */
+      iron: !!s.iron || !!(this.hooks.isIronLocked && this.hooks.isIronLocked()),
       savedAt: Date.now()
     };
   }
+  /** Live view of "is an iron focus EXISTING right now" for external gates
+      (the apps-list freeze in main.js). True whenever a focus phase exists
+      that was started as iron — running OR paused — or the self-lock runs
+      (checked by the caller's hook; this method only knows the session). */
+  isIronFocusExisting() { return this.isIronFocus(); }
   _persist() {
     if (!this.hooks.persist) return;
     try { this.hooks.persist(this.s ? this.persistState() : null); } catch (e) {}
@@ -410,11 +438,15 @@ class SessionEngine {
   }
 
   publicState() {
-    if (!this.s) return { active: false, running: false, phase: 'idle', remainingSec: 0, totalSec: 0, roundIdx: 0, rounds: 0, mode: null, taskId: null, label: '', iron: false };
+    if (!this.s) return { active: false, running: false, blockActive: false, phase: 'idle', remainingSec: 0, totalSec: 0, roundIdx: 0, rounds: 0, mode: null, taskId: null, label: '', iron: false };
     const s = this.s;
     return {
       active: true,
       running: s.running,
+      /* Iron promise travels to the extension too: while an iron FOCUS
+         exists — RUNNING OR PAUSED — the browser keeps blocking. Pausing
+         only stops the clock; it must never unlock the website guard. */
+      blockActive: !!(s.phase === 'focus' && this.ironActive()),
       phase: s.phase,                       // focus | short | long
       remainingSec: this.remainingSec(),
       totalSec: s.phaseSec,

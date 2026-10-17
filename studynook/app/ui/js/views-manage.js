@@ -197,17 +197,27 @@ Views.apps = function (c) {
 
   if (tab === 'block' || tab === 'allow') {
     const listKey = tab;
+    /* Iron list-freeze: while an iron focus EXISTS (running OR paused) or the
+       self-lock runs, entries can't be disabled or removed — and no new
+       exemptions may be added. The backend refuses these anyway (main.js
+       apps:* handlers); greying the buttons out just keeps the UI honest. */
+    const frozen = typeof App.listsFrozen === 'function' ? App.listsFrozen() : false;
     /* section explanation removed for less clutter — the tab label says it all */
     const list = N.el('div', { class: 'list' });
     const entries = d.apps[listKey];
+    if (frozen) lists.appendChild(N.el('div', { class: 'banner warn mt' }, N.el('span', { text: '🔒' }), N.el('span', { text: 'Lists are frozen while your iron promise runs — you can add blockers, but nothing here can be disabled, removed, or exempted until the session ends.' })));
     if (!entries.length) list.appendChild(N.el('div', { class: 'small', text: 'Nothing here yet — add from the App library tab or the scanner below.' }));
     for (const e of entries) {
       const row = N.el('div', { class: 'list-row' });
       row.appendChild(N.el('span', { style: 'font-size:20px', text: e.emoji || '📦' }));
       const grow = N.el('div', { class: 'grow' }, N.el('div', { class: 'title', text: e.label }), N.el('div', { class: 'row', style: 'gap:5px;margin-top:4px' }, ...e.procs.map((p) => N.el('span', { class: 'mono', text: p }))));
       row.appendChild(grow);
-      row.appendChild(N.el('button', { class: 'toggle' + (e.enabled !== false ? ' on' : ''), title: 'enable/disable', onclick: () => nook.invoke('apps:toggle', { list: listKey, id: e.id }) }));
-      row.appendChild(N.el('button', { class: 'iconbtn', text: '🗑', onclick: () => nook.invoke('apps:remove', { list: listKey, id: e.id }) }));
+      row.appendChild(frozen
+        ? N.el('button', { class: 'toggle' + (e.enabled !== false ? ' on' : ''), title: 'Iron mode: the list is frozen during your promise', disabled: true })
+        : N.el('button', { class: 'toggle' + (e.enabled !== false ? ' on' : ''), title: 'enable/disable', onclick: () => nook.invoke('apps:toggle', { list: listKey, id: e.id }) }));
+      row.appendChild(frozen
+        ? N.el('button', { class: 'iconbtn', text: '🗑', title: 'Iron mode: blocked apps can\'t be removed during your promise', disabled: true })
+        : N.el('button', { class: 'iconbtn', text: '🗑', onclick: () => nook.invoke('apps:remove', { list: listKey, id: e.id }) }));
       list.appendChild(row);
     }
     lists.appendChild(list);
@@ -215,13 +225,17 @@ Views.apps = function (c) {
     const addRow = N.el('div', { class: 'row mt' });
     const lbl = N.el('input', { class: 'input', placeholder: 'App name (e.g. Discord)', title: 'A friendly display name for the app', style: 'width:170px' });
     const procs = N.el('input', { class: 'input', placeholder: 'process names, comma separated (e.g. discord, discordptb)', title: 'The OS process names to close — check the "Running now" tab for real names', style: 'flex:1;min-width:220px' });
-    addRow.append(lbl, procs, N.el('button', { class: 'btn btn-sm btn-sage', text: '+ Add custom', onclick: () => { if (lbl.value.trim() && procs.value.trim()) nook.invoke('apps:add', { list: listKey, label: lbl.value, procs: procs.value.split(',').map((s) => s.trim()).filter(Boolean) }); } }));
+    const addBtn = N.el('button', { class: 'btn btn-sm btn-sage', text: '+ Add custom', onclick: () => { if (lbl.value.trim() && procs.value.trim()) nook.invoke('apps:add', { list: listKey, label: lbl.value, procs: procs.value.split(',').map((s) => s.trim()).filter(Boolean) }); } });
+    if (frozen && listKey === 'allow') { addBtn.disabled = true; addBtn.title = 'Iron mode: you can\'t add exemptions mid-promise'; }
+    else if (frozen) { addBtn.textContent = '+ Block (allowed in iron)'; addBtn.title = 'Adding more blockers is always allowed'; }
+    addRow.append(lbl, procs, addBtn);
     lists.appendChild(addRow);
     /* permanent hint line removed — moved into input tooltips + the "Running now" tab tooltip */
   }
 
   if (tab === 'lib') {
-    lists.appendChild(N.el('div', { class: 'small', style: 'margin-bottom:10px', text: 'One-click adds with the correct process names for your OS (' + S.platform + ').' }));
+    const libFrozen = typeof App.listsFrozen === 'function' ? App.listsFrozen() : false;
+    lists.appendChild(N.el('div', { class: 'small', style: 'margin-bottom:10px', text: 'One-click adds with the correct process names for your OS (' + S.platform + ').' + (libFrozen ? ' 🔒 Iron mode: blocking can still be added, exemptions are frozen.' : '') }));
     const grid = N.el('div', { class: 'catalog-grid' });
     for (const item of NookCatalog.DISTRACTION_CATALOG) {
       const inBlock = d.apps.block.some((e) => e.catalogId === item.id);
@@ -231,7 +245,8 @@ Views.apps = function (c) {
       card2.appendChild(N.el('div', { class: 'n', text: item.label }));
       const btns = N.el('div', { class: 'row', style: 'gap:6px' });
       btns.appendChild(inBlock ? N.el('span', { class: 'small', text: '✓ blocked' }) : N.el('button', { class: 'btn btn-sm', text: '+ Block', onclick: () => nook.invoke('apps:addCatalog', { id: item.id, list: 'block' }) }));
-      btns.appendChild(inAllow ? N.el('span', { class: 'small', text: '✓ allowed' }) : N.el('button', { class: 'btn btn-sm btn-ghost', text: '+ Allow', onclick: () => nook.invoke('apps:addCatalog', { id: item.id, list: 'allow' }) }));
+      if (libFrozen) btns.appendChild(inAllow ? N.el('span', { class: 'small', text: '✓ allowed' }) : N.el('button', { class: 'btn btn-sm btn-ghost', text: '+ Allow', title: 'Iron mode: no new exemptions mid-promise', disabled: true }));
+      else btns.appendChild(inAllow ? N.el('span', { class: 'small', text: '✓ allowed' }) : N.el('button', { class: 'btn btn-sm btn-ghost', text: '+ Allow', onclick: () => nook.invoke('apps:addCatalog', { id: item.id, list: 'allow' }) }));
       card2.appendChild(btns);
       grid.appendChild(card2);
     }
@@ -289,7 +304,8 @@ Views.apps = function (c) {
         if (r.listed) row.appendChild(N.el('span', { class: 'small', text: 'already listed' }));
         else {
           row.appendChild(N.el('button', { class: 'btn btn-sm', text: '+ Block', onclick: () => nook.invoke('apps:add', { list: 'block', label: r.name, procs: [r.norm], emoji: '📦' }) }));
-          row.appendChild(N.el('button', { class: 'btn btn-sm btn-ghost', text: '+ Allow', onclick: () => nook.invoke('apps:add', { list: 'allow', label: r.name, procs: [r.norm], emoji: '🛡️' }) }));
+          if (typeof App.listsFrozen === 'function' && App.listsFrozen()) row.appendChild(N.el('button', { class: 'btn btn-sm btn-ghost', text: '+ Allow', title: 'Iron mode: no new exemptions mid-promise', disabled: true }));
+          else row.appendChild(N.el('button', { class: 'btn btn-sm btn-ghost', text: '+ Allow', onclick: () => nook.invoke('apps:add', { list: 'allow', label: r.name, procs: [r.norm], emoji: '🛡️' }) }));
         }
         table.appendChild(row);
       }
