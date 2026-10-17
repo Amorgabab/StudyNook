@@ -249,7 +249,16 @@ class SessionEngine {
     const Iron = require('../shared/iron.js');
     const t = this.hooks.getSettings() || {};
     const locked = Iron.isLocked(t.ironLockedUntil, Date.now());
-    const iron = locked ? true : !!st.iron;   // frozen flag + lock override
+    /* Re-derived LIVE on restore, never trusted from the file: while the
+       self-lock runs the promise holds even if session.json was hand-edited
+       to smuggle iron off; once the lock expired, a hand-edited FALSE can't
+       survive either — resolveIron re-asserts it from the stored switch
+       (data.json), which store.sanitizeData/enforceIron keep tamper-proof.
+       The snapshot's own `iron` field is only consulted when NEITHER the
+       lock nor the stored switch says true (e.g. the switch was genuinely
+       flipped off after the lock expired → the restored session follows
+       the user's new choice). */
+    const iron = locked || Iron.resolveIron(t.iron, t.ironLockedUntil, Date.now()) || !!st.iron;
     const accum = Math.max(0, Number(st.accumSec) || 0);
     const phaseBanked = SessionEngine._phaseBankedSec(st, accum);
     this.s = {
@@ -429,11 +438,15 @@ class SessionEngine {
   }
 
   publicState() {
-    if (!this.s) return { active: false, running: false, phase: 'idle', remainingSec: 0, totalSec: 0, roundIdx: 0, rounds: 0, mode: null, taskId: null, label: '', iron: false };
+    if (!this.s) return { active: false, running: false, blockActive: false, phase: 'idle', remainingSec: 0, totalSec: 0, roundIdx: 0, rounds: 0, mode: null, taskId: null, label: '', iron: false };
     const s = this.s;
     return {
       active: true,
       running: s.running,
+      /* Iron promise travels to the extension too: while an iron FOCUS
+         exists — RUNNING OR PAUSED — the browser keeps blocking. Pausing
+         only stops the clock; it must never unlock the website guard. */
+      blockActive: !!(s.phase === 'focus' && this.ironActive()),
       phase: s.phase,                       // focus | short | long
       remainingSec: this.remainingSec(),
       totalSec: s.phaseSec,
