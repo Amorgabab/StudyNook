@@ -133,7 +133,11 @@
     for (const e of w) {
       const orig = e && byId.get(e.id);
       if (orig) {
-        if (orig.enabled !== false && e && e.enabled === false) return { ok: false, list: f }; // unblock attempt
+        /* An existing entry must keep its FROZEN enabled state. Comparing
+           against the normalized truthy value (not `!== false`) means a
+           malformed payload can't sneak an "enabled: undefined/null" edit
+           past the gate and effectively disable the entry. */
+        if (!!e && e.enabled !== !!orig.enabled) return { ok: false, list: f }; // unblock attempt
         continue; // existing entry — stays exactly as frozen
       }
       if (listKey === 'allow') return { ok: false, list: f }; // new exemption — refused
@@ -143,10 +147,18 @@
     // from the FULL frozen list — anything missing from `wanted` survives.
     return { ok: true, list: out };
   }
+  /** The single authority on whether the app LISTS are frozen right now:
+      either an iron focus exists (running or paused — the promise covers the
+      whole session) or the multi-day self-lock runs. Both main.js (IPC guard)
+      and the renderer (disabled buttons) derive this the same way so the UI
+      never offers a toggle the backend would refuse anyway. */
+  function listsFrozenState(sessionIronFocus, locked) {
+    return listsFrozen(!!sessionIronFocus, !!locked);
+  }
   function objTimer(d) {
     const s = (d && d.settings) || {};
     if (!s.timer || typeof s.timer !== 'object' || Array.isArray(s.timer)) s.timer = {};
     return s.timer;
   }
-  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, normalizeFields, effectiveGuard, effectiveSites, effectiveTimer };
+  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, normalizeFields, effectiveGuard, effectiveSites, effectiveTimer, listsFrozen, listsFrozenState, filterFrozenList };
 });

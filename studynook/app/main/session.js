@@ -334,11 +334,20 @@ class SessionEngine {
       accumSec: s.sessionFocusSec + this._focusedSecInPhase(),
       /* The promise is FROZEN at Start — persist it with the snapshot so a
          crash-restart restores the exact strictness you chose, even if the
-         multi-day self-lock expired (or was cleared) while the app was dead. */
-      iron: !!s.iron,
+         multi-day self-lock expired (or was cleared) while the app was dead.
+         A live self-lock ALSO forces the flag true here: while the promise
+         runs, a hand-edited session.json can never smuggle iron off during
+         a restart — restore() re-derives `locked || st.iron` anyway, but
+         writing the truth keeps the file consistent with the lock. */
+      iron: !!s.iron || !!(this.hooks.isIronLocked && this.hooks.isIronLocked()),
       savedAt: Date.now()
     };
   }
+  /** Live view of "is an iron focus EXISTING right now" for external gates
+      (the apps-list freeze in main.js). True whenever a focus phase exists
+      that was started as iron — running OR paused — or the self-lock runs
+      (checked by the caller's hook; this method only knows the session). */
+  isIronFocusExisting() { return this.isIronFocus(); }
   _persist() {
     if (!this.hooks.persist) return;
     try { this.hooks.persist(this.s ? this.persistState() : null); } catch (e) {}
