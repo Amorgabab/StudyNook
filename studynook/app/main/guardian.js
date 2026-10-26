@@ -67,7 +67,8 @@ class Guardian {
   }
 
   /* list/kill go through hooks when provided (tests), real OS otherwise */
-  _list() { return this.hooks.listProcesses ? this.hooks.listProcesses() : processes.listProcesses(); }
+  _list() { return this.hooks.listProcesses ? this.hooks.listProcesses() : processes.listProcessesShared(); }          // decide: may reuse a ≤1.5 s old list
+  _listFresh() { return this.hooks.listProcesses ? this.hooks.listProcesses() : processes.listProcesses(); }          // about to kill: always fresh
   _kill(pid) { return this.hooks.killProcess ? this.hooks.killProcess(pid) : processes.killProcess(pid); }
 
   isArmed() {
@@ -134,7 +135,7 @@ class Guardian {
   }
 
   async killNow(norm) { // used by the reminder window's "close it now" button
-    const procs = await this._list();
+    const procs = await this._listFresh();
     const store = this.hooks.store;
     let killed = 0;
     for (const p of procs) {
@@ -144,7 +145,7 @@ class Guardian {
       });
       if (!safe.length) continue;
       // re-verify immediately before killing (pid-reuse safety)
-      const fresh = await this._list();
+      const fresh = await this._listFresh();
       if (!fresh.some((f) => f.pid === p.pid && f.norm === norm)) continue;
       await this._kill(p.pid);
       killed++;
@@ -170,6 +171,15 @@ class Guardian {
     return planner.groupTargets(targets);
   }
 
+  /** Can a scan match anything at all? Blocklist mode needs an enabled blocked app; allowlist
+      mode needs an enabled allowed app (an empty allowlist closes nothing, see planner.js).
+      With nothing to match, listing every running program every few seconds is pure waste. */
+  _hasWork(g) {
+    const apps = this.hooks.store.data.apps;
+    const list = g.mode === 'allow' ? apps.allow : apps.block;
+    return (list || []).some((e) => e.enabled !== false && (e.procs || []).some((p) => String(p || '').trim()));
+  }
+
   async scan() {
     if (this.busy) return;
     if (!this.isArmed()) {
@@ -179,6 +189,7 @@ class Guardian {
     this.busy = true;
     try {
       const g = this.effCfg();   // iron-hardened view — UI shows the same thing
+      if (!this._hasWork(g)) { this.warned.clear(); if (this.pendingReminder) { this.hooks.hideReminder && this.hooks.hideReminder(); this.pendingReminder = null; } return; }
       const d = this.hooks.store.data;
       const procs = await this._list();
       const targets = planner.chooseTargets(procs, {
@@ -233,7 +244,7 @@ class Guardian {
   async _killGroup(grp) {
     // PID-reuse safety: re-verify each pid still runs a matching process
     let fresh = [];
-    try { fresh = await this._list(); } catch (e) { fresh = []; }
+    try { fresh = await this._listFresh(); } catch (e) { fresh = []; }
     const alive = new Set(fresh.filter((p) => grp.norms.includes(p.norm)).map((p) => p.pid));
     let killed = 0;
     for (const pid of grp.pids) {

@@ -58,7 +58,8 @@ function makeChrome() {
   chrome.declarativeNetRequest = {
     getDynamicRules: () => Promise.resolve(chrome._rules.slice()),
     updateDynamicRules: ({ removeRuleIds, addRules }) => {
-      chrome._rules = chrome._rules.filter((r) => !removeRuleIds.includes(r.id)).concat(addRules || []);
+      chrome._ruleUpdates = (chrome._ruleUpdates || 0) + 1;
+      chrome._rules =chrome._rules.filter((r) => !removeRuleIds.includes(r.id)).concat(addRules || []);
       return Promise.resolve();
     }
   };
@@ -294,5 +295,43 @@ suite('extension emulation · lecture-lock pins', () => {
     expect(tabUrl(c, 1)).toBe(BLOCKED);
     await fireBadge(c);   // and the sweep agrees
     expect(tabUrl(c, 2)).toBe('https://www.google.com');
+  });
+});
+
+suite('extension emulation · rules are only rewritten when they change', () => {
+  test('repeating a sync with the same state does not touch the blocking rules again', async () => {
+    const c = setup({ sites: SITES({ when: 'always', block: ['tiktok.com', 'youtube.com/shorts'] }), tabs: [] });
+    await fireSlow(c);
+    expect(c._ruleUpdates).toBe(1);
+    expect(c._rules.length).toBeGreaterThan(0);
+    await fireSlow(c);
+    await fireSlow(c);
+    expect(c._ruleUpdates).toBe(1);
+  });
+  test('changing the list rewrites them', async () => {
+    const c = setup({ sites: SITES({ when: 'always', block: ['tiktok.com'] }), tabs: [] });
+    await fireSlow(c);
+    c._store.nook.sites = SITES({ when: 'always', block: ['tiktok.com', 'reddit.com'] });
+    await fireSlow(c);
+    expect(c._ruleUpdates).toBe(2);
+    expect(c._rules.length).toBe(2);
+  });
+  test('rules that Chrome lost are put back even though nothing changed', async () => {
+    const c = setup({ sites: SITES({ when: 'always', block: ['tiktok.com'] }), tabs: [] });
+    await fireSlow(c);
+    c._rules = [];                 // e.g. the browser cleared them
+    await fireSlow(c);
+    expect(c._rules.length).toBe(1);
+  });
+  test('blocking switching off removes the rules once, then stays quiet', async () => {
+    const c = setup({ sites: SITES({ when: 'session', block: ['tiktok.com'] }), session: FOCUS_SESSION, lastSync: Date.now(), tabs: [] });
+    await fireSlow(c);                                // app gone, ghost focus → rules on
+    expect(c._rules.length).toBe(1);
+    c._store.nook.sites = SITES({ enabled: false, block: ['tiktok.com'] });
+    await fireSlow(c);
+    expect(c._rules.length).toBe(0);
+    const n = c._ruleUpdates;
+    await fireSlow(c);
+    expect(c._ruleUpdates).toBe(n);
   });
 });

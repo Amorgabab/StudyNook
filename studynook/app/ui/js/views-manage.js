@@ -11,12 +11,12 @@ Views.tasks = function (c) {
 
   /* --- add form --- */
   const form = N.card(t('tasks.new'), 'plus');
-  const txt = N.el('input', { class: 'input', id: 'task-text', placeholder: t('tasks.placeholder'), 'aria-label': t('tasks.field.task') });
-  const subj = N.el('select', { class: 'input', 'aria-label': t('tasks.field.subject') });
+  const txt = N.el('input', { class: 'input', id: 'task-text', placeholder: t('tasks.placeholder'), 'aria-label': t('tasks.field.task'), 'data-draft': 'tasks:text' });
+  const subj = N.el('select', { class: 'input', 'aria-label': t('tasks.field.subject'), 'data-draft': 'tasks:subject' });
   subj.appendChild(N.el('option', { value: '', text: t('tasks.subject.none') }));
   for (const s of (d.subjects || [])) subj.appendChild(N.el('option', { value: s, text: s }));
   let minVal = 0;
-  const est = N.el('select', { class: 'input', 'aria-label': t('tasks.field.estimate') });
+  const est = N.el('select', { class: 'input', 'aria-label': t('tasks.field.estimate'), 'data-draft': 'tasks:estimate' });
   for (let i = 1; i <= 8; i++) est.appendChild(N.el('option', { value: String(i), text: t(i === 1 ? 'tasks.pomodoro.one' : 'tasks.pomodoro.many', { n: i }) }));
   const add = () => {
     const v = txt.value.trim();
@@ -28,7 +28,7 @@ Views.tasks = function (c) {
   txt.addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
   form.appendChild(N.el('div', { class: 'task-form' },
     field(t('tasks.field.task'), txt), field(t('tasks.field.subject'), subj),
-    field(t('tasks.field.planned'), N.el('span', { class: 'row' }, N.stepper(0, 0, 600, (v) => { minVal = v; }, 5, t('tasks.field.planned')), N.el('span', { class: 'stepper-unit', text: t('unit.min') }))),
+    field(t('tasks.field.planned'), N.el('span', { class: 'row' }, N.stepper(0, 0, 600, (v) => { minVal = v; }, 5, t('tasks.field.planned'), 'tasks:planned'), N.el('span', { class: 'stepper-unit', text: t('unit.min') }))),
     field(t('tasks.field.estimate'), est),
     N.btn(t('tasks.add'), { cls: 'btn-primary', icon: 'plus', onclick: add })));
   c.appendChild(form);
@@ -64,7 +64,7 @@ Views.tasks = function (c) {
         N.el('span', { text: N.shortUrl(s.url) }),
         N.el('button', { type: 'button', 'aria-label': t('tasks.source.remove'), title: t('tasks.source.remove'), onclick: () => nook.invoke('tasks:removeSource', { id: tk.id, idx: i }) }, N.icon('x', 14))));
     });
-    const sInp = N.el('input', { class: 'input', style: 'flex:1', placeholder: t('tasks.source.placeholder'), 'aria-label': t('tasks.source.placeholder') });
+    const sInp = N.el('input', { class: 'input', style: 'flex:1', placeholder: t('tasks.source.placeholder'), 'aria-label': t('tasks.source.placeholder'), 'data-draft': 'tasks:src:' + tk.id });
     const addSrc = () => { if (sInp.value.trim()) { nook.invoke('tasks:addSource', { id: tk.id, url: sInp.value }); sInp.value = ''; } };
     sInp.addEventListener('keydown', (e) => { if (e.key === 'Enter') addSrc(); });
     const srcForm = N.el('div', { class: 'src-form hidden' }, sInp, N.btn(t('common.add'), { cls: 'btn-sm', onclick: addSrc }));
@@ -88,8 +88,8 @@ Views.notes = function (c) {
   const grid = N.el('div', { class: 'notes-grid' });
   for (const n of notes) {
     const card = N.el('section', { class: 'card note-card' });
-    const title = N.el('input', { class: 'note-title', placeholder: t('notes.untitled'), value: n.title || '', 'aria-label': t('notes.field.title') });
-    const body = N.el('textarea', { class: 'note-body', placeholder: t('notes.placeholder'), 'aria-label': t('notes.field.body') });
+    const title = N.el('input', { class: 'note-title', placeholder: t('notes.untitled'), value: n.title || '', 'aria-label': t('notes.field.title'), 'data-draft': 'notes:title:' + n.id });
+    const body = N.el('textarea', { class: 'note-body', placeholder: t('notes.placeholder'), 'aria-label': t('notes.field.body'), 'data-draft': 'notes:body:' + n.id });
     body.value = n.body || '';
     const saved = N.el('span', { class: 'caption', text: t('notes.saved', { when: N.timeAgo(n.updatedAt) }) });
     let timer = null;
@@ -162,8 +162,8 @@ Views.apps = function (c) {
         frozen ? null : N.iconBtn('trash', t('apps.entry.remove', { app: e.label }), () => nook.invoke('apps:remove', { list: tab, id: e.id }), 'danger')));
     }
     lists.appendChild(list);
-    const lbl = N.el('input', { class: 'input', placeholder: t('apps.add.name'), 'aria-label': t('apps.add.name') });
-    const procs = N.el('input', { class: 'input', placeholder: t('apps.add.procs'), title: t('apps.add.procs.tip'), 'aria-label': t('apps.add.procs') });
+    const lbl = N.el('input', { class: 'input', placeholder: t('apps.add.name'), 'aria-label': t('apps.add.name'), 'data-draft': 'apps:name:' + tab });
+    const procs = N.el('input', { class: 'input', placeholder: t('apps.add.procs'), title: t('apps.add.procs.tip'), 'aria-label': t('apps.add.procs'), 'data-draft': 'apps:procs:' + tab });
     const canAdd = !(frozen && tab === 'allow');
     lists.appendChild(N.el('div', { class: 'add-row' }, lbl, procs,
       N.btn(t('common.add'), { cls: 'btn-primary', icon: 'plus', disabled: !canAdd, title: canAdd ? null : t('apps.frozen.short'),
@@ -189,7 +189,7 @@ Views.apps = function (c) {
   }
 
   if (tab === 'run') {
-    const search = N.el('input', { class: 'input grow', placeholder: t('apps.run.filter'), 'aria-label': t('apps.run.filter') });
+    const search = N.el('input', { class: 'input grow', placeholder: t('apps.run.filter'), 'aria-label': t('apps.run.filter'), 'data-draft': 'apps:filter' });
     const table = N.el('div', { class: 'list scan-list' });
     lists.appendChild(N.el('div', { class: 'row', style: 'margin-bottom:var(--s-4)' }, search, N.btn(t('apps.run.rescan'), { icon: 'refresh-cw', onclick: () => scan() })));
     lists.appendChild(table);
@@ -282,7 +282,7 @@ Views.sites = function (c) {
     }
     if (!arr.length) chips.appendChild(N.el('span', { class: 'small', text: t('sites.empty') }));
     card.appendChild(chips);
-    const inp = N.el('input', { class: 'input grow', placeholder: ph, 'aria-label': t('sites.add.label', { list: title }), title: key === 'block' ? t('sites.add.tip') : null });
+    const inp = N.el('input', { class: 'input grow', placeholder: ph, 'aria-label': t('sites.add.label', { list: title }), title: key === 'block' ? t('sites.add.tip') : null, 'data-draft': 'sites:add:' + key });
     const addIt = () => { const v = NookRules.normalizeEntry(inp.value); if (!v) return; setS({ [key]: [...arr, v] }); inp.value = ''; };
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') addIt(); });
     card.appendChild(N.el('div', { class: 'row', style: 'margin-top:var(--s-5)' }, inp, N.btn(t('common.add'), { cls: 'btn-primary', icon: 'plus', onclick: addIt })));
