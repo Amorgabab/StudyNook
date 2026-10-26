@@ -8,13 +8,17 @@
     "start": "electron .",
     "test": "node tests/run.js",
     "smoke": "node tests/smoke.js",
+    "lint": "eslint .",
     "dist": "electron-builder --win --x64"
   },
   "author": "StudyNook",
   "license": "MIT",
   "devDependencies": {
+    "@eslint/js": "9.39.5",
     "electron": "^31.0.0",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^24.13.3",
+    "eslint": "9.39.5",
+    "globals": "17.13.0"
   },
   "build": {
     "appId": "app.studynook.desktop",

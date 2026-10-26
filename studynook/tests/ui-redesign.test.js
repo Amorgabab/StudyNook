@@ -33,7 +33,7 @@ suite('ui · translations', () => {
   test('every literal t()/T() key used in the code exists in English', () => {
     const missing = [];
     for (const f of UI_FILES) {
-      for (const m of read(f).matchAll(/\b[tT]\(\s*'([a-zA-Z0-9_.\-]+)'/g)) {
+      for (const m of read(f).matchAll(/\b[tT]\(\s*'([a-zA-Z0-9_.-]+)'/g)) {
         if (m[1].endsWith('.')) continue;               // dynamic prefix: t('ach.' + id + '.name')
         if (!(m[1] in en)) missing.push(f + ': ' + m[1]);
       }
