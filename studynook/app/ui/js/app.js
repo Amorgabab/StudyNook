@@ -139,21 +139,38 @@ window.App = (function () {
   function renderView() {
     if (!App.state.data) return;
     const active = document.activeElement;
-    const focusKey = active && active.id ? active.id : null;
+    const focusSel = active && active.dataset && active.dataset.draft ? '[data-draft="' + CSS.escape(active.dataset.draft) + '"]' : active && active.id ? '#' + CSS.escape(active.id) : null;
     const caret = active && typeof active.selectionStart === 'number' ? active.selectionStart : null;
     const v = document.getElementById('view');
     const scroll = v.scrollTop;
+    // Anything typed but not sent yet (new task, note text, a source link…) survives the rebuild.
+    const drafts = {};
+    v.querySelectorAll('[data-draft]').forEach((f) => { drafts[f.dataset.draft] = f.value; });
     v.innerHTML = '';
     const page = N.el('div', { class: 'page' });
     const fn = { home: Views.home, tasks: Views.tasks, notes: Views.notes, apps: Views.apps, sites: Views.sites, garden: Views.garden, settings: Views.settings, help: Views.help }[App.view] || Views.home;
     fn(page);
     v.appendChild(page);
     v.scrollTop = scroll;
+    restoreDrafts(v, drafts);
     paintStatus();
-    if (focusKey) {
-      const el2 = document.getElementById(focusKey);
+    if (focusSel) {
+      const el2 = document.querySelector(focusSel);
       if (el2) { el2.focus(); try { if (caret !== null) el2.setSelectionRange(caret, caret); } catch (e) {} }
     }
+  }
+
+  /** Put typed-but-unsent values back into the rebuilt page. A source-link box that was open
+      (it is hidden until you click "Add source") is reopened if it holds text. */
+  function restoreDrafts(root, drafts) {
+    root.querySelectorAll('[data-draft]').forEach((f) => {
+      const k = f.dataset.draft;
+      if (!(k in drafts) || drafts[k] === f.value) return;
+      f.value = drafts[k];
+      if (f.hasAttribute('data-draft-sync')) f.dispatchEvent(new Event('change'));   // steppers keep their value in a closure
+      const hidden = f.closest('.hidden');
+      if (hidden && f.value) hidden.classList.remove('hidden');
+    });
   }
 
   /* ---------------- shared session helpers (one source of truth) ---------------- */

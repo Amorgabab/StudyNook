@@ -70,9 +70,10 @@ window.N = (function () {
     return s;
   }
   /** Number field with − / + buttons. */
-  function stepper(val, min, max, onSet, step, label) {
+  /** Number field with − / +. `draft` (optional) keeps an unsent value across a page redraw. */
+  function stepper(val, min, max, onSet, step, label, draft) {
     step = step || 1;
-    const inp = el('input', { type: 'number', value: String(val), min: String(min), max: String(max), 'aria-label': label });
+    const inp = el('input', { type: 'number', value: String(val), min: String(min), max: String(max), 'aria-label': label, 'data-draft': draft, 'data-draft-sync': draft ? '' : null });
     const clamp = (v) => Math.max(min, Math.min(max, isNaN(v) ? val : v));
     const set = (v) => { v = clamp(v); inp.value = v; onSet(v); };
     inp.addEventListener('change', () => set(parseInt(inp.value, 10)));

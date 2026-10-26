@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    # The app, its process tools and the extension finder target Windows, so test there.
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: studynook
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: studynook/package-lock.json
+      # --ignore-scripts: skip Electron's ~100 MB binary download; the unit tests are plain Node.
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run lint
+      - run: npm test

@@ -32,7 +32,7 @@ Views.settings = function (c) {
     N.el('div', { class: 'grow' }, N.el('div', { class: 'set-label', text: label }), desc ? N.el('div', { class: 'set-desc', text: desc }) : null),
     N.el('div', { class: 'set-control' }, control));
   const num = (val, min, max, onSet, unit, step, label) => N.el('span', { class: 'row' }, N.stepper(val, min, max, onSet, step, label), unit ? N.el('span', { class: 'stepper-unit', text: unit }) : null);
-  const text = (val, max, onSet, label) => { const i = N.el('input', { class: 'input', value: val || '', maxlength: String(max), style: 'width:220px', 'aria-label': label }); i.addEventListener('change', () => onSet(i.value.trim())); return i; };
+  const text = (val, max, onSet, label) => { const i = N.el('input', { class: 'input', value: val || '', maxlength: String(max), style: 'width:220px', 'aria-label': label, 'data-draft': 'set:text:' + label }); i.addEventListener('change', () => onSet(i.value.trim())); return i; };
 
   if (cur === 'general') {
     const lang = N.el('select', { class: 'input', 'aria-label': t('set.lang') });
@@ -49,7 +49,7 @@ Views.settings = function (c) {
     const chips = N.el('div', { class: 'chips' });
     for (const sj of (d.subjects || [])) chips.appendChild(N.el('span', { class: 'chip' }, N.el('span', { text: sj }), N.el('button', { type: 'button', 'aria-label': t('set.subjects.remove', { s: sj }), onclick: () => nook.invoke('subjects:set', { list: d.subjects.filter((x) => x !== sj) }) }, N.icon('x', 14))));
     block.appendChild(chips);
-    const sinp = N.el('input', { class: 'input grow', placeholder: t('set.subjects.add'), maxlength: '40', 'aria-label': t('set.subjects.add') });
+    const sinp = N.el('input', { class: 'input grow', placeholder: t('set.subjects.add'), maxlength: '40', 'aria-label': t('set.subjects.add'), 'data-draft': 'set:subject' });
     const addS = () => { const v = sinp.value.trim(); if (v) { nook.invoke('subjects:set', { list: [...(d.subjects || []), v] }); sinp.value = ''; } };
     sinp.addEventListener('keydown', (e) => { if (e.key === 'Enter') addS(); });
     block.appendChild(N.el('div', { class: 'row', style: 'margin-top:var(--s-3);max-width:420px' }, sinp, N.btn(t('common.add'), { icon: 'plus', onclick: addS })));
