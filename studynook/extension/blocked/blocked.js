@@ -1,60 +1,43 @@
-/* StudyNook extension · blocked.js — the cozy "napping" page */
+/* StudyNook extension · blocked.js — shown in place of a blocked site */
 'use strict';
 (function () {
-  const QUOTES = [
-    'Small steps every day make big dreams come true.',
-    'Focus is a kind of kindness you give your future self.',
-    'The internet will still be here after your session.',
-    'One page. One problem. One minute at a time.',
-    'Deep work first, dopamine later.',
-    'Close the tabs. Open the mind.',
-    'Future you is already saying thank you.',
-    'Warm drink, quiet mind, one task.',
-    'Progress hides inside boring minutes.',
-    'Mochi believes in you. That\'s scientifically significant.'
-  ];
-  const LINES = [
-    'is taking a nap so you can focus.',
-    'has been tucked into bed until your session ends.',
-    'is having its screen time paused. Gently.',
-    'was caught sneaking in. Mochi escorted it out.',
-    'is on a little vacation. You\'re on a mission.'
-  ];
+  const $ = (id) => document.getElementById(id);
+  const t = NookExtI18n.t;
+  const ico = (name, size) => NookIcons.svg(name, { size: size || 16 });
 
   chrome.storage.local.get('nook', (o) => {
     const st = (o && o.nook) || {};
-    const lb = st.lastBlocked || {};
-    const dom = lb.domain || 'this site';
-    document.getElementById('dom').textContent = dom;
-    document.getElementById('line').textContent = dom + ' ' + LINES[Math.floor(Math.random() * LINES.length)];
-    document.getElementById('quote').textContent = '“' + QUOTES[Math.floor(Math.random() * QUOTES.length)] + '”';
+    NookExtI18n.pick(st.lang);
+    $('halo').innerHTML = ico('moon', 26);
+    $('headline').textContent = t('blk.title');
+    const dom = (st.lastBlocked && st.lastBlocked.domain) || t('blk.site');
+    $('dom').textContent = dom;
+    $('line').textContent = t('blk.body');
+    const quotes = t('quotes');
+    $('quote').textContent = Array.isArray(quotes) ? '“' + quotes[Math.floor(Math.random() * quotes.length)] + '”' : '';
+    $('back').innerHTML = ico('chevron-left') + '<span>' + t('blk.back') + '</span>';
+    if (document.documentElement.dir === 'rtl') $('back').firstChild.style.transform = 'scaleX(-1)';
+    $('close-tab').textContent = t('blk.close');
     const bounces = (st.bounces || {})[dom] || 0;
-    document.getElementById('meta').textContent =
-      (bounces > 1 ? `Mochi has bounced this site ${bounces} times. She's patient. ` : '') +
-      'StudyNook Tab Guardian 🪺';
+    $('meta').textContent = bounces > 1 ? t('blk.count', { n: bounces }) : '';
 
-    // countdown
-    const timerEl = document.getElementById('timer');
     let endsAt = 0;
-    if (st.connected && st.session && st.session.active && st.session.phase === 'focus') {
-      endsAt = Date.now() + st.session.remainingSec * 1000;
-    } else if (!st.connected && st.timer && st.timer.running && st.timer.phase === 'focus') {
-      endsAt = st.timer.endsAt;
-    }
+    if (st.connected && st.session && st.session.active && st.session.phase === 'focus') endsAt = Date.now() + st.session.remainingSec * 1000;
+    else if (!st.connected && st.timer && st.timer.running && st.timer.phase === 'focus') endsAt = st.timer.endsAt;
+    const timerEl = $('timer');
     if (endsAt) {
       const tick = () => {
         const s = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
-        timerEl.textContent = '🌱 focus ends in ' + String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+        timerEl.innerHTML = ico('timer') + '<span></span>';
+        timerEl.lastChild.textContent = t('blk.left', { time: String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0') });
       };
       tick(); setInterval(tick, 1000);
     } else {
-      timerEl.textContent = '🌙 blocking is on (always-mode or no active session)';
+      timerEl.innerHTML = ico('infinity') + '<span></span>';
+      timerEl.lastChild.textContent = t('blk.always');
     }
   });
 
-  document.getElementById('back').onclick = () => {
-    if (history.length > 1) history.back();
-    else window.close();
-  };
-  document.getElementById('close-tab').onclick = () => window.close();
+  $('back').onclick = () => { if (history.length > 1) history.back(); else window.close(); };
+  $('close-tab').onclick = () => window.close();
 })();

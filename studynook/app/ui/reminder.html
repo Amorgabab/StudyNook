@@ -1,46 +1,41 @@
 <!DOCTYPE html>
-<html>
+<html lang="en" dir="ltr" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';" />
+  <link rel="stylesheet" href="styles.css" />
   <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; background: transparent; }
-    #card {
-      position: absolute; inset: 0; background: #FFFCF6;
-      border: 2px solid #F2C14E; border-radius: 24px;
-      box-shadow: 0 14px 40px rgba(122, 91, 62, .3);
-      padding: 18px 22px; display: flex; flex-direction: column; gap: 8px;
-      color: #4A3B32; user-select: none;
-    }
-    .head { display: flex; align-items: center; gap: 10px; }
-    .head .e { font-size: 30px; }
-    h1 { font-size: 15px; margin: 0; }
-    .sub { font-size: 12px; color: #8A7466; }
-    .count { font-size: 30px; font-weight: 800; color: #E8886B; font-variant-numeric: tabular-nums; }
-    .btns { display: flex; gap: 8px; margin-top: auto; }
-    button { border-radius: 999px; border: 1.5px solid #EBDCC8; background: #FFF6E9; padding: 8px 14px; font-size: 12px; font-weight: 700; cursor: pointer; color: #4A3B32; }
-    button:hover { transform: translateY(-1px); }
-    .primary { background: #E8886B; border-color: #E8886B; color: #fff; }
-    .sage { background: #7FB685; border-color: #7FB685; color: #fff; }
+    body { background: var(--surface); }
+    #card { position: absolute; inset: 0; display: flex; flex-direction: column; gap: var(--s-4); padding: var(--s-6); border-top: 3px solid var(--warning); }
+    .head { display: flex; align-items: flex-start; gap: var(--s-3); }
+    .badge-icon { width: 40px; height: 40px; border-radius: 50%; background: var(--warning-soft); color: var(--warning); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+    h1 { font-size: 16px; line-height: 22px; font-weight: 600; }
+    #count { font-size: 32px; line-height: 36px; font-weight: 600; color: var(--warning); font-variant-numeric: tabular-nums; }
+    .btns { display: flex; gap: var(--s-2); margin-top: auto; }
+    .btns .btn { flex: 1; }
   </style>
 </head>
 <body>
-  <div id="card">
+  <div id="card" role="alertdialog" aria-labelledby="title" aria-describedby="sub">
     <div class="head">
-      <span class="e">🕊️</span>
-      <div>
-        <h1 id="title">Heads up…</h1>
-        <div class="sub" id="sub">a distraction is open</div>
-      </div>
+      <span class="badge-icon" id="ico"></span>
+      <div class="grow"><h1 id="title"></h1><p class="small" id="sub"></p></div>
     </div>
-    <div class="count" id="count">15</div>
-    <div class="sub">seconds until Mochi gently closes it. Save your work!</div>
+    <div class="row" id="countrow"><span id="count">15</span><span class="small" id="countlbl"></span></div>
     <div class="btns">
-      <button class="sage" id="b-leave">Leave it open 5 min</button>
-      <button class="primary" id="b-close">Close it now</button>
-      <button id="b-self">I'll close it myself</button>
+      <button class="btn" id="b-leave" type="button"></button>
+      <button class="btn btn-primary" id="b-close" type="button"></button>
+      <button class="btn btn-ghost" id="b-self" type="button"></button>
     </div>
   </div>
+  <script src="../shared/lang/en.js"></script>
+  <script src="../shared/lang/ar.js"></script>
+  <script src="../shared/lang/fr.js"></script>
+  <script src="../shared/lang/es.js"></script>
+  <script src="../shared/i18n.js"></script>
+  <script src="../shared/uiprefs.js"></script>
+  <script src="../shared/icons.js"></script>
+  <script src="js/util.js"></script>
   <script src="reminder.js"></script>
 </body>
 </html>

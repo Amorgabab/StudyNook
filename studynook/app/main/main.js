@@ -13,7 +13,7 @@
    ============================================================ */
 'use strict';
 
-const { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell, nativeImage, nativeTheme } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -32,6 +32,8 @@ const ExtWatch = require('../shared/extwatch.js');
 const ExtFinder = require('./extfinder.js');
 const Lifecycle = require('./lifecycle.js');
 const Watchdog = require('./watchdog.js');
+const I18n = require('../shared/i18n.js');
+const Prefs = require('../shared/uiprefs.js');
 const dedupe = (arr) => arr.filter((x, i) => arr.indexOf(x) === i);
 
 const APP_ROOT = path.join(__dirname, '..', '..');          // project folder
@@ -52,6 +54,18 @@ let rendererReloads = 0;     // crash-reload budget for the main window
 let lastAmbientAward = 0;
 let gateCleared = false;   // iron session: window-close gate passed?
 const SOUND_IDS = new Set(['rain', 'waves', 'fire', 'cafe']);
+const START_HIDDEN = process.argv.includes('--hidden');   // launched at Windows sign-in → stay in the tray
+
+/** Text in the user's chosen language (same dictionary as the windows). */
+const T = (key, vars) => I18n.t(key, vars, Prefs.normLang(store && store.data.settings.language));
+const mins = (n) => { I18n.setLang(Prefs.normLang(store && store.data.settings.language)); return I18n.minutes(n); };
+function addFeed(d, entry) {
+  d.feed = d.feed || [];
+  d.feed.unshift(Object.assign({ t: Date.now(), emoji: '' }, entry));
+  if (d.feed.length > 40) d.feed.length = 40;
+}
+/** Resolved light/dark right now (for native window backgrounds before the page paints). */
+function resolvedTheme() { return Prefs.resolveTheme(store ? store.data.settings.theme : 'system', nativeTheme.shouldUseDarkColors, new Date().getHours()); }
 
 /* ---------- interrupted-session recovery (task manager / crash / power loss) ----------
    The engine persists its exact state to session.json every few seconds.
@@ -78,16 +92,8 @@ function salvageInterruptedSession(s, why) {
   if (minutes > 0 && !iron) {
     store.mutate((d) => progress.focusRewards(d, minutes, false, { abandoned: true }));
   }
-  store.mutate((d) => {
-    d.feed = d.feed || [];
-    d.feed.unshift({
-      t: Date.now(), emoji: '⚡', kind: 'warn',
-      text: iron
-        ? `Previous session was interrupted (${why}) — Iron Session: no credit for ${minutes} min`
-        : `Previous session was interrupted (${why}) — ${minutes} focused min credited`
-    });
-    if (d.feed.length > 40) d.feed.length = 40;
-  });
+  const whyKey = { 'the focus round finished while the app was closed': 'main.why.finished', 'unknown phase in saved state': 'main.why.corrupt' }[why] || 'main.why.closed';
+  store.mutate((d) => addFeed(d, { kind: 'warn', text: T(iron ? 'main.feed.interruptedIron' : 'main.feed.interrupted', { why: T(whyKey), min: mins(minutes) }) }));
 }
 
 function recoverInterruptedSession() {
@@ -112,14 +118,7 @@ function recoverInterruptedSession() {
   if (!st || !st.active) { salvageInterruptedSession(s, 'app closed mid-focus'); return; }
   session._persist();
   lifeLog('session-restored', { phase: st.phase, remainingSec: st.remainingSec });
-  store.mutate((d) => {
-    d.feed = d.feed || [];
-    d.feed.unshift({
-      t: Date.now(), emoji: '🕯️', kind: 'info',
-      text: 'StudyNook restarted after closing unexpectedly — your focus session picked up right where it left off'
-    });
-    if (d.feed.length > 40) d.feed.length = 40;
-  });
+  store.mutate((d) => addFeed(d, { kind: 'info', text: T('main.feed.restored') }));
 }
 
 /* ---------- one-time migration from the old folder-based install ---------- */
@@ -187,6 +186,9 @@ app.whenReady().then(() => {
   lifeLog('boot', { version: app.getVersion(), packaged: app.isPackaged, afterWatchdogRelaunch: process.argv.includes('--restarted-by-watchdog') });
   progress.refreshStreak(store.data);
   ensureBackups();
+  applyLoginItem();
+  // "System" theme: follow Windows live; every window re-resolves from the snapshot.
+  nativeTheme.on('updated', () => pushSnapshot());
 
   /* --- headless smoke-test hook (used by `npm run smoke`) --- */
   if (process.env.NOOK_SMOKE) {
@@ -273,10 +275,11 @@ function baseWindowOpts(extra) {
 function createMainWindow() {
   win = new BrowserWindow(baseWindowOpts({
     width: 1180, height: 780, minWidth: 960, minHeight: 640,
-    frame: false, title: 'StudyNook', backgroundColor: '#FDF6EC'
+    frame: false, title: 'StudyNook', backgroundColor: resolvedTheme() === 'dark' ? '#171513' : '#F7F5F2'
   }));
   win.loadFile(UI('index.html'));
-  win.once('ready-to-show', () => win.show());
+  // Started at sign-in → stay in the tray, unless a session was just restored.
+  win.once('ready-to-show', () => { if (!START_HIDDEN || session.isActive()) win.show(); });
   win.on('closed', () => { win = null; });
   // If the UI process crashes mid-session the student is left with a blank,
   // unclosable window and no timer. Reload it (the snapshot is re-pulled).
@@ -337,7 +340,7 @@ function showReminderWindow(payload) {
   if (!remindWin || remindWin.isDestroyed()) {
     remindWin = new BrowserWindow(baseWindowOpts({
       width: 430, height: 250, frame: false, alwaysOnTop: true, resizable: false,
-      skipTaskbar: false, center: true, backgroundColor: '#FFFCF6'
+      skipTaskbar: false, center: true, backgroundColor: resolvedTheme() === 'dark' ? '#211E1B' : '#FFFFFF'
     }));
     remindWin.loadFile(UI('reminder.html'));
     remindWin.on('closed', () => { remindWin = null; });
@@ -351,24 +354,34 @@ function createTray() {
   const img = nativeImage.createFromPath(ASSET('icon-32.png'));
   if (img.isEmpty()) return; // assets missing → skip tray gracefully
   tray = new Tray(img.resize({ width: 16, height: 16 }));
-  const menu = Menu.buildFromTemplate([
-    { label: 'Open StudyNook', click: () => { win && (win.show(), win.focus()); } },
-    { label: 'Start / resume focus', click: () => { session.isActive() ? session.resume() : session.start({ mode: 'pomodoro' }); } },
-    { label: 'Pause', click: () => session.pause() },
-    { label: 'Stop session', click: () => session.stop({ abandon: false }) },
+  tray.setToolTip('StudyNook');
+  tray.on('click', () => { win && (win.show(), win.focus()); });
+  buildTrayMenu();
+}
+/** (Re)built on start and whenever the language changes. */
+function buildTrayMenu() {
+  if (!tray) return;
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: T('tray.open'), click: () => { win && (win.show(), win.focus()); } },
+    { label: T('tray.start'), click: () => { session.isActive() ? session.resume() : session.start({ mode: 'pomodoro' }); } },
+    { label: T('tray.pause'), click: () => session.pause() },
+    { label: T('tray.stop'), click: () => session.stop({ abandon: false }) },
     { type: 'separator' },
-    { label: 'Let me breathe (pause guard 5 min)', click: () => { guardian.pauseFor(5); pushSnapshot(); } },
+    { label: T('tray.breathe'), click: () => { guardian.pauseFor(5); pushSnapshot(); } },
     { type: 'separator' },
-    { label: 'Quit StudyNook', click: () => {
+    { label: T('tray.quit'), click: () => {
       // isActive() — a PAUSED session is still a session. Quitting (or the
       // window-close gate it relies on) must wait until the focus truly ends.
-      if (session && session.isActive()) { notify('Session running', 'End or finish your focus session before quitting StudyNook.'); return; }
+      if (session && session.isActive()) { notify(T('main.n.running.t'), T('main.n.running.d')); return; }
       app.quit();
     } }
-  ]);
-  tray.setToolTip('StudyNook');
-  tray.setContextMenu(menu);
-  tray.on('click', () => { win && (win.show(), win.focus()); });
+  ]));
+}
+/** "Start with Windows" (installed app only — a dev run would register electron.exe). */
+function applyLoginItem() {
+  if (!app.isPackaged) return;
+  try { app.setLoginItemSettings({ openAtLogin: !!store.data.settings.startWithWindows, args: ['--hidden'] }); }
+  catch (e) { lifeLog('login-item-failed', e.message); }
 }
 
 /* ------------------------------------------------------------
@@ -408,14 +421,12 @@ function handlePhaseEnd(info) {
       const day = progress.dayStr();
       (dd.daily[day] = dd.daily[day] || { min: 0, sessions: 0, kills: 0, tasks: 0 }).kills += killCount(info.kills);
       if (info.taskId) { const t = dd.tasks.find((t) => t.id === info.taskId); if (t) t.pomosDone = (t.pomosDone || 0) + 1; }
-      dd.feed = dd.feed || [];
-      dd.feed.unshift({ t: now, emoji: '🍅', kind: 'good', xp: r.xpGained, text: `Completed a ${info.minutes} min focus${info.label ? ' · ' + info.label : ''}` });
-      if (dd.feed.length > 40) dd.feed.length = 40;
+      addFeed(dd, { t: now, kind: 'good', xp: r.xpGained, text: T(info.label ? 'main.feed.focusDoneLabel' : 'main.feed.focusDone', { min: mins(info.minutes), label: info.label }) });
       return r;
     });
     sendRewardEvents(res.events);
     broadcast('session-event', { kind: 'focus-complete', minutes: info.minutes, xp: res.xpGained, kills: info.kills });
-    notify('Focus complete! 🌷', `${info.minutes} minutes of cozy deep work. Break time, ${d.pet.name} is proud.`);
+    notify(T('main.n.focusDone.t'), T('main.n.focusDone.d', { min: mins(info.minutes), name: d.pet.name }), 'focusEnd');
   }
   else if (info.phase === 'focus' && !info.completed) {
     // ended early (gave up / stopped mid-round)
@@ -433,9 +444,7 @@ function handlePhaseEnd(info) {
         dd.sessions.unshift({ id: now, start: info.startedAt, end: now, min: info.minutes, completed: false, kills: info.kills, taskId: info.taskId, label: info.label, mode: info.mode });
         if (dd.sessions.length > 500) dd.sessions.length = 500;
       }
-      dd.feed = dd.feed || [];
-      dd.feed.unshift({ t: now, emoji: strict ? '🌧️' : '🌤️', kind: strict ? 'warn' : 'good', xp: strict ? 0 : r.xpGained, text: strict ? `Session ended early — strict mode, no XP this time (${info.minutes} min)` : `Session ended early after ${info.minutes} min (XP for the time focused)` });
-      if (dd.feed.length > 40) dd.feed.length = 40;
+      addFeed(dd, { t: now, kind: strict ? 'warn' : 'good', xp: strict ? 0 : r.xpGained, text: T(strict ? 'main.feed.endedStrict' : 'main.feed.ended', { min: mins(info.minutes) }) });
       return r;
     });
     sendRewardEvents(res.events);
@@ -444,8 +453,8 @@ function handlePhaseEnd(info) {
   else if (info.phase === 'short' || info.phase === 'long') {
     if (info.completed) {
       broadcast('session-event', { kind: 'break-end', phase: info.phase });
-      notify('Break over ☀️', 'Stretch, sip water, and begin the next round when ready.');
-      store.mutate((dd) => { dd.feed = dd.feed || []; dd.feed.unshift({ t: now, emoji: '☀️', kind: 'info', text: 'Break finished — next round is waiting' }); if (dd.feed.length > 40) dd.feed.length = 40; });
+      notify(T('main.n.breakDone.t'), T('main.n.breakDone.d'), 'breakEnd');
+      store.mutate((dd) => addFeed(dd, { t: now, kind: 'info', text: T('main.feed.breakDone') }));
     } else {
       broadcast('session-event', { kind: 'break-skipped' });
     }
@@ -463,9 +472,7 @@ function handleGuardEvent(ev) {
     store.mutate((d) => {
       const day = progress.dayStr();
       (d.daily[day] = d.daily[day] || { min: 0, sessions: 0, kills: 0, tasks: 0 }).kills += ev.count;
-      d.feed = d.feed || [];
-      d.feed.unshift({ t: now, emoji: '🧸', kind: 'info', text: `Gently closed ${ev.label} (${ev.count} process${ev.count > 1 ? 'es' : ''})` });
-      if (d.feed.length > 40) d.feed.length = 40;
+      addFeed(d, { t: now, kind: 'info', text: T('main.feed.closedApp', { app: ev.label, n: ev.count }) });
     });
     broadcast('guard', ev);
     grantAchievements({});
@@ -485,12 +492,15 @@ function grantAchievements(ctx) {
   for (const id of res) {
     const a = byId[id];
     broadcast('reward', { kind: 'achievement', id, emoji: a.emoji, name: a.name, desc: a.desc });
-    store.mutate((d) => { d.feed = d.feed || []; d.feed.unshift({ t: Date.now(), emoji: a.emoji, kind: 'good', text: 'Achievement unlocked: ' + a.name }); if (d.feed.length > 40) d.feed.length = 40; });
+    store.mutate((d) => addFeed(d, { kind: 'good', text: T('main.feed.achievement', { name: T('ach.' + a.id + '.name') }) }));
   }
   return res;
 }
 
-function notify(title, body) {
+/** kind: 'focusEnd' | 'breakEnd' | 'blocker' (Settings → Notifications); no kind = always shown. */
+function notify(title, body, kind) {
+  const prefs = (store && store.data.settings.notify) || {};
+  if (kind && prefs[kind] === false) return;
   try {
     if (Notification.isSupported()) new Notification({ title, body, icon: ASSET('icon-32.png') }).show();
   } catch (e) {}
@@ -524,12 +534,8 @@ async function enforceBlocker() {
     browserSeenSince = null;
     lifeLog('iron-closed-browser', { proc, closed });
     if (closed) {
-      store.mutate((dd) => {
-        dd.feed = dd.feed || [];
-        dd.feed.unshift({ t: Date.now(), emoji: '🧩', kind: 'warn', text: 'Iron mode: closed your browser because the StudyNook extension was missing' });
-        if (dd.feed.length > 40) dd.feed.length = 40;
-      });
-      broadcast('toast', { title: 'Browser closed', msg: 'Iron mode: the website blocker was missing. Re-enable the extension before reopening your browser.' });
+      store.mutate((dd) => addFeed(dd, { kind: 'warn', text: T('main.feed.ironBrowser') }));
+      broadcast('toast', { title: T('main.toast.browserClosed.t'), msg: T('main.toast.browserClosed.d') });
       pushSnapshot();
     }
   } catch (e) { lifeLog('enforce-blocker-error', e.message); }
@@ -567,17 +573,13 @@ function watchExtension() {
   const warn = ExtWatch.shouldWarn({ focusing, sitesEnabled: d.sites.enabled, lastSeen: d.ext.lastSeen, now: Date.now(), warned: extGoneWarned });
   if (!warn) return;
   extGoneWarned = true;
-  let hint = 'If you removed or disabled it, add it back. (Ignore this if you are not using Chrome.)';
-  try { hint = ExtFinder.describe(ExtFinder.detect({ extDir: EXT_DIR })).detail; } catch (e) {}   // say exactly what state the browser is in
-  const ironNote = st.blockActive && d.ext.browser ? ' Iron mode: your browser will be closed in about a minute and a half unless the extension is back.' : '';
-  const msg = 'StudyNook lost the Chrome extension, so websites are not being blocked. ' + hint + ironNote;
-  notify('Website blocker is off', msg);
-  broadcast('toast', { title: 'Website blocker is off', msg });
-  store.mutate((dd) => {
-    dd.feed = dd.feed || [];
-    dd.feed.unshift({ t: Date.now(), emoji: '🧩', kind: 'warn', text: 'Chrome extension went quiet during focus — sites are not blocked' });
-    if (dd.feed.length > 40) dd.feed.length = 40;
-  });
+  let hint = T('main.n.extGone.hint');
+  try { hint = T('ext.status.' + ExtFinder.detect({ extDir: EXT_DIR }).status + '.d'); } catch (e) {}   // say exactly what state the browser is in
+  const ironNote = st.blockActive && d.ext.browser ? ' ' + T('main.n.extGone.iron') : '';
+  const msg = T('main.n.extGone.d', { hint }) + ironNote;
+  notify(T('main.n.extGone.t'), msg, 'blocker');
+  broadcast('toast', { title: T('main.n.extGone.t'), msg });
+  store.mutate((dd) => addFeed(dd, { kind: 'warn', text: T('main.feed.extGone') }));
   pushSnapshot();
 }
 
@@ -590,6 +592,8 @@ function buildSnapshot() {
     now: Date.now(),
     platform: process.platform,
     appVersion: require('../../package.json').version,
+    packaged: app.isPackaged,
+    systemDark: nativeTheme.shouldUseDarkColors,
     data: {
       v: d.v, profile: d.profile, pet: d.pet, xp: d.xp, level: d.level,
       streak: d.streak, settings: d.settings, apps: d.apps, sites: d.sites,
@@ -620,6 +624,9 @@ function broadcast(channel, payload) {
 /* ------------------------------------------------------------
    IPC — every button in the UI lands here
 ------------------------------------------------------------ */
+/* settings:set sections that carry a raw value instead of an object */
+const RAW_SECTIONS = ['theme', 'miniWindow', 'bridgeAllowOrigins', 'language', 'startWithWindows', 'dailyGoalMin'];
+
 function registerIpc() {
   const H = (ch, fn) => ipcMain.handle(ch, async (_e, payload) => {
     const r = await fn(payload || {});
@@ -633,7 +640,7 @@ function registerIpc() {
     gateCleared = false;
     const task = p.taskId ? store.data.tasks.find((t) => t.id === p.taskId) : null;
     const st = session.start({ mode: p.mode || 'pomodoro', freeMin: p.freeMin || 0, taskId: p.taskId || null, label: task ? task.text : (p.label || '') });
-    store.mutate((d) => { d.feed = d.feed || []; d.feed.unshift({ t: Date.now(), emoji: '🌱', kind: 'info', text: `Focus session started (${st.mode === 'free' ? 'free' : 'pomodoro'})${task ? ' · ' + task.text : ''}` }); if (d.feed.length > 40) d.feed.length = 40; });
+    store.mutate((d) => addFeed(d, { kind: 'info', text: T(task ? 'main.feed.startedTask' : 'main.feed.started', { mode: T(st.mode === 'free' ? 'home.mode.free' : 'home.mode.pomodoro'), task: task && task.text }) }));
     pushSnapshot();
     return st;
   });
@@ -668,8 +675,8 @@ function registerIpc() {
       {
         const { num } = require('./store.js');
         let vals;
-        if (p.section === 'theme' || p.section === 'miniWindow' || p.section === 'bridgeAllowOrigins') {
-          // these three sections send a RAW VALUE, not an object (UI contract)
+        if (RAW_SECTIONS.includes(p.section)) {
+          // these sections send a RAW VALUE, not an object (UI contract)
           vals = { [p.section]: p.values };
         } else {
           vals = p.values && typeof p.values === 'object' && !Array.isArray(p.values) ? p.values : {};
@@ -696,11 +703,16 @@ function registerIpc() {
           } else if (p.section === 'sound') {
             if (k === 'ui' || k === 'chimes') v = !!v;
             else if (k === 'volume') v = num(v, 0.6, 0, 1);
-          } else if (k === 'theme') v = ['auto', 'light', 'dark'].includes(v) ? v : 'auto';
-          else if (k === 'miniWindow' || k === 'bridgeAllowOrigins') v = !!v;
+          } else if (p.section === 'notify') {
+            if (!['focusEnd', 'breakEnd', 'blocker'].includes(k)) continue;
+            v = !!v;
+          } else if (k === 'theme') v = Prefs.THEMES.includes(v) ? v : 'system';
+          else if (k === 'language') v = Prefs.normLang(v);
+          else if (k === 'dailyGoalMin') v = num(v, 120, 0, 720);
+          else if (k === 'miniWindow' || k === 'bridgeAllowOrigins' || k === 'startWithWindows') v = !!v;
           clean[k] = v;
         }
-        if (p.section === 'theme' || p.section === 'miniWindow' || p.section === 'bridgeAllowOrigins') {
+        if (RAW_SECTIONS.includes(p.section)) {
           d.settings[p.section] = clean[p.section];
         } else if (sec && typeof sec === 'object' && !Array.isArray(sec)) {
           Object.assign(sec, clean);
@@ -722,6 +734,8 @@ function registerIpc() {
       }
     });
     if (p.section === 'guardian' || p.section === 'timer') guardian._loop();   // apply new scan interval / strictness
+    if (p.section === 'language') buildTrayMenu();
+    if (p.section === 'startWithWindows') applyLoginItem();
     pushSnapshot();
     return true;
   });
@@ -816,7 +830,7 @@ function registerIpc() {
       const evs = store.mutate((d) => grantXp(d, 5));
       sendRewardEvents(evs);
       grantAchievements({});
-      store.mutate((d) => { d.feed = d.feed || []; d.feed.unshift({ t: Date.now(), emoji: '✅', kind: 'good', xp: 5, text: 'Task done: ' + done.text }); if (d.feed.length > 40) d.feed.length = 40; });
+      store.mutate((d) => addFeed(d, { kind: 'good', xp: 5, text: T('main.feed.taskDone', { task: done.text }) }));
     }
     pushSnapshot();
     return true;
@@ -952,17 +966,10 @@ function registerIpc() {
     return true;
   });
 
-  /* ---- extension finder (read-only detect / launch browser with the extension) ---- */
+  /* ---- extension finder (read-only: is the extension installed / enabled?) ---- */
   H('ext:detect', () => {
     const r = ExtFinder.detect({ extDir: EXT_DIR });
-    return Object.assign({ status: r.status }, ExtFinder.describe(r));
-  });
-  H('ext:forceLoad', () => {
-    const r = ExtFinder.forceLoad({ extDir: EXT_DIR });
-    lifeLog('ext-force-load', { ok: r.ok, browser: r.browser, reason: r.reason });
-    return r.ok
-      ? { ok: true, title: 'Opening ' + r.name + ' with the extension', detail: r.detail }
-      : { ok: false, title: 'Could not open a browser', detail: r.detail };
+    return { status: r.status, title: T('ext.status.' + r.status + '.t'), detail: T('ext.status.' + r.status + '.d') };
   });
 
   /* ---- subjects & notes ---- */
@@ -1010,7 +1017,7 @@ function registerIpc() {
     const m = parseInt(p.min, 10);
     if (!guardian.pauseFor(isNaN(m) ? 5 : Math.max(0, m))) {
       // Engine-level refusal: in Iron mode the pause never stops blocking.
-      broadcast('toast', { title: 'Iron mode', msg: 'The guard stays armed while your promise runs.' });
+      broadcast('toast', { title: T('main.toast.ironPause.t'), msg: T('main.toast.ironPause.d') });
     }
     pushSnapshot();
     return true;
@@ -1050,7 +1057,6 @@ function registerIpc() {
     return true;
   });
   H('data:openFolder', () => { shell.openPath(DATA_DIR); return true; });
-  H('help:readme', () => { shell.openPath(path.join(APP_ROOT, 'README.md')); return true; });
 
   /* ---- misc ---- */
   H('ambient:minute', () => {

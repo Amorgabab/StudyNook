@@ -13,12 +13,11 @@ files. What it does instead:
 |---|---|
 | Validate | Checks the shipped `extension/` folder is complete (7 required files, non-empty, valid Manifest V3). A truncated/corrupt folder is reported as `folder-corrupt`. |
 | Detect | Reads each Chrome / Edge / Brave / Chromium profile's `Secure Preferences` and `Preferences` (extensions section only) and reports `enabled`, `disabled`, `partial` (registered but state missing), `not-installed`, `unreadable` (file corrupt or mid-write), `no-browser`. If one settings file is corrupt the other is still tried. Best result across profiles wins. |
-| Launch | Starts an installed browser detached with `--load-extension=<folder>` and `chrome://extensions`. The flag only takes effect for a freshly started browser process and some newer branded Chrome builds ignore it; the opened page is the fallback ("Load unpacked"). |
+| ~~Launch~~ | Removed in the UI redesign: current Chrome (verified on 155) ignores `--load-extension`, so the "Open browser with extension" button only ever opened the extensions page. |
 
-UI: Sites tab → "Check extension" and "Open browser with extension" buttons
-(IPC `ext:detect`, `ext:forceLoad`; the folder path always comes from the app,
-never the renderer). The mid-focus "website blocker is off" warning now also
-says which of the states above the browser is in.
+UI: Websites page → "Check extension" button (IPC `ext:detect`; the folder
+path always comes from the app, never the renderer). The mid-focus "website
+blocker is off" warning also says which of the states above the browser is in.
 
 Not implemented on purpose: forcing installation through the
 `ExtensionInstallForcelist` policy (needs admin rights and a hosted package,

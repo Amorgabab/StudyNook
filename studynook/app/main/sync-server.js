@@ -173,6 +173,7 @@ class SyncServer {
       return this._json(res, 200, {
         ok: true,
         now: Date.now(),
+        lang: d.settings.language || 'en',   // the extension's popup/blocked page follow the app's language
         session: sess,
         sites: {
           enabled: d.sites.enabled,

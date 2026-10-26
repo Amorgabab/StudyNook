@@ -1,34 +1,21 @@
 /* ============================================================
-   StudyNook · extfinder.js — find (and nudge-load) the extension
+   StudyNook · extfinder.js — is the extension installed and on?
    ------------------------------------------------------------
-   Chrome-family browsers do NOT let another program silently
-   install an extension: that needs the user's click in the
-   browser (or an admin-managed policy, which StudyNook does not
-   touch). So "force load" here means the strongest thing that is
-   still honest and safe:
-
-     1. DETECT  — read each browser profile's own settings files
+     1. VALIDATE — check the extension folder on disk is complete
+        (a truncated/corrupt folder can never load).
+     2. DETECT   — read each browser profile's own settings files
         (Secure Preferences / Preferences, extensions section only)
         to learn whether OUR unpacked extension folder is registered,
         enabled, disabled, half-registered, or absent.
-     2. VALIDATE — check the extension folder itself on disk is
-        complete (a truncated/corrupt folder can never load).
-     3. LAUNCH  — start an installed browser with
-        --load-extension=<our folder> and open the extensions page.
-        That flag only applies to a freshly started browser process
-        (a running one ignores it) and some newer branded Chrome
-        builds ignore it entirely; the page it opens is the
-        fallback ("Load unpacked" → pick the folder).
-
-   Everything is read-only on browser data, uses no shell, and takes
-   the extension folder from the app — never from the renderer.
-   Pure where possible (fs/spawn/env injectable) so it unit-tests.
+   Read-only on browser data; the extension folder always comes from
+   the app, never from the renderer. fs/env are injectable for tests.
+   (The old "open a browser with --load-extension" helper was removed:
+   current Chrome ignores that flag.)
    ============================================================ */
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
 
 const REQUIRED_FILES = [
   'manifest.json', 'background.js', 'rules.js',
@@ -82,37 +69,6 @@ function browserRoots(platform, env, home) {
   ];
 }
 
-function browserExes(platform, env, id) {
-  const P = pathFor(platform);
-  if (platform === 'win32') {
-    const pf = env.ProgramFiles || 'C:\\Program Files';
-    const pf86 = env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
-    const local = env.LOCALAPPDATA || '';
-    const w = (...a) => P.join(...a);
-    return ({
-      chrome: [w(pf, 'Google', 'Chrome', 'Application', 'chrome.exe'), w(pf86, 'Google', 'Chrome', 'Application', 'chrome.exe'), local && w(local, 'Google', 'Chrome', 'Application', 'chrome.exe')],
-      edge: [w(pf86, 'Microsoft', 'Edge', 'Application', 'msedge.exe'), w(pf, 'Microsoft', 'Edge', 'Application', 'msedge.exe')],
-      brave: [w(pf, 'BraveSoftware', 'Brave-Browser', 'Application', 'brave.exe'), w(pf86, 'BraveSoftware', 'Brave-Browser', 'Application', 'brave.exe'), local && w(local, 'BraveSoftware', 'Brave-Browser', 'Application', 'brave.exe')],
-      chromium: [local && w(local, 'Chromium', 'Application', 'chrome.exe')]
-    }[id] || []).filter(Boolean);
-  }
-  if (platform === 'darwin') {
-    return ({
-      chrome: ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'],
-      edge: ['/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'],
-      brave: ['/Applications/Brave Browser.app/Contents/MacOS/Brave Browser'],
-      chromium: ['/Applications/Chromium.app/Contents/MacOS/Chromium']
-    }[id] || []);
-  }
-  return ({
-    chrome: ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable'],
-    edge: ['/usr/bin/microsoft-edge', '/usr/bin/microsoft-edge-stable'],
-    brave: ['/usr/bin/brave-browser', '/usr/bin/brave'],
-    chromium: ['/usr/bin/chromium', '/usr/bin/chromium-browser']
-  }[id] || []);
-}
-
-const BROWSER_ORDER = ['chrome', 'edge', 'brave', 'chromium'];
 
 /* Chrome stores the unpacked-extension path as given; compare loosely. */
 function samePath(a, b, platform) {
@@ -189,42 +145,12 @@ function describe(r) {
   switch (r.status) {
     case 'enabled': return { title: 'Extension is installed and on', detail: 'Your browser reports it enabled. If it still shows "not connected", open its popup and pair it with the code in Sites.' };
     case 'disabled': return { title: 'Extension is installed but turned off', detail: 'Open chrome://extensions and switch StudyNook back on.' };
-    case 'partial': return { title: 'Extension is only half-registered', detail: 'Remove it at chrome://extensions, then use "Open browser with extension" or Load unpacked again.' };
+    case 'partial': return { title: 'Extension is only half-registered', detail: 'Remove it at chrome://extensions, then use Load unpacked again.' };
     case 'unreadable': return { title: 'Could not read the browser settings', detail: 'The browser may be writing them right now. Try again in a moment.' };
     case 'folder-corrupt': return { title: 'The extension folder is damaged' + miss, detail: (r.folder.error ? r.folder.error + '. ' : '') + 'Reinstall StudyNook to restore it.' };
     case 'no-browser': return { title: 'No Chrome, Edge, Brave or Chromium profile found', detail: 'Install a Chromium-based browser, then load the extension.' };
-    default: return { title: 'Extension is not installed in your browser', detail: 'Use "Open browser with extension", or Load unpacked from chrome://extensions.' };
+    default: return { title: 'Extension is not installed in your browser', detail: 'Open chrome://extensions, turn on Developer mode and use Load unpacked.' };
   }
 }
 
-/* ---------- 4. launch a browser with the extension ---------- */
-function forceLoad(opts) {
-  opts = opts || {};
-  const platform = opts.platform || process.platform;
-  const env = opts.env || process.env;
-  const fsx = opts.fs || fs;
-  const spawnFn = opts.spawn || spawn;
-
-  const folder = validateFolder(opts.extDir, fsx);
-  if (!folder.ok) return { ok: false, reason: 'folder-corrupt', detail: describe({ status: 'folder-corrupt', folder }).title + '. Reinstall StudyNook.' };
-
-  const order = opts.browserId && BROWSER_ORDER.includes(opts.browserId) ? [opts.browserId] : BROWSER_ORDER;
-  for (const id of order) {
-    const exe = browserExes(platform, env, id).find((p) => { try { return fsx.existsSync(p); } catch (e) { return false; } });
-    if (!exe) continue;
-    const args = ['--load-extension=' + opts.extDir, 'chrome://extensions'];
-    try {
-      const child = spawnFn(exe, args, { detached: true, stdio: 'ignore' });
-      if (child && child.on) child.on('error', () => {});     // async ENOENT must not crash the app
-      if (child && child.unref) child.unref();
-    } catch (e) { return { ok: false, reason: 'launch-failed', detail: 'Could not start the browser: ' + e.message }; }
-    const name = id.charAt(0).toUpperCase() + id.slice(1);
-    return {
-      ok: true, browser: id, name, exe, args,
-      detail: 'If your browser was already open the extension flag is ignored (and some newer Chrome builds ignore it too). The extensions page is open: turn on Developer mode → Load unpacked → pick ' + opts.extDir
-    };
-  }
-  return { ok: false, reason: 'no-browser', detail: 'No Chrome, Edge, Brave or Chromium install was found.' };
-}
-
-module.exports = { detect, describe, forceLoad, validateFolder, inspectProfile, browserRoots, browserExes, REQUIRED_FILES };
+module.exports = { detect, describe, validateFolder, inspectProfile, browserRoots, REQUIRED_FILES };

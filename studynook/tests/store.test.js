@@ -18,7 +18,7 @@ suite('store · defensive sanitization (load & import)', () => {
     expect(d.settings.guardian.action).toBe('gentle');
     expect(d.settings.guardian.scanSec).toBe(1);
     expect(d.settings.sound.volume).toBe(1);
-    expect(d.settings.theme).toBe('auto');
+    expect(d.settings.theme).toBe('system');   // unknown theme → System (default since the UI redesign)
     expect(d.pet.name).toBe('Mochi');
     expect(d.pet.stage).toBe(5);                          // clamped to max stage
     expect(d.streak.current).toBe(0);

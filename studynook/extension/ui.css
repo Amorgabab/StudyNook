@@ -1,0 +1,54 @@
+/* StudyNook extension · ui.css — tokens shared by the popup and the blocked page
+   (same palette as the desktop app; follows the browser's light/dark setting) */
+@font-face {
+  font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("fonts/inter-latin-wght-normal.woff2") format("woff2-variations");
+}
+:root {
+  --font: "Inter", "Segoe UI", system-ui, sans-serif;
+  --bg: #F7F5F2; --surface: #FFFFFF; --surface-2: #F2EFEB; --border: #E6E1DB; --border-strong: #D4CDC5;
+  --text: #1F1B18; --text-muted: #6B625B; --text-faint: #958B83;
+  --accent: #C8643F; --accent-hover: #B4552F; --accent-soft: #F8E9E2; --on-accent: #FFFFFF;
+  --success: #4E8A5A; --success-soft: #E7F1E8; --warning: #B7791F; --warning-soft: #FBF0DC; --danger: #B5443B;
+  --shadow-1: 0 1px 2px rgba(31, 27, 24, .06); --shadow-2: 0 8px 24px rgba(31, 27, 24, .12);
+  --focus-ring: 0 0 0 3px rgba(200, 100, 63, .35);
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #171513; --surface: #211E1B; --surface-2: #2A2622; --border: #38332E; --border-strong: #4A443E;
+    --text: #F2EEE9; --text-muted: #A8A099; --text-faint: #7D766F;
+    --accent: #E08A66; --accent-hover: #EA9A78; --accent-soft: #3A2A22; --on-accent: #1A1310;
+    --success: #7DBA89; --success-soft: #22302A; --warning: #E0A54A; --warning-soft: #3A2F1C; --danger: #E57A70;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, .4); --shadow-2: 0 8px 24px rgba(0, 0, 0, .5);
+    --focus-ring: 0 0 0 3px rgba(224, 138, 102, .45);
+  }
+}
+:lang(ar) { --font: "Segoe UI", Tahoma, "Inter", sans-serif; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); font-size: 14px; line-height: 22px; color: var(--text); background: var(--bg); -webkit-font-smoothing: antialiased; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.icon { flex: 0 0 auto; display: inline-block; vertical-align: middle; }
+.muted { color: var(--text-muted); }
+.caption { font-size: 12px; line-height: 16px; color: var(--text-muted); }
+.row { display: flex; align-items: center; gap: 8px; }
+.grow { flex: 1 1 auto; min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-1); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding-inline: 14px; border-radius: 8px; font-size: 13.5px; font-weight: 600; cursor: pointer; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); transition: background .15s ease, border-color .15s ease; white-space: nowrap; }
+.btn:hover { background: var(--surface-2); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-ghost { background: transparent; border-color: transparent; color: var(--text-muted); }
+.btn-ghost:hover { background: var(--surface-2); color: var(--text); }
+.btn-icon { width: 32px; height: 32px; padding: 0; border-color: transparent; background: transparent; color: var(--text-muted); }
+.btn-icon:hover { background: var(--surface-2); color: var(--text); }
+.btn-block { width: 100%; }
+.btn-sm { height: 30px; padding-inline: 10px; font-size: 13px; }
+[hidden] { display: none !important; }
+.input { height: 36px; padding-inline: 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); outline: none; width: 100%; }
+.input:focus { border-color: var(--accent); box-shadow: var(--focus-ring); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); flex: 0 0 auto; }
+.dot.on { background: var(--success); }
+.mark { width: 22px; height: 22px; border-radius: 6px; background: var(--accent); color: var(--on-accent); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.chip { display: inline-flex; align-items: center; height: 28px; padding-inline: 12px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); font-size: 13px; font-weight: 500; direction: ltr; unicode-bidi: isolate; }

@@ -1,101 +1,101 @@
 /* ============================================================
-   StudyNook · views-garden.js — stats, garden heatmap, trophies
+   StudyNook · views-garden.js — Progress: level, streak, totals,
+   last 7 days, 13-week activity, companion journey, achievements
    ============================================================ */
 'use strict';
 window.Views = window.Views || {};
 
+const ACH_ICON = {
+  first_nook: 'sprout', pomo_10: 'timer', deep_50: 'flame', marathon_90: 'mountain', hour_day: 'clock',
+  streak_3: 'flame', streak_7: 'star', streak_30: 'moon', early_bird: 'sunrise', night_owl: 'moon-star',
+  zen: 'leaf', bounce_25: 'shield', bounce_100: 'shield-check', task_10: 'circle-check', task_50: 'list-checks',
+  best_friend: 'heart', hatch: 'egg', scholar: 'graduation-cap', legend: 'crown', level_5: 'book-open',
+  level_15: 'trophy', rain_120: 'cloud-rain', garden_14: 'flower', comeback: 'sun'
+};
+
 Views.garden = function (c) {
   const d = App.state.data;
   const lp = NookProgress.levelProgress(d.xp);
+  c.appendChild(N.pageHead(t('progress.title'), t('progress.sub')));
 
-  /* ---------- hero row ---------- */
-  const hero = N.el('div', { class: 'garden-hero' });
+  /* ---------- summary ---------- */
+  const level = N.card(t('progress.level'), 'award');
+  level.appendChild(N.el('div', { class: 'big-num', text: t('chip.level', { n: NookI18n.num(lp.level) }) + ' · ' + App.levelTitle(lp.level) }));
+  level.appendChild(N.el('div', { class: 'progress', style: 'margin:var(--s-3) 0 var(--s-2)' }, N.el('span', { style: 'width:' + Math.round(lp.pct * 100) + '%' })));
+  level.appendChild(N.el('div', { class: 'caption', text: t('progress.level.sub', { into: NookI18n.num(lp.into), need: NookI18n.num(lp.need), total: NookI18n.num(d.xp) }) }));
 
-  const level = N.el('div', { class: 'card level-card' });
-  level.appendChild(N.el('div', { class: 'small', text: 'LEVEL ' + lp.level }));
-  level.appendChild(N.el('div', { class: 'big-num', text: lp.title }));
-  const bar = N.el('div', { class: 'stage-bar', style: 'width:100%;margin:10px 0 6px' });
-  bar.appendChild(N.el('div', { class: 'stage-fill', style: `width:${Math.round(lp.pct * 100)}%` }));
-  level.appendChild(bar);
-  level.appendChild(N.el('div', { class: 'small', text: `${lp.into} / ${lp.need} XP to next level · ${d.xp} XP total` }));
-  hero.appendChild(level);
+  const streak = N.card(t('progress.streak'), 'flame');
+  streak.appendChild(N.el('div', { class: 'big-num', text: t('progress.days', { n: NookI18n.num(d.streak.current) }) }));
+  streak.appendChild(N.el('div', { class: 'caption', style: 'margin-top:var(--s-2)', text: t('progress.streak.sub', { best: NookI18n.num(d.streak.best) }) }));
 
-  const streak = N.el('div', { class: 'card' });
-  streak.appendChild(N.el('div', { class: 'small', text: 'STREAK' }));
-  streak.appendChild(N.el('div', { class: 'big-num', text: d.streak.current + ' 🔥' }));
-  streak.appendChild(N.el('div', { class: 'small mt', text: `best: ${d.streak.best} days · focus any day to keep it alive` }));
-  hero.appendChild(streak);
-
-  const totals = N.el('div', { class: 'card' });
   const allMin = Object.values(d.daily).reduce((a, v) => a + (v.min || 0), 0);
-  totals.appendChild(N.el('div', { class: 'small', text: 'ALL-TIME GARDEN' }));
-  totals.appendChild(N.el('div', { class: 'big-num', text: N.fmtMin(allMin) }));
-  totals.appendChild(N.el('div', { class: 'small mt', text: `${d.counters.sessionsTotal} sessions · ${d.counters.tasksDone} tasks · ${d.counters.kills} gentle closes` }));
-  hero.appendChild(totals);
-  c.appendChild(hero);
+  const totals = N.card(t('progress.total'), 'clock');
+  totals.appendChild(N.el('div', { class: 'big-num', text: NookI18n.minutes(allMin) }));
+  totals.appendChild(N.el('div', { class: 'caption', style: 'margin-top:var(--s-2)', text: t('progress.total.sub', { s: NookI18n.num(d.counters.sessionsTotal || 0), tk: NookI18n.num(d.counters.tasksDone || 0), k: NookI18n.num(d.counters.kills || 0) }) }));
+  c.appendChild(N.el('div', { class: 'grid-3' }, level, streak, totals));
 
-  /* ---------- charts row ---------- */
-  const charts = N.el('div', { class: 'grid2b garden-charts mt' });
-
-  const week = N.el('div', { class: 'card' });
-  week.appendChild(N.el('h2', { text: '📊 Last 7 days' }));
-  const bars = N.el('div', { class: 'bars mt' });
+  /* ---------- last 7 days + activity map ---------- */
+  const week = N.card(t('progress.week'), 'chart-column');
+  const bars = N.el('div', { class: 'bars', role: 'img', 'aria-label': t('progress.week') });
   const days = [];
   for (let i = 6; i >= 0; i--) days.push(N.dayKey(i));
   const max = Math.max(30, ...days.map((k) => (d.daily[k] && d.daily[k].min) || 0));
-  const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  for (const k of days) {
+  days.forEach((k, idx) => {
     const min = (d.daily[k] && d.daily[k].min) || 0;
-    const col = N.el('div', { class: 'bar-col', title: k + ' · ' + N.fmtMin(min) });
-    col.appendChild(N.el('div', { class: 'bar', style: `height:${Math.round((min / max) * 100)}%` }));
-    col.appendChild(N.el('div', { class: 'bar-lbl', text: DOW[new Date(k + 'T12:00:00').getDay()] }));
-    bars.appendChild(col);
-  }
+    const ts = new Date(k + 'T12:00:00').getTime();
+    bars.appendChild(N.el('div', { class: 'bar-col' + (idx === 6 ? ' today' : ''), title: NookI18n.date(ts) + ' · ' + NookI18n.minutes(min) },
+      N.el('span', { class: 'caption tnum', text: min ? NookI18n.minutesShort(min) : '' }),
+      N.el('div', { class: 'bar', style: 'height:' + Math.max(2, Math.round((min / max) * 100)) + '%' }),
+      N.el('span', { class: 'caption', text: NookI18n.weekday(ts) })));
+  });
   week.appendChild(bars);
-  charts.appendChild(week);
 
-  const garden = N.el('div', { class: 'card' });
-  garden.appendChild(N.el('h2', { text: '🌷 Focus garden' }));
-  garden.appendChild(N.el('div', { class: 'sub', text: 'Every day you study grows a plant. 15m+ 🌿 · 30m+ 🌷 · 60m+ 🌳' }));
-  const heat = N.el('div', { class: 'heat' });
-  for (let i = 90; i >= 0; i--) {
-    const k = N.dayKey(i);
-    const min = (d.daily[k] && d.daily[k].min) || 0;
-    const plant = min <= 0 ? '' : min < 15 ? '🌱' : min < 30 ? '🌿' : min < 60 ? '🌷' : '🌳';
-    heat.appendChild(N.el('div', { class: 'heat-cell', title: k + ' · ' + N.fmtMin(min), text: plant }));
+  const map = N.card(t('progress.map'), 'calendar');
+  map.appendChild(N.el('p', { class: 'card-sub', text: t('progress.map.sub') }));
+  const heat = N.el('div', { class: 'heat', role: 'img', 'aria-label': t('progress.map') });
+  // 13 full weeks, columns = weeks (Mon→Sun), ending with the current week
+  const todayDow = (new Date().getDay() + 6) % 7;            // 0 = Monday
+  const totalDays = 12 * 7 + todayDow + 1;
+  for (let i = totalDays - 1; i >= 0; i--) {
+    const k = N.dayKey(i), min = (d.daily[k] && d.daily[k].min) || 0;
+    const l = min <= 0 ? 0 : min < 15 ? 1 : min < 30 ? 2 : min < 60 ? 3 : 4;
+    heat.appendChild(N.el('i', { 'data-l': String(l), title: NookI18n.date(new Date(k + 'T12:00:00').getTime()) + ' · ' + NookI18n.minutes(min) }));
   }
-  garden.appendChild(heat);
-  charts.appendChild(garden);
-  c.appendChild(charts);
+  map.appendChild(heat);
+  map.appendChild(N.el('div', { class: 'heat-legend' }, N.el('span', { class: 'caption', style: 'margin-inline-end:6px', text: t('progress.map.less') }),
+    ...[0, 1, 2, 3, 4].map((l) => N.el('i', { class: 'heat-swatch', 'data-l': String(l) })),
+    N.el('span', { class: 'caption', style: 'margin-inline-start:6px', text: t('progress.map.more') })));
+  c.appendChild(N.el('div', { class: 'grid-2', style: 'margin-top:var(--s-6)' }, week, map));
 
-  /* ---------- evolution + achievements ---------- */
-  /* tighter transition from the charts row → journey: one consistent gap */
-  const evoCard = N.el('div', { class: 'card garden-journey' });
-  evoCard.appendChild(N.el('h2', { text: '🐾 ' + d.pet.name + "'s journey" }));
-  evoCard.appendChild(N.el('div', { class: 'sub', text: NookProgress.PET_STAGES[d.pet.stage].blurb }));
-  const track = N.el('div', { class: 'evo-track mt' });
-  for (const st of NookProgress.PET_STAGES) {
-    const reached = d.pet.stage >= st.id;
-    track.appendChild(N.el('div', { class: 'evo-step' + (reached ? ' reached' : '') + (d.pet.stage === st.id ? ' current' : ''), title: st.name + ' · ' + N.fmtMin(st.min) },
-      N.el('div', { class: 'evo-line' }),
-      N.el('div', { class: 'e', text: st.emoji }),
-      N.el('div', { class: 'n', text: st.name + '\n' + N.fmtMin(st.min) })
-    ));
+  /* ---------- companion journey ---------- */
+  const journey = N.card(t('progress.journey', { name: d.pet.name }), 'cat');
+  journey.style.marginTop = 'var(--s-6)';
+  journey.appendChild(N.el('p', { class: 'card-sub', text: t('stage.' + d.pet.stage + '.blurb') }));
+  const track = N.el('div', { class: 'journey' });
+  for (const s2 of NookProgress.PET_STAGES) {
+    const reached = d.pet.stage >= s2.id;
+    track.appendChild(N.el('div', { class: 'stage' + (reached ? ' reached' : '') + (d.pet.stage === s2.id ? ' current' : '') },
+      N.el('span', { class: 'item-icon' }, N.icon(App.STAGE_ICONS[s2.id], 18)),
+      N.el('span', { class: 'set-label', text: App.stageName(s2.id) }),
+      N.el('span', { class: 'caption', text: s2.min ? NookI18n.minutes(s2.min) : t('progress.journey.start') })));
   }
-  evoCard.appendChild(track);
-  c.appendChild(evoCard);
+  journey.appendChild(track);
+  c.appendChild(journey);
 
-  const achCard = N.el('div', { class: 'card mt' });
-  const earnedCount = Object.keys(d.achievements).length;
-  achCard.appendChild(N.el('h2', { text: `Achievements (${earnedCount}/${NookProgress.ACHIEVEMENTS.length})` }));
-  const grid = N.el('div', { class: 'list mt' });
+  /* ---------- achievements ---------- */
+  const earned = Object.keys(d.achievements).length;
+  const ach = N.card(t('progress.ach', { n: earned, of: NookProgress.ACHIEVEMENTS.length }), 'trophy');
+  ach.style.marginTop = 'var(--s-6)';
+  const grid = N.el('div', { class: 'ach-grid' });
   for (const a of NookProgress.ACHIEVEMENTS) {
     const got = d.achievements[a.id];
-    grid.appendChild(N.el('div', { class: 'list-row', style: got ? '' : 'opacity:.55' },
-      N.el('div', { class: 'grow' }, N.el('div', { class: 'title', style: 'font-size:12.5px', text: a.name }), N.el('div', { class: 'small', text: a.desc })),
-      N.el('span', { class: 'small', text: got ? new Date(got).toLocaleDateString() : 'locked' })
-    ));
+    grid.appendChild(N.el('div', { class: 'ach' + (got ? '' : ' locked') },
+      N.el('span', { class: 'item-icon' }, N.icon(got ? (ACH_ICON[a.id] || 'trophy') : 'lock', 18)),
+      N.el('div', { class: 'grow' },
+        N.el('div', { class: 'item-title', text: t('ach.' + a.id + '.name') }),
+        N.el('div', { class: 'item-sub', text: t('ach.' + a.id + '.desc') }),
+        got ? N.el('div', { class: 'caption', style: 'margin-top:2px', text: t('progress.ach.on', { date: NookI18n.date(got) }) }) : null)));
   }
-  achCard.appendChild(grid);
-  c.appendChild(achCard);
+  ach.appendChild(grid);
+  c.appendChild(ach);
 };
