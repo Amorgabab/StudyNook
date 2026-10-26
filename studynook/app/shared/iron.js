@@ -11,7 +11,13 @@
   const SENTENCE = 'i choose to end my focus early';
   const COOLDOWN_SEC = 60;
   const LOCK_DAYS_DEFAULT = 4;
-  function normalize(s) { return String(s == null ? '' : s).toLowerCase().replace(/\s+/g, ' ').trim(); }
+  /* Case, spacing, accents (é = e), curly vs straight apostrophes and Arabic
+     diacritics/tatweel are ignored, so the translated sentence is typeable on
+     any keyboard — the friction is the cool-down and the typing, not spelling. */
+  function normalize(s) {
+    return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ًͯ-ٕـ]/g, '')
+      .replace(/[‘’]/g, "'").replace(/[آأإ]/g, 'ا').toLowerCase().replace(/\s+/g, ' ').trim();
+  }
   function matches(typed, target) { return normalize(typed) === normalize(target || SENTENCE); }
   function lockDays(v) { const n = Number(v); return Number.isFinite(n) ? Math.max(1, Math.min(30, Math.round(n))) : LOCK_DAYS_DEFAULT; }
   function makeLock(now, days) { return (now || Date.now()) + lockDays(days) * 24 * 60 * 60 * 1000; }

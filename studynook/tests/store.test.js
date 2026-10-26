@@ -18,7 +18,7 @@ suite('store · defensive sanitization (load & import)', () => {
     expect(d.settings.guardian.action).toBe('gentle');
     expect(d.settings.guardian.scanSec).toBe(1);
     expect(d.settings.sound.volume).toBe(1);
-    expect(d.settings.theme).toBe('auto');
+    expect(d.settings.theme).toBe('system');   // unknown theme → System (default since the UI redesign)
     expect(d.pet.name).toBe('Mochi');
     expect(d.pet.stage).toBe(5);                          // clamped to max stage
     expect(d.streak.current).toBe(0);
@@ -62,5 +62,14 @@ suite('store · defensive sanitization (load & import)', () => {
     const d = sanitizeData({ tasks: [{ id: 't1', text: 'x'.repeat(5000) }], sites: { block: ['y'.repeat(900)] } });
     expect(d.tasks[0].text.length).toBe(200);
     expect(d.sites.block[0].length).toBe(200);
+  });
+});
+
+suite('store · remembered browser', () => {
+  test('ext.browser keeps edge/chrome and drops anything else', () => {
+    expect(sanitizeData({ ext: { browser: 'edge' } }).ext.browser).toBe('edge');
+    expect(sanitizeData({ ext: { browser: 'chrome' } }).ext.browser).toBe('chrome');
+    expect(sanitizeData({ ext: { browser: '<script>' } }).ext.browser).toBe('');
+    expect(defaultData().ext.browser).toBe('');
   });
 });

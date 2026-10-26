@@ -1,39 +1,46 @@
 <!DOCTYPE html>
-<html>
+<html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8" />
+  <link rel="stylesheet" href="../ui.css" />
   <style>
-    * { box-sizing:border-box; margin:0; font-family:"Segoe UI", system-ui, sans-serif; }
-    body { width:280px; background:#FBF3E7; color:#4A3B32; padding:14px; }
-    .head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
-    .head b { font-size:14px; }
-    .dot { width:9px; height:9px; border-radius:50%; background:#ccc; flex:0 0 auto; }
-    .dot.on { background:#7FB685; }
-    .card { background:#FFFCF6; border:1.5px solid #EBDCC8; border-radius:14px; padding:12px; }
-    .big { font-size:15px; font-weight:800; margin-bottom:4px; }
-    .line { font-size:12px; color:#8A7466; margin-top:3px; }
-    button { width:100%; margin-top:10px; border:1.5px solid #E8886B; background:#E8886B; color:#fff; border-radius:999px; padding:8px 12px; font-size:12.5px; font-weight:800; cursor:pointer; }
-    button.ghost { border-color:#EBDCC8; background:#FFF6E9; color:#4A3B32; }
-    input { width:100%; border:1.5px solid #EBDCC8; background:#FFF6E9; border-radius:10px; padding:8px 10px; font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#4A3B32; }
-    .warn { background:#FBE5E7; border:1.5px solid #E8A0A8; border-radius:12px; padding:8px; margin-bottom:10px; font-size:11px; font-weight:700; color:#A6525C; }
-    .foot { font-size:10.5px; color:#B49B87; margin-top:8px; text-align:center; }
+    body { width: 300px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .head { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+    .conn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--text-muted); }
+    .status { padding: 16px; display: flex; flex-direction: column; gap: 4px; }
+    .state { display: flex; align-items: center; gap: 8px; font-size: 15px; line-height: 22px; font-weight: 600; }
+    .state .icon { color: var(--text-muted); }
+    .state.active .icon { color: var(--success); }
+    .stale { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 8px; background: var(--warning-soft); font-size: 13px; line-height: 18px; }
+    .pair { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+    #code { letter-spacing: .3em; text-transform: uppercase; font-weight: 600; text-align: center; direction: ltr; }
+    .actions { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
   </style>
 </head>
 <body>
-  <div class="head"><span style="font-size:18px">🪺</span><b>StudyNook</b><span style="flex:1"></span><button id="sync" title="sync now" style="width:auto;margin:0;padding:3px 9px;border-radius:999px;border:1.5px solid #EBDCC8;background:#FFF6E9;color:#4A3B32;font-size:12px">🔄</button><span class="dot" id="dot"></span><span class="line" id="conn" style="margin:0"></span></div>
-  <div class="warn" id="stale" style="display:none">⚠️ Chrome is running old extension code.<button id="fixstale" style="margin-top:6px">⚡ Reload extension now</button></div>
-  <div class="card">
-    <div class="big" id="state">…</div>
-    <div class="line" id="sess"></div>
-    <div class="line" id="sweep"></div>
-    <div id="standalone" style="display:none"><button id="tstart">▶ Start 25-min focus</button><button id="tstop" class="ghost" style="display:none"> End standalone focus</button></div>
+  <div class="head">
+    <span class="mark" id="mark"></span><span>StudyNook</span><span class="grow"></span>
+    <span class="conn"><span class="dot" id="dot"></span><span id="conn"></span></span>
+    <button class="btn btn-icon" id="sync" type="button"></button>
   </div>
-  <div class="card" id="paircard" style="display:none;margin-top:10px">
-    <div class="line" style="margin:0 0 6px">Pair with the desktop app — type the 6-letter code from StudyNook → Sites:</div>
-    <input id="code" maxlength="6" placeholder="CODE" />
-    <button id="pair">Pair</button>
+  <div class="stale" id="stale" hidden><span id="stale-txt"></span><button class="btn btn-sm" id="fixstale" type="button"></button></div>
+  <div class="card status">
+    <div class="state" id="state"></div>
+    <div class="caption" id="sess"></div>
+    <div class="caption" id="sweep"></div>
+    <div class="actions" id="standalone" hidden>
+      <button class="btn btn-primary btn-block" id="tstart" type="button"></button>
+      <button class="btn btn-block" id="tstop" type="button" hidden></button>
+    </div>
   </div>
-  <div class="foot">Lists & settings live in the StudyNook app (Sites / Apps tabs).</div>
+  <div class="card pair" id="paircard" hidden>
+    <div class="caption" id="pair-lbl"></div>
+    <input class="input" id="code" maxlength="6" placeholder="ABC123" autocomplete="off" spellcheck="false" />
+    <button class="btn btn-primary btn-block" id="pair" type="button"></button>
+  </div>
+  <div class="caption" id="foot" style="text-align:center"></div>
+  <script src="../icons.js"></script>
+  <script src="../i18n.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

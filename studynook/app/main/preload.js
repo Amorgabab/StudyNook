@@ -17,8 +17,8 @@ const INVOKE = new Set([
   'data:backupNow', 'data:openBackups', 'data:openSounds', 'sound:get',
   'apps:add', 'apps:remove', 'apps:toggle', 'apps:addCatalog', 'apps:scan',
   'apps:previewAllow', 'apps:killNow',
-  'sites:set', 'guardian:pause',
-  'data:export', 'data:import', 'data:reset', 'data:openFolder', 'help:readme',
+  'sites:set', 'guardian:pause', 'ext:detect',
+  'data:export', 'data:import', 'data:reset', 'data:openFolder',
   'ambient:minute', 'onboarding:done', 'iron:passed',
   'win:min', 'win:close', 'win:show-main',
   'reminder:allowOnce', 'reminder:killNow', 'reminder:dismiss'

@@ -42,6 +42,15 @@ window.Mochi = (function () {
       <path d="M ${x - 4 * s} ${y + 6 * s} q ${4 * s} ${3.5 * s} ${8 * s} 0" stroke="#7A5C4F" stroke-width="${2 * s}" fill="none" stroke-linecap="round"/>`;
   }
 
+  /* small drawn accents (no emoji): sleeping "z"s and four-point sparkles */
+  function zzz(x, y) {
+    return `<g class="m-zzz" fill="none" stroke="#B9A797" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M ${x} ${y} h 8 l -8 9 h 8"/><path d="M ${x + 12} ${y - 10} h 6 l -6 7 h 6"/></g>`;
+  }
+  function sparkle(x, y, r) {
+    return `<path class="m-zzz" d="M ${x} ${y - r} Q ${x} ${y} ${x + r} ${y} Q ${x} ${y} ${x} ${y + r} Q ${x} ${y} ${x - r} ${y} Q ${x} ${y} ${x} ${y - r} Z" fill="#E0A54A"/>`;
+  }
+
   function blush(x, y, s) {
     return `<ellipse cx="${x}" cy="${y}" rx="${6.5 * s}" ry="${3.6 * s}" fill="#F5B8AE" opacity=".8"/>`;
   }
@@ -64,7 +73,7 @@ window.Mochi = (function () {
           ${face('break', cx, cy - 2, 0.9)}
           ${blush(cx - 22, cy + 6, 0.9)}${blush(cx + 22, cy + 6, 0.9)}
         </g>`;
-      extras = `<text x="${cx + 44}" y="${cy - 34}" font-size="15" class="m-zzz">💤</text>`;
+      extras = zzz(cx + 44, cy - 40);
     } else {
       const s = stage === 1 ? 0.72 : stage === 2 ? 0.88 : 1;
       const ry = 44 * s, rx = 52 * s;
@@ -97,15 +106,15 @@ window.Mochi = (function () {
       }
       if (stage >= 5) { // tiny crown + sparkles
         body += `<path d="M ${cx - 14} ${by - ry - 6} l 5 -12 l 6 8 l 5 -10 l 5 10 l 6 -8 l 5 12 Z" fill="#F2C14E" stroke="#D9A63B" stroke-width="2"/>`;
-        extras += `<text x="${cx - 62}" y="${by - 30}" font-size="13" class="m-zzz">✨</text><text x="${cx + 48}" y="${by - 14}" font-size="11" class="m-zzz">✨</text>`;
+        extras += sparkle(cx - 58, by - 36, 7) + sparkle(cx + 54, by - 20, 5);
       }
       if (mood === 'focus' || stage >= 3) { // little open book in front
         body += `
           <path d="M ${cx - 30 * s} ${by + ry * 0.72} q ${15 * s} ${-8 * s} ${30 * s} 0 q ${15 * s} ${-8 * s} ${30 * s} 0 l 0 ${14 * s} q ${-15 * s} ${-7 * s} ${-30 * s} 0 q ${-15 * s} ${-7 * s} ${-30 * s} 0 Z" fill="#BFD8EA" stroke="#8FB8D8" stroke-width="2"/>
           <path d="M ${cx} ${by + ry * 0.72 - 2 * s} l 0 ${14 * s}" stroke="#8FB8D8" stroke-width="2"/>`;
       }
-      if (mood === 'break') extras += `<text x="${cx + 46}" y="${by - 26}" font-size="15" class="m-zzz">💤</text>`;
-      if (mood === 'celebrate') extras += `<text x="${cx - 62}" y="${by - 24}" font-size="14" class="m-zzz">🎉</text><text x="${cx + 46}" y="${by - 30}" font-size="14" class="m-zzz">🌸</text>`;
+      if (mood === 'break') extras += zzz(cx + 46, by - 32);
+      if (mood === 'celebrate') extras += sparkle(cx - 58, by - 28, 7) + sparkle(cx + 52, by - 36, 6) + sparkle(cx + 62, by - 8, 4);
     }
 
     return `<svg class="mochi-svg" viewBox="0 0 200 180" xmlns="http://www.w3.org/2000/svg">${body}${extras}</svg>`;

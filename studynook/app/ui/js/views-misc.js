@@ -4,197 +4,193 @@
 'use strict';
 window.Views = window.Views || {};
 
-/* ---------- settings ---------- */
+/* ============================= SETTINGS ============================= */
+const SETTINGS_SECTIONS = [
+  ['general', 'sliders-horizontal'], ['appearance', 'palette'], ['timer', 'timer'], ['blocking', 'shield'],
+  ['notifications', 'bell'], ['sound', 'volume-2'], ['data', 'database'], ['about', 'info']
+];
+
 Views.settings = function (c) {
-  const d = App.state.data, s = d.settings;
-  /* Settings — one consistent rhythm: every card shares .set-grid's gap,
-     every section title keeps the same separation from its content */
-  const grid = N.el('div', { class: 'set-grid' });
+  const S = App.state, d = S.data, s = d.settings;
+  if (App.viewOpts && App.viewOpts.section) { App.settingsSection = App.viewOpts.section; App.viewOpts = {}; }
+  const cur = App.settingsSection || 'general';
+  c.appendChild(N.pageHead(t('set.title'), t('set.sub')));
 
-  /* profile */
-  const prof = N.el('div', { class: 'card' });
-  prof.appendChild(N.el('h2', { text: 'You & your pet' }));
-  /* redundant hints removed — labels are self-explanatory */
-  prof.appendChild(setRow('Your name', '', textInput(d.profile.name, (v) => nook.invoke('profile:set', { name: v }))));
-  prof.appendChild(setRow('Pet name', '', textInput(d.pet.name, (v) => nook.invoke('pet:rename', { name: v }))));
-  grid.appendChild(prof);
-
-  /* subjects */
-  const subjCard = N.el('div', { class: 'card' });
-  subjCard.appendChild(N.el('h2', { text: 'Subjects' }));
-  const chips = N.el('div', { class: 'chips mt' });
-  for (const s of (d.subjects || [])) {
-    chips.appendChild(N.el('span', { class: 'domain-chip' }, s, N.el('button', { text: '✕', title: 'remove', onclick: () => nook.invoke('subjects:set', { list: (d.subjects || []).filter((x) => x !== s) }) })));
+  const nav = N.el('nav', { class: 'subnav', 'aria-label': t('set.title') });
+  for (const [id, ico] of SETTINGS_SECTIONS) {
+    nav.appendChild(N.el('button', { type: 'button', 'aria-current': cur === id ? 'true' : 'false', onclick: () => { App.settingsSection = id; App.render(); } }, N.icon(ico, 16), N.el('span', { text: t('set.sec.' + id) })));
   }
-  subjCard.appendChild(chips);
-  const srow = N.el('div', { class: 'row mt' });
-  const sinp = N.el('input', { class: 'input', placeholder: 'add subject…', style: 'flex:1' });
-  sinp.addEventListener('keydown', (e) => { if (e.key === 'Enter') addSubj(); });
-  srow.append(sinp, N.el('button', { class: 'btn btn-sm btn-sage', text: '+ Add', onclick: addSubj }));
-  subjCard.appendChild(srow);
-  grid.appendChild(subjCard);
-  function addSubj() {
-    const v = sinp.value.trim();
-    if (!v) return;
-    nook.invoke('subjects:set', { list: [...(d.subjects || []), v] });
-    sinp.value = '';
+  const panel = N.el('div', { class: 'stack gap-6' });
+  const ico = (SETTINGS_SECTIONS.find((x) => x[0] === cur) || [])[1];
+  const card = N.card(t('set.sec.' + cur), ico);
+  panel.appendChild(card);
+  c.appendChild(N.el('div', { class: 'with-subnav' }, nav, panel));
+
+  const set = (section, values) => nook.invoke('settings:set', { section, values });
+  const setT = (v) => set('timer', v), setG = (v) => set('guardian', v);
+  const row = (label, desc, control) => N.el('div', { class: 'set-row' },
+    N.el('div', { class: 'grow' }, N.el('div', { class: 'set-label', text: label }), desc ? N.el('div', { class: 'set-desc', text: desc }) : null),
+    N.el('div', { class: 'set-control' }, control));
+  const num = (val, min, max, onSet, unit, step, label) => N.el('span', { class: 'row' }, N.stepper(val, min, max, onSet, step, label), unit ? N.el('span', { class: 'stepper-unit', text: unit }) : null);
+  const text = (val, max, onSet, label) => { const i = N.el('input', { class: 'input', value: val || '', maxlength: String(max), style: 'width:220px', 'aria-label': label }); i.addEventListener('change', () => onSet(i.value.trim())); return i; };
+
+  if (cur === 'general') {
+    const lang = N.el('select', { class: 'input', 'aria-label': t('set.lang') });
+    for (const [v, lbl] of [['en', 'English'], ['ar', 'العربية'], ['fr', 'Français'], ['es', 'Español']]) lang.appendChild(N.el('option', { value: v, text: lbl, selected: NookPrefs.normLang(s.language) === v }));
+    lang.addEventListener('change', () => set('language', lang.value));
+    card.appendChild(row(t('set.lang'), t('set.lang.desc'), lang));
+    card.appendChild(row(t('set.startup'), S.packaged ? t('set.startup.desc') : t('set.startup.dev'),
+      N.toggle(!!s.startWithWindows, (v) => set('startWithWindows', v), { label: t('set.startup'), disabled: !S.packaged })));
+    card.appendChild(row(t('set.name'), t('set.name.desc'), text(d.profile.name, 40, (v) => nook.invoke('profile:set', { name: v }), t('set.name'))));
+    card.appendChild(row(t('set.pet'), t('set.pet.desc'), text(d.pet.name, 20, (v) => nook.invoke('pet:rename', { name: v }), t('set.pet'))));
+    card.appendChild(row(t('set.goal'), t('set.goal.desc'), num(s.dailyGoalMin || 0, 0, 720, (v) => set('dailyGoalMin', v), t('unit.min'), 15, t('set.goal'))));
+    // subjects
+    const block = N.el('div', { class: 'set-block' }, N.el('div', { class: 'set-label', text: t('set.subjects') }), N.el('div', { class: 'set-desc', style: 'margin-bottom:var(--s-3)', text: t('set.subjects.desc') }));
+    const chips = N.el('div', { class: 'chips' });
+    for (const sj of (d.subjects || [])) chips.appendChild(N.el('span', { class: 'chip' }, N.el('span', { text: sj }), N.el('button', { type: 'button', 'aria-label': t('set.subjects.remove', { s: sj }), onclick: () => nook.invoke('subjects:set', { list: d.subjects.filter((x) => x !== sj) }) }, N.icon('x', 14))));
+    block.appendChild(chips);
+    const sinp = N.el('input', { class: 'input grow', placeholder: t('set.subjects.add'), maxlength: '40', 'aria-label': t('set.subjects.add') });
+    const addS = () => { const v = sinp.value.trim(); if (v) { nook.invoke('subjects:set', { list: [...(d.subjects || []), v] }); sinp.value = ''; } };
+    sinp.addEventListener('keydown', (e) => { if (e.key === 'Enter') addS(); });
+    block.appendChild(N.el('div', { class: 'row', style: 'margin-top:var(--s-3);max-width:420px' }, sinp, N.btn(t('common.add'), { icon: 'plus', onclick: addS })));
+    card.appendChild(block);
   }
 
-  /* timer — unit/limit hints kept where a bare number would be ambiguous;
-     flavor text that restates the label is dropped */
-  const tim = N.el('div', { class: 'card' });
-  tim.appendChild(N.el('h2', { text: '⏱ Timer' }));
-  tim.appendChild(setRow('Focus length', 'minutes per round', numInput(s.timer.workMin, 5, 180, (v) => setT({ workMin: v }))));
-  tim.appendChild(setRow('Short break', 'minutes', numInput(s.timer.shortMin, 1, 60, (v) => setT({ shortMin: v }))));
-  tim.appendChild(setRow('Long break', 'minutes', numInput(s.timer.longMin, 5, 90, (v) => setT({ longMin: v }))));
-  tim.appendChild(setRow('Rounds per plan', 'then a long break', numInput(s.timer.rounds, 2, 12, (v) => setT({ rounds: v }))));
-  tim.appendChild(setRow('Auto-start breaks', '', toggleInput(s.timer.autoStartBreaks, (v) => setT({ autoStartBreaks: v }))));
-  tim.appendChild(setRow('Auto-start next round', '', toggleInput(s.timer.autoStartFocus, (v) => setT({ autoStartFocus: v }))));
-  tim.appendChild(setRow('Strict mode', 'ending early = zero XP for that round', toggleInput(s.timer.strict, (v) => setT({ strict: v }))));
-  const ironLocked = window.NookIron && NookIron.isLocked(s.timer.ironLockedUntil, Date.now());
-  tim.appendChild(setRow('Iron session',
-    ironLocked
-      ? 'your own rule: this switch stays locked for ' + NookIron.remainingHms(s.timer.ironLockedUntil, Date.now())
-      : 'no pause anywhere while focusing; ending early = 60s cool-down + typed sentence',   /* consequence — not inferable from the label */
-    ironLocked
-      ? N.el('span', { class: 'pill warn', text: '🔒 locked ' + NookIron.remainingHms(s.timer.ironLockedUntil, Date.now()) })
-      : toggleInput(s.timer.iron, (v) => setT({ iron: v }))));
-  tim.appendChild(setRow('Iron lock duration', 'how long the switch stays locked after you enable Iron (1-30 days)',
-    N.el('span', { class: 'row', style: 'gap:4px' },
-      N.stepper(s.timer.ironLockDays || 4, 1, 30, (v) => setT({ ironLockDays: v })),
-      N.el('span', { class: 'small', text: 'days' }))));
-  grid.appendChild(tim);
+  if (cur === 'appearance') {
+    const theme = NookPrefs.THEMES.includes(s.theme) ? s.theme : 'system';
+    card.appendChild(row(t('set.theme'), t('set.theme.desc.' + theme),
+      N.seg([['system', t('set.theme.system'), 'monitor'], ['light', t('set.theme.light'), 'sun'], ['dark', t('set.theme.dark'), 'moon'], ['auto', t('set.theme.auto'), 'sun-moon']], theme, (v) => set('theme', v), { label: t('set.theme') })));
+    card.appendChild(row(t('set.mini'), t('set.mini.desc'), N.toggle(!!s.miniWindow, (v) => set('miniWindow', v), { label: t('set.mini') })));
+  }
 
-  /* sound & looks — only genuinely non-inferable hints kept */
-  const snd = N.el('div', { class: 'card' });
-  snd.appendChild(N.el('h2', { text: '🎧 Sound & looks' }));
-  snd.appendChild(setRow('Ambience files', 'drop rain.mp3 / fire.mp3 / waves.mp3 / cafe.mp3 here — synthesized loops play until then: ' + (App.state.soundsPath || ''),
-    N.el('button', { class: 'btn btn-sm btn-ghost', text: 'Open sounds folder', title: App.state.soundsPath || '', onclick: () => nook.invoke('data:openSounds') })));
-  snd.appendChild(setRow('UI sounds', '', toggleInput(s.sound.ui, (v) => { setSnd({ ui: v }); Audio2.setEnabled({ ui: v, chimes: s.sound.chimes }); })));
-  snd.appendChild(setRow('Chimes', '', toggleInput(s.sound.chimes, (v) => { setSnd({ chimes: v }); Audio2.setEnabled({ ui: s.sound.ui, chimes: v }); })));
-  snd.appendChild(setRow('Theme', 'auto follows the time of day', segInput(['auto', 'light', 'dark'], s.theme, (v) => nook.invoke('settings:set', { section: 'theme', values: v }))));
-  snd.appendChild(setRow('Mini floating timer', '', toggleInput(s.miniWindow, (v) => nook.invoke('settings:set', { section: 'miniWindow', values: v }))));
-  grid.appendChild(snd);
+  if (cur === 'timer') {
+    const tm = s.timer;
+    card.appendChild(row(t('set.t.work'), t('set.t.work.desc'), num(tm.workMin, 5, 180, (v) => setT({ workMin: v }), t('unit.min'), 5, t('set.t.work'))));
+    card.appendChild(row(t('set.t.short'), null, num(tm.shortMin, 1, 60, (v) => setT({ shortMin: v }), t('unit.min'), 1, t('set.t.short'))));
+    card.appendChild(row(t('set.t.long'), null, num(tm.longMin, 5, 90, (v) => setT({ longMin: v }), t('unit.min'), 5, t('set.t.long'))));
+    card.appendChild(row(t('set.t.rounds'), t('set.t.rounds.desc'), num(tm.rounds, 2, 12, (v) => setT({ rounds: v }), null, 1, t('set.t.rounds'))));
+    card.appendChild(row(t('set.t.autoBreak'), null, N.toggle(!!tm.autoStartBreaks, (v) => setT({ autoStartBreaks: v }), { label: t('set.t.autoBreak') })));
+    card.appendChild(row(t('set.t.autoFocus'), null, N.toggle(!!tm.autoStartFocus, (v) => setT({ autoStartFocus: v }), { label: t('set.t.autoFocus') })));
+    card.appendChild(row(t('set.t.strict'), t('set.t.strict.desc'), N.toggle(!!tm.strict, (v) => setT({ strict: v }), { label: t('set.t.strict') })));
+    const locked = NookIron.isLocked(tm.ironLockedUntil, Date.now());
+    card.appendChild(row(t('set.t.iron'), locked ? t('set.t.iron.locked', { time: NookIron.remainingHms(tm.ironLockedUntil, Date.now()) }) : t('set.t.iron.desc'),
+      locked ? N.el('span', { class: 'badge warning' }, N.icon('lock', 12), N.el('span', { text: t('set.t.iron.lockedBadge') }))
+        : N.toggle(!!tm.iron, (v) => {
+          if (!v) return setT({ iron: false });
+          App.confirm(t('set.t.iron.confirm.t'), t('set.t.iron.confirm.d', { n: tm.ironLockDays || 4 }), () => setT({ iron: true }), t('set.t.iron.confirm.yes'));
+        }, { label: t('set.t.iron') })));
+    card.appendChild(row(t('set.t.ironDays'), t('set.t.ironDays.desc'), num(tm.ironLockDays || 4, 1, 30, (v) => setT({ ironLockDays: v }), t('unit.days'), 1, t('set.t.ironDays'))));
+  }
 
-  /* guardian extras */
-  const gcard = N.el('div', { class: 'card' });
-  gcard.appendChild(N.el('h2', { text: '🛟 Safety & emergency' }));
-  const btns = N.el('div', { class: 'row mt' });
-  for (const m of [5, 15, 60]) btns.appendChild(N.el('button', { class: 'btn btn-sm', text: `pause guard ${m} min`, onclick: () => nook.invoke('guardian:pause', { min: m }) }));
-  gcard.appendChild(btns);
-  gcard.appendChild(N.el('div', { class: 'small mt', title: 'StudyNook never touches system processes (see app/shared/catalog.js → NEVER_KILL).', text: 'Need a blocked app? Also: click "Leave it open 5 min" on any warning card, or quit StudyNook from the tray — the guard stops instantly.' }));
-  grid.appendChild(gcard);
+  if (cur === 'blocking') {
+    const g = s.guardian;
+    if (App.ironFocusOn()) card.appendChild(N.callout('warning', 'lock', t('set.b.ironNote')));
+    card.appendChild(row(t('set.b.when'), t('set.b.when.desc'), N.seg([['session', t('set.b.during'), 'timer'], ['always', t('set.b.always'), 'infinity']], g.onlyDuringSessions ? 'session' : 'always', (v) => setG({ onlyDuringSessions: v === 'session' }), { label: t('set.b.when') })));
+    card.appendChild(row(t('set.b.mode'), t('set.b.mode.desc'), N.seg([['block', t('set.b.blocklist'), 'ban'], ['allow', t('set.b.allowlist'), 'circle-check']], g.mode, (v) => { setG({ mode: v }); if (v === 'allow') setTimeout(Views.showAllowPreview, 300); }, { label: t('set.b.mode') })));
+    card.appendChild(row(t('set.b.action'), t('set.b.action.desc'), N.seg([['gentle', t('set.b.gentle'), 'bell-ring'], ['instant', t('set.b.instant'), 'zap'], ['remind', t('set.b.remind'), 'bell']], g.action, (v) => setG({ action: v }), { label: t('set.b.action') })));
+    card.appendChild(row(t('set.b.grace'), t('set.b.grace.desc'), num(g.graceSec, 5, 300, (v) => setG({ graceSec: v }), t('unit.sec'), 5, t('set.b.grace'))));
+    card.appendChild(row(t('set.b.scan'), t('set.b.scan.desc'), num(g.scanSec, 1, 30, (v) => setG({ scanSec: v }), t('unit.sec'), 1, t('set.b.scan'))));
+    card.appendChild(row(t('set.b.sites'), t('set.b.sites.desc'), N.seg([['session', t('set.b.during'), 'timer'], ['always', t('set.b.always'), 'infinity']], d.sites.when, (v) => nook.invoke('sites:set', { patch: { when: v } }), { label: t('set.b.sites') })));
+    card.appendChild(row(t('set.b.pause'), S.guardian.pausedMinLeft > 0 ? t('set.b.pause.active', { n: S.guardian.pausedMinLeft }) : t('set.b.pause.desc'),
+      N.el('span', { class: 'row' }, ...[5, 15, 60].map((m) => N.btn(t('set.b.pause.min', { n: m }), { cls: 'btn-sm', onclick: () => nook.invoke('guardian:pause', { min: m }) })))));
+  }
 
-  /* data */
-  const data = N.el('div', { class: 'card' });
-  data.appendChild(N.el('h2', { text: 'Export & backups' }));
-  const drow = N.el('div', { class: 'row mt' });
-  drow.appendChild(N.el('button', { class: 'btn btn-sm', text: 'Export backup (download)', onclick: exportData }));
-  drow.appendChild(N.el('button', { class: 'btn btn-sm', text: 'Import backup', onclick: importData }));
-  drow.appendChild(N.el('button', { class: 'btn btn-sm', text: 'Back up now', onclick: () => nook.invoke('data:backupNow').then((r) => App.toast('Backup saved', r.name)) }));
-  data.appendChild(drow);
-  const drow2 = N.el('div', { class: 'row mt' });
-  drow2.appendChild(N.el('button', { class: 'btn btn-sm btn-ghost', text: 'Open backups folder', onclick: () => nook.invoke('data:openBackups') }));
-  drow2.appendChild(N.el('button', { class: 'btn btn-sm btn-ghost', text: 'Open data folder', onclick: () => nook.invoke('data:openFolder') }));
-  drow2.appendChild(N.el('button', { class: 'btn btn-sm btn-ghost', text: 'Open sounds folder', onclick: () => nook.invoke('data:openSounds') }));
-  drow2.appendChild(N.el('button', { class: 'btn btn-sm btn-danger', text: 'Reset everything', onclick: () => App.confirm('Reset ALL data?', 'XP, pet, streaks, tasks, notes, lists — everything returns to defaults. Backups are kept in data/backups.', () => nook.invoke('data:reset')) }));
-  data.appendChild(drow2);
-  grid.appendChild(data);
-
-  /* about */
-  const about = N.el('div', { class: 'card' });
-  about.appendChild(N.el('h2', { text: 'About' }));
-  about.appendChild(N.el('div', { class: 'small mt', style: 'margin-bottom:2px', text: 'StudyNook v' + (App.state.appVersion || '1.5') + ' · local-first: no accounts, no cloud, no telemetry.' }));
-  const arow = N.el('div', { class: 'row mt' });
-  arow.appendChild(N.el('button', { class: 'btn btn-sm', text: '📖 Open README', onclick: () => nook.invoke('help:readme') }));
-  arow.appendChild(N.el('button', { class: 'btn btn-sm', text: '🎓 Replay welcome tour', onclick: () => App.startTour() }));
-  about.appendChild(arow);
-  grid.appendChild(about);
-
-  c.appendChild(grid);
-
-  /* helpers */
-  function setRow(lbl, hint, control) {
-    /* empty hint → render nothing (no dead line-height eating vertical space);
-       long genuinely-useful hints become hover tooltips instead of permanent text */
-    const label = lbl.toLowerCase();
-    let shortHint = hint, tip = '';
-    if (hint && hint.length > 60) {
-      if (label.indexOf('ambience files') === 0) shortHint = hint;   // file-drop instructions can't live in a tooltip nobody finds
-      else { tip = hint; shortHint = ''; }
+  if (cur === 'notifications') {
+    const nt = s.notify || {};
+    for (const k of ['focusEnd', 'breakEnd', 'blocker']) {
+      card.appendChild(row(t('set.n.' + k), t('set.n.' + k + '.desc'), N.toggle(nt[k] !== false, (v) => set('notify', { [k]: v }), { label: t('set.n.' + k) })));
     }
-    const wrap = N.el('div', {}, N.el('div', { class: 'lbl', text: lbl }));
-    if (shortHint) wrap.appendChild(N.el('div', { class: 'hint', text: shortHint }));
-    if (tip) wrap.setAttribute('title', tip);
-    return N.el('div', { class: 'set-row' }, wrap, control);
   }
-  function textInput(val, onSet) {
-    const i = N.el('input', { class: 'input', value: val || '', style: 'width:160px' });
-    i.addEventListener('change', () => onSet(i.value.trim()));
-    return i;
+
+  if (cur === 'sound') {
+    const snd = s.sound;
+    card.appendChild(row(t('set.s.ui'), t('set.s.ui.desc'), N.toggle(!!snd.ui, (v) => { set('sound', { ui: v }); Audio2.setEnabled({ ui: v, chimes: snd.chimes }); }, { label: t('set.s.ui') })));
+    card.appendChild(row(t('set.s.chimes'), t('set.s.chimes.desc'), N.toggle(!!snd.chimes, (v) => { set('sound', { chimes: v }); Audio2.setEnabled({ ui: snd.ui, chimes: v }); }, { label: t('set.s.chimes') })));
+    const vol = N.el('input', { type: 'range', min: 0, max: 100, value: Math.round(snd.volume * 100), style: 'width:200px', 'aria-label': t('set.s.volume') });
+    vol.addEventListener('input', () => Audio2.setVolume(vol.value / 100));
+    vol.addEventListener('change', () => set('sound', { volume: vol.value / 100 }));
+    card.appendChild(row(t('set.s.volume'), null, vol));
+    card.appendChild(row(t('set.s.files'), t('set.s.files.desc'), N.btn(t('set.s.files.open'), { icon: 'folder-open', title: S.soundsPath, onclick: () => nook.invoke('data:openSounds') })));
   }
-  function numInput(val, min, max, onSet) {
-    return N.stepper(val, min, max, onSet);
+
+  if (cur === 'data') {
+    card.appendChild(row(t('set.d.backup'), t('set.d.backup.desc'), N.el('span', { class: 'row' },
+      N.btn(t('set.d.backup.now'), { icon: 'download', onclick: () => nook.invoke('data:backupNow').then((r) => App.toast(t('set.d.backup.done'), r.name, { kind: 'success' })) }),
+      N.btn(t('set.d.backup.folder'), { cls: 'btn-ghost', icon: 'folder-open', onclick: () => nook.invoke('data:openBackups') }))));
+    card.appendChild(row(t('set.d.export'), t('set.d.export.desc'), N.btn(t('set.d.export.btn'), { icon: 'download', onclick: exportData })));
+    card.appendChild(row(t('set.d.import'), t('set.d.import.desc'), N.btn(t('set.d.import.btn'), { icon: 'upload', onclick: importData })));
+    card.appendChild(row(t('set.d.folder'), t('set.d.folder.desc'), N.btn(t('set.d.folder.btn'), { cls: 'btn-ghost', icon: 'folder-open', onclick: () => nook.invoke('data:openFolder') })));
+    card.appendChild(row(t('set.d.reset'), t('set.d.reset.desc'), N.btn(t('set.d.reset.btn'), { cls: 'btn-danger', icon: 'rotate-ccw', onclick: () => App.confirm(t('set.d.reset.confirm.t'), t('set.d.reset.confirm.d'), () => nook.invoke('data:reset'), t('set.d.reset.btn')) })));
   }
-  function toggleInput(val, onSet) { return N.el('button', { class: 'toggle' + (val ? ' on' : ''), onclick: () => onSet(!val) }); }
-  function segInput(opts, cur, onSet) {
-    const s2 = N.el('div', { class: 'seg' });
-    for (const o of opts) s2.appendChild(N.el('button', { class: cur === o ? 'on sage' : '', text: o, onclick: () => onSet(o) }));
-    return s2;
+
+  if (cur === 'about') {
+    card.appendChild(row(t('set.a.version'), t('set.a.local'), N.el('span', { class: 'badge', text: 'v' + (S.appVersion || '') })));
+    card.appendChild(row(t('set.a.tour'), t('set.a.tour.desc'), N.btn(t('set.a.tour.btn'), { icon: 'play', onclick: () => App.startTour() })));
+    card.appendChild(row(t('set.a.help'), t('set.a.help.desc'), N.btn(t('set.a.help.btn'), { icon: 'circle-question-mark', onclick: () => App.go('help') })));
   }
-  function setT(patch) { nook.invoke('settings:set', { section: 'timer', values: patch }); }
-  function setSnd(patch) { nook.invoke('settings:set', { section: 'sound', values: patch }); }
+
   function exportData() {
     nook.invoke('data:export').then((json) => {
-      const blob = new Blob([json], { type: 'application/json' });
-      const a = N.el('a', { href: URL.createObjectURL(blob), download: 'studynook-backup.json' });
+      const a = N.el('a', { href: URL.createObjectURL(new Blob([json], { type: 'application/json' })), download: 'studynook-backup.json' });
       document.body.appendChild(a); a.click(); a.remove();
-      App.toast('Backup downloaded', 'studynook-backup.json');
+      App.toast(t('set.d.export.done'), 'studynook-backup.json', { kind: 'success' });
     });
   }
   function importData() {
-    const ta = N.el('textarea', { class: 'input', style: 'width:100%;height:180px;font-family:monospace;font-size:11px', placeholder: 'paste backup JSON here' });
-    App.modal('Import backup', ta, [
-      { label: 'Import', cls: 'btn-primary', fn: () => { nook.invoke('data:import', { json: ta.value }).then((ok) => { App.closeModal(); App.toast(ok ? 'Backup imported' : 'Import failed', ok ? 'Your data was restored.' : 'That JSON could not be read.'); }); } },
-      { label: 'Cancel', cls: 'btn-ghost', fn: () => App.closeModal() }
+    const ta = N.el('textarea', { class: 'input', style: 'width:100%;height:200px;font-family:var(--font-mono);font-size:12px', placeholder: t('set.d.import.placeholder'), 'aria-label': t('set.d.import.placeholder') });
+    App.modal(t('set.d.import'), ta, [
+      { label: t('common.cancel'), cls: 'btn-ghost', fn: () => App.closeModal() },
+      { label: t('set.d.import.btn'), cls: 'btn-primary', fn: () => nook.invoke('data:import', { json: ta.value }).then((ok) => { App.closeModal(); App.toast(ok ? t('set.d.import.ok') : t('set.d.import.fail'), ok ? '' : t('set.d.import.fail.d'), { kind: ok ? 'success' : 'warning' }); }) }
     ]);
   }
 };
 
+/* ============================= HELP ============================= */
 Views.help = function (c) {
-  const cards = [
-    ['🌱', '1 · Start a focus session', 'On the <b>Nook</b> tab pick a task (optional) and press <b>Start focusing</b>. Pomodoro mode runs rounds of focus with breaks; Free mode is one long stretch. The timer lives in the background — hide the window and it keeps going.'],
-    ['🧸', '2 · Block distracting apps', 'On the <b>Apps</b> tab turn the guard on and add apps (one click from the library, or scan what\'s running). <b>Blocklist</b> closes only listed apps; <b>Allowlist</b> closes everything except your safe list. <b>Gentle</b> style shows a warning card with a countdown before closing anything.'],
-    ['🌐', '3 · Block distracting tabs', 'On the <b>Sites</b> tab set your lists, then load the bundled extension once (chrome://extensions → Developer mode → Load unpacked → the app\'s <b>extension/</b> folder) and pair it with the 6-letter code. After that, blocked sites redirect to a cozy napping page during focus.'],
-    ['🐱', '4 · Grow Mochi & your garden', 'Every focused minute feeds your pet: egg → baby → kitten → study cat → scholar → legend. You also earn XP, levels, streaks, trophies and garden plants (🌱🌿🌷🌳) for each day you study.'],
-    ['🛟', '5 · Safety & emergency stops', 'StudyNook refuses to close system processes, and in gentle mode you always get a warning first. Need a blocked app? Click <b>"Leave it open 5 min"</b> on the warning, use <b>"let me breathe"</b> on the Apps tab, or quit from the tray — the guard stops instantly.'],
-    ['💾', '6 · Your data stays home', 'Everything is stored in <b>data/data.json</b> inside the app folder — plain, readable JSON. Export/import backups from Settings. The localhost bridge (port 47470) only talks to your paired extension.']
-  ];
-  /* Help is documentation — all text stays; the numbered 1–6 cards live in
-     the same set-grid (equal-feeling rows, aligned edges) with a comfortable
-     internal rhythm, and the FAQ gets matching breathing room. */
-  /* The numbered 1–6 cards live in their own wrapper so the FAQ block is a
-     sibling below it — never inside the grid, where an auto-placed full-width
-     card could creep up beside rows 5 & 6 and overlap them. */
-  const wrap = N.el('div');
-  const grid = N.el('div', { class: 'set-grid help-grid' });
-  for (const [e, h, p] of cards) {
-    grid.appendChild(N.el('div', { class: 'card help-card' }, N.el('div', { class: 'n', text: e }), N.el('div', {}, N.el('h3', { text: h }), N.el('p', { html: p }))));
-  }
-  wrap.appendChild(grid);
-  c.appendChild(wrap);
+  const lang = NookI18n.getLang();
+  const all = (window.NookHelp && (NookHelp[lang] || NookHelp.en)) || [];
+  c.appendChild(N.pageHead(t('help.title'), t('help.sub')));
+  const q = (App.helpQuery || '').trim().toLowerCase();
+  const textOf = (a) => [a.title, a.lead].concat(a.blocks.map((b) => [b.h, b.p, b.note].concat(b.ol || [], b.ul || [], b.table ? [].concat(...b.table.rows) : []).filter(Boolean).join(' '))).join(' ').toLowerCase();
+  const shown = q ? all.filter((a) => textOf(a).includes(q)) : all;
+  if (!App.helpTopic || !all.some((a) => a.id === App.helpTopic)) App.helpTopic = all.length ? all[0].id : null;
+  if (q && shown.length && !shown.some((a) => a.id === App.helpTopic)) App.helpTopic = shown[0].id;
 
-  const faq = N.el('div', { class: 'card faq-card' });
-  faq.appendChild(N.el('h2', { text: '❓ Quick FAQ' }));
-  const rows = [
-    ['Will it close something important?', 'No — a built-in NEVER_KILL list protects Windows/macOS/Linux system processes, plus anything on your allow list and anything you granted "5 min" to.'],
-    ['Extension says "not connected"?', 'Make sure StudyNook is running, the pairing code matches Settings → Sites, and you loaded the extension from THIS app\'s extension/ folder. The popup has a "sync now" button.'],
-    ['Timer disappeared?', 'It\'s in the tray icon (bottom-right) and in the mini floating pill. Click the tray → Open StudyNook.'],
-    ['Can I use it without the extension?', 'Yes! App blocking + timer + rewards all work offline. The extension only adds tab blocking (and it works standalone too).'],
-    ['Sounds not playing?', 'Click anywhere once (browsers require a gesture before audio), then toggle ambience again.']
-  ];
-  for (const [q, a] of rows) faq.appendChild(N.el('div', { class: 'set-row' }, N.el('div', {}, N.el('div', { class: 'lbl', text: q }), N.el('div', { class: 'hint', style: 'margin-top:4px', text: a }))));
-  c.appendChild(faq);
+  const side = N.el('div');
+  const search = N.el('input', { class: 'input', id: 'help-search', type: 'search', placeholder: t('help.search'), value: App.helpQuery || '', 'aria-label': t('help.search') });
+  search.addEventListener('input', () => { App.helpQuery = search.value; App.render(); });
+  side.appendChild(N.el('div', { class: 'help-search' }, N.icon('search', 16), search));
+  const nav = N.el('nav', { class: 'subnav', 'aria-label': t('help.title') });
+  for (const a of shown) nav.appendChild(N.el('button', { type: 'button', 'aria-current': a.id === App.helpTopic ? 'true' : 'false', onclick: () => { App.helpTopic = a.id; App.render(); } }, N.icon(a.icon, 16), N.el('span', { text: a.title })));
+  if (!shown.length) nav.appendChild(N.el('p', { class: 'small', style: 'padding:var(--s-2) var(--s-3)', text: t('help.noResults') }));
+  side.appendChild(nav);
 
-
+  const art = all.find((a) => a.id === App.helpTopic);
+  const panel = N.card();
+  if (art) panel.appendChild(renderArticle(art));
+  c.appendChild(N.el('div', { class: 'with-subnav' }, side, panel));
 };
+
+/** Inline markup for help text: **bold**, `code`, [[kbd]]. Input is escaped first. */
+function helpInline(s) {
+  return N.esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`(.+?)`/g, '<code>$1</code>').replace(/\[\[(.+?)\]\]/g, '<kbd>$1</kbd>');
+}
+function renderArticle(a) {
+  const el = N.el('article', { class: 'article' }, N.el('h2', { text: a.title }), N.el('p', { class: 'lead', html: helpInline(a.lead) }));
+  for (const b of a.blocks) {
+    if (b.h) el.appendChild(N.el('h3', { text: b.h }));
+    if (b.p) el.appendChild(N.el('p', { html: helpInline(b.p) }));
+    if (b.ol) el.appendChild(N.el('ol', {}, ...b.ol.map((x) => N.el('li', { html: helpInline(x) }))));
+    if (b.ul) el.appendChild(N.el('ul', {}, ...b.ul.map((x) => N.el('li', { html: helpInline(x) }))));
+    if (b.note) {
+      const k = b.kind === 'warning' ? 'warning' : 'info';
+      el.appendChild(N.el('div', { class: 'callout ' + k }, N.icon(k === 'warning' ? 'triangle-alert' : 'info', 18), N.el('div', { class: 'grow', html: helpInline(b.note) })));
+    }
+    if (b.table) {
+      el.appendChild(N.el('table', {},
+        N.el('thead', {}, N.el('tr', {}, ...b.table.head.map((x) => N.el('th', { text: x })))),
+        N.el('tbody', {}, ...b.table.rows.map((r) => N.el('tr', {}, ...r.map((x) => N.el('td', { html: helpInline(x) })))))));
+    }
+  }
+  return el;
+}

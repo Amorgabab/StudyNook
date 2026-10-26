@@ -78,7 +78,7 @@ async function syncOnce() {
         } catch (e) {}
       }
     }
-    await db.set({ connected: true, lastSync: Date.now(), sites: s.sites, session: s.session, pet: s.pet, streak: s.streak });
+    await db.set({ connected: true, lastSync: Date.now(), sites: s.sites, session: s.session, pet: s.pet, streak: s.streak, lang: s.lang || null });
     if (!wasConnected) console.log('[nook] desktop connected');
     if (!prevActive && sessionActive) auditOpenTabs();   // session just started → nap open offenders
     await updateRules();

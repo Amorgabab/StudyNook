@@ -26,6 +26,7 @@
 const http = require('http');
 const crypto = require('crypto');
 const NookRules = require('../../extension/rules.js');
+const ExtWatch = require('../shared/extwatch.js');
 
 const PORT = 47470;
 const dedupe = (arr) => arr.filter((x, i) => arr.indexOf(x) === i);
@@ -160,6 +161,9 @@ class SyncServer {
     }
     const wasConnected = this.lastConnected;
     store.data.ext.lastSeen = Date.now();
+    // remember which browser the extension lives in (Iron mode closes it if the extension vanishes)
+    const browser = ExtWatch.browserFromUA(req.headers['user-agent']);
+    if (browser && store.data.ext.browser !== browser) { store.data.ext.browser = browser; store.save(); }
     this.lastConnected = true;
     if (!wasConnected) this.hooks.onExtStatus && this.hooks.onExtStatus(true);
 
@@ -169,6 +173,7 @@ class SyncServer {
       return this._json(res, 200, {
         ok: true,
         now: Date.now(),
+        lang: d.settings.language || 'en',   // the extension's popup/blocked page follow the app's language
         session: sess,
         sites: {
           enabled: d.sites.enabled,

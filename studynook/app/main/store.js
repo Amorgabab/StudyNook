@@ -12,6 +12,7 @@ const path = require('path');
 const crypto = require('crypto');
 const TaskDays = require('../shared/taskdays.js');
 const Iron = require('../shared/iron.js');
+const Prefs = require('../shared/uiprefs.js');
 
 function defaultData() {
   return {
@@ -25,7 +26,11 @@ function defaultData() {
       timer: { workMin: 25, shortMin: 5, longMin: 15, rounds: 4, autoStartBreaks: true, autoStartFocus: false, strict: false, iron: false, ironLockDays: 4, ironLockedUntil: 0 },
       sound: { ui: true, chimes: true, volume: 0.6 },
       guardian: { enabled: true, mode: 'block', action: 'gentle', graceSec: 15, scanSec: 3, onlyDuringSessions: true },
-      theme: 'auto',       // auto | light | dark
+      theme: 'system',     // system | light | dark | auto (dark 19:00–07:00)
+      language: 'en',      // en | ar | fr | es
+      startWithWindows: false,
+      dailyGoalMin: 120,   // 0 = no daily goal
+      notify: { focusEnd: true, breakEnd: true, blocker: true },
       miniWindow: true,
       bridgeAllowOrigins: false   // SECURITY: cross-origin access to the localhost bridge (off = extension-only)
     },
@@ -39,7 +44,7 @@ function defaultData() {
       block: ['youtube.com', 'twitter.com', 'x.com', 'reddit.com', 'twitch.tv', 'instagram.com', 'tiktok.com', 'facebook.com'],
       allow: ['wikipedia.org', 'google.com', 'docs.google.com', 'drive.google.com', 'classroom.google.com', 'chatgpt.com', 'github.com', 'stackoverflow.com']
     },
-    ext: { token: crypto.randomBytes(16).toString('hex'), code: makeCode(), lastSeen: 0, version: '' },
+    ext: { token: crypto.randomBytes(16).toString('hex'), code: makeCode(), lastSeen: 0, version: '', browser: '' },
     tasks: [],           // single source of truth — a task with date/at IS the Week Schedule (no second store)
     sessions: [],          // capped at 500
     daily: {},             // "YYYY-MM-DD": {min, sessions, kills, tasks}
@@ -120,7 +125,12 @@ function sanitizeData(d) {
   }
   const snd = obj(s.sound); s.sound = snd;
   snd.ui = snd.ui !== false; snd.chimes = snd.chimes !== false; snd.volume = num(snd.volume, 0.6, 0, 1);
-  s.theme = ['auto', 'light', 'dark'].includes(s.theme) ? s.theme : 'auto';
+  s.theme = Prefs.THEMES.includes(s.theme) ? s.theme : 'system';
+  s.language = Prefs.normLang(s.language);
+  s.startWithWindows = s.startWithWindows === true;
+  s.dailyGoalMin = num(s.dailyGoalMin, 120, 0, 720);
+  const nt = obj(s.notify); s.notify = nt;
+  for (const k of ['focusEnd', 'breakEnd', 'blocker']) nt[k] = nt[k] !== false;
   s.miniWindow = s.miniWindow !== false;
   s.bridgeAllowOrigins = s.bridgeAllowOrigins === true;   // SECURITY: explicit opt-in only
   d.profile = obj(d.profile); d.profile.name = str(d.profile.name, '', 40);
@@ -196,6 +206,7 @@ function sanitizeData(d) {
   }
   d.ext = obj(d.ext);
   d.ext.token = str(d.ext.token, '', 64); d.ext.code = str(d.ext.code, '', 6);
+  d.ext.browser = d.ext.browser === 'edge' || d.ext.browser === 'chrome' ? d.ext.browser : '';
   d.onboarded = !!d.onboarded;
   return d;
 }
