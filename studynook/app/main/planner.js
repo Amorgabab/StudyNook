@@ -51,6 +51,11 @@ function chooseTargets(procs, opts) {
     }
   }
 
+  /* Allow mode with nothing allowed would close EVERY program (editor, notes,
+     PDF reader…) and throw away unsaved work. That is never what an empty
+     list means — treat it as "nothing to enforce yet". */
+  if (opts.mode !== 'block' && allowNames.size === 0) return [];
+
   const targets = [];
   const seen = new Set();
 

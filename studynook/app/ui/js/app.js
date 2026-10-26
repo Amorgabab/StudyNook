@@ -29,6 +29,7 @@ window.App = (function () {
     nook.on('iron-gate', () => App.ironGate(() => nook.invoke('win:close')));
     nook.on('close-blocked', () => App.toast('Session running — the nook stays open', 'Finish or end the session to close StudyNook. Pause only stops the clock — it never unlocks closing.'));
     nook.on('data-blocked', () => App.toast('Data is locked while a session runs', 'Reset/import are refused until the session ends. Your progress is safe.'));
+    nook.on('toast', (p) => { if (p && p.title) App.toast(String(p.title), p.msg ? String(p.msg) : '', 12000); });
     nook.on('list-frozen', () => App.toast('Lists are frozen during your promise', 'While an iron focus exists (even paused) you can add more blockers, but nothing can be disabled, removed, or exempted until the session ends.'));
     const snap = await nook.invoke('get-snapshot');
     App.state = snap;

@@ -87,7 +87,7 @@ async function syncOnce() {
     // idle). The audit self-gates; hardcoded Shorts is caught even idle.
     auditOpenTabs();
     // fast loop while focusing keeps sync near-instant
-    if (sessionActive) setTimeout(() => syncOnce().catch(() => {}), 5000);
+    if (sessionActive) scheduleFast();
   } catch (e) {
     if (e && e.message === 'unauthorized') {
       // desktop was reset / re-paired elsewhere: drop our stale token so the pair card returns
@@ -99,7 +99,33 @@ async function syncOnce() {
     await updateRules();
     auditOpenTabs();   // standalone sweep too (already-open tabs included)
     tickStandalone();
+    // App killed mid-focus: keep knocking so we reconnect the moment it is reopened.
+    if (ghostFocusActive(st)) scheduleFast();
   }
+}
+
+/* One fast-sync timer, not one per call: every syncOnce (alarm, popup, retry)
+   used to start its own 5s chain, so the chains piled up over a long session. */
+let _fastTimer = null;
+function scheduleFast() {
+  if (_fastTimer) clearTimeout(_fastTimer);
+  _fastTimer = setTimeout(() => { _fastTimer = null; syncOnce().catch(() => {}); }, 5000);
+}
+
+/* The desktop app disappeared (Task Manager "End task", crash) while a focus
+   was on. Dropping straight to the idle standalone timer would switch website
+   blocking off the instant the app is killed. Instead keep blocking for the
+   rest of the focus the app last reported (a paused iron focus has no end, so
+   it is capped like the app's own session recovery). The app resumes the
+   session when reopened and the next sync takes over again. */
+const GHOST_MAX_MS = 12 * 60 * 60 * 1000;
+function ghostFocusActive(st) {
+  const s = st.session;
+  if (!s || !s.active || s.phase !== 'focus' || !st.lastSync) return false;
+  const age = Date.now() - st.lastSync;
+  if (age < 0 || age > GHOST_MAX_MS) return false;
+  if (s.running) return age <= (Number(s.remainingSec) || 0) * 1000;
+  return !!s.blockActive;
 }
 
 async function pair(code) {
@@ -140,7 +166,7 @@ function sessionIsActive(st) {
        the website guard. */
     return !!(s && s.active && s.phase === 'focus' && (s.running || s.blockActive));
   }
-  return !!(st.timer && st.timer.running && st.timer.phase === 'focus');
+  return ghostFocusActive(st) || !!(st.timer && st.timer.running && st.timer.phase === 'focus');
 }
 
 /* ---------- blocked-tab bookkeeping ---------- */

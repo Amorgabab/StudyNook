@@ -78,7 +78,9 @@ function loadExtension(chrome) {
   const sandbox = {
     chrome,
     console: { log: () => {}, error: () => {}, warn: () => {} },
-    setTimeout, clearTimeout, setInterval, clearInterval,
+    // unref'd so the extension's retry timer can never keep the test process alive
+    setTimeout: (fn, ms) => { const t = setTimeout(fn, ms); if (t && t.unref) t.unref(); return t; },
+    clearTimeout, setInterval, clearInterval,
     fetch: () => Promise.reject(new Error('desktop offline (standalone mode)')),
     Date, Math, JSON, Object, Array, Promise, RegExp, URL, isNaN, parseInt, String, Number
   };
@@ -100,7 +102,7 @@ function setup(opts) {
     token: null,
     // a live desktop session implies a paired connection (models reality)
     connected: opts.connected !== undefined ? opts.connected : !!(opts.session && opts.session.active),
-    lastSync: 0,
+    lastSync: opts.lastSync || 0,
     sites: opts.sites,
     session: opts.session || { active: false, running: false, phase: 'idle', remainingSec: 0, totalSec: 0 },
     timer: opts.timer || null,
@@ -240,6 +242,44 @@ suite('extension emulation · rules & standalone timer', () => {
     expect(resp.ok).toBeTruthy();
     expect(tabUrl(c, 1)).toBe(BLOCKED);
     expect(tabUrl(c, 2)).toBe('https://www.google.com');
+  });
+});
+
+suite('extension emulation · desktop app killed mid-focus (Task Manager)', () => {
+  // fetch() always rejects in this harness, so a slow-alarm sync == "app is gone"
+  test('app killed mid-focus: tiktok tab still napped, DNR rules stay on', async () => {
+    const c = setup({ sites: SITES(), session: FOCUS_SESSION, lastSync: Date.now(), tabs: ['https://www.tiktok.com/foryou', 'https://www.google.com'] });
+    await fireSlow(c);
+    expect(c._store.nook.connected).toBe(false);
+    expect(tabUrl(c, 1)).toBe(BLOCKED);
+    expect(tabUrl(c, 2)).toBe('https://www.google.com');
+    expect(c._rules.length).toBeGreaterThan(0);
+  });
+  test('app killed mid-focus: opening a blocked site afterwards is still napped', async () => {
+    const c = setup({ sites: SITES(), session: FOCUS_SESSION, lastSync: Date.now(), tabs: ['https://www.example.com'] });
+    await fireSlow(c);
+    await fireTabsUpdated(c, 1, 'https://www.tiktok.com/@x');
+    expect(tabUrl(c, 1)).toBe(BLOCKED);
+  });
+  test('focus the app reported has fully elapsed: blocking lifts (no endless lockout)', async () => {
+    const c = setup({ sites: SITES(), session: FOCUS_SESSION, lastSync: Date.now() - (FOCUS_SESSION.remainingSec + 60) * 1000, tabs: ['https://www.tiktok.com/foryou'] });
+    await fireSlow(c);
+    expect(tabUrl(c, 1)).toBe('https://www.tiktok.com/foryou');
+  });
+  test('paused IRON focus (blockActive) keeps blocking after the app dies; plain paused does not', async () => {
+    const iron = Object.assign({}, FOCUS_SESSION, { running: false, blockActive: true });
+    const c = setup({ sites: SITES(), session: iron, lastSync: Date.now(), tabs: ['https://www.tiktok.com/foryou'] });
+    await fireSlow(c);
+    expect(tabUrl(c, 1)).toBe(BLOCKED);
+    const plain = Object.assign({}, FOCUS_SESSION, { running: false, blockActive: false });
+    const c2 = setup({ sites: SITES(), session: plain, lastSync: Date.now(), tabs: ['https://www.tiktok.com/foryou'] });
+    await fireSlow(c2);
+    expect(tabUrl(c2, 1)).toBe('https://www.tiktok.com/foryou');
+  });
+  test('app was idle (no session) when it vanished: nothing blocks', async () => {
+    const c = setup({ sites: SITES(), connected: true, lastSync: Date.now(), tabs: ['https://www.tiktok.com/foryou'] });
+    await fireSlow(c);
+    expect(tabUrl(c, 1)).toBe('https://www.tiktok.com/foryou');
   });
 });
 

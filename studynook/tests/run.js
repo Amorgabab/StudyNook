@@ -40,4 +40,6 @@ for (const f of fs.readdirSync(dir).filter((f) => f.endsWith('.test.js')).sort()
   }
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failures.length) { console.log('\nFailures:'); failures.forEach((f) => console.log(' - ' + f)); process.exit(1); }
+  // Some suites leave timers/servers open; exit explicitly so `npm test` always terminates.
+  process.exit(0);
 })();
