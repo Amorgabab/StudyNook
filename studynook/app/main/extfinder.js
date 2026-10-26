@@ -141,10 +141,14 @@ function inspectProfile(profileDir, extDir, platform, fsx) {
   }
   if (!readAny) return { status: 'unreadable' };
   if (!hit) return { status: 'not-installed' };
-  const reasons = Number(hit.reasons) > 0;
-  if (hit.state === 0 || reasons) return { status: 'disabled', id: hit.id };
-  if (hit.state === 1) return { status: 'enabled', id: hit.id };
-  return { status: 'partial', id: hit.id };                   // registered but state missing/garbled
+  /* What Chrome (verified on 155) actually writes: an ENABLED extension has no
+     `state` at all and `disable_reasons: []`; a DISABLED one has
+     `disable_reasons: [1]` (a list — older builds used a number / state 0). */
+  const r = hit.reasons;
+  const hasReasons = Array.isArray(r) ? r.length > 0 : Number(r) > 0;
+  if (hit.state === 0 || hasReasons) return { status: 'disabled', id: hit.id };
+  if (hit.state === undefined || hit.state === 1) return { status: 'enabled', id: hit.id };
+  return { status: 'partial', id: hit.id };                   // registered but in an unknown state (e.g. terminated)
 }
 
 const RANK = ['enabled', 'disabled', 'partial', 'unreadable', 'not-installed'];

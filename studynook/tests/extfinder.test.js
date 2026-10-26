@@ -59,9 +59,20 @@ suite('extfinder · detecting the extension in browser profiles', () => {
     const h = fakeHome(); h.profile('Default', { Preferences: { extensions: { settings: { zzz: { path: path.join(os.tmpdir(), 'other'), state: 1 } } } } });
     expect(detect(h).status).toBe('not-installed');
   });
-  test('registered but state missing → half-loaded (partial)', () => {
-    const h = fakeHome(); h.profile('Default', { Preferences: prefs({}) });
+  test('registered but in an unknown state (e.g. terminated) → partial', () => {
+    const h = fakeHome(); h.profile('Default', { Preferences: prefs({ state: 2 }) });
     expect(detect(h).status).toBe('partial');
+  });
+  // Formats captured from real Chrome 155 (throwaway-profile lab): enabled has NO state, disabled has a list.
+  test('modern Chrome: no state + empty disable_reasons list → enabled', () => {
+    const h = fakeHome(); h.profile('Default', { Preferences: prefs({ disable_reasons: [], location: 4 }) });
+    expect(detect(h).status).toBe('enabled');
+  });
+  test('modern Chrome: disable_reasons [1] (and several reasons) → disabled', () => {
+    const a = fakeHome(); a.profile('Default', { Preferences: prefs({ disable_reasons: [1], location: 4 }) });
+    expect(detect(a).status).toBe('disabled');
+    const b = fakeHome(); b.profile('Default', { Preferences: prefs({ disable_reasons: [1, 2] }) });
+    expect(detect(b).status).toBe('disabled');
   });
   test('corrupt settings files → unreadable, never a crash', () => {
     const h = fakeHome(); h.profile('Default', { Preferences: '{ half written', 'Secure Preferences': 'garbage' });
