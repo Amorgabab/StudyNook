@@ -146,12 +146,18 @@ async function updateRules() {
   const st = await db.get(DEFAULTS);
   const sessionActive = sessionIsActive(st);
   const rules = R.buildRules(st.sites, sessionActive);
+  const key = JSON.stringify(rules);
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
+  /* Same rules as the last successful update, and Chrome still holds that many: skip the
+     remove-everything-and-re-add churn that used to run on every sync (every 5 s in a focus).
+     If Chrome lost the rules the count differs and they are written again. */
+  if (key === st.rulesKey && existing.length === rules.length) return;
   try {
     await chrome.declarativeNetRequest.updateDynamicRules({
       removeRuleIds: existing.map((r) => r.id),
       addRules: rules
     });
+    await db.set({ rulesKey: key });
   } catch (e) {
     // Never let a bad rule kill the sync loop — report and keep going.
     console.error('[nook] updateDynamicRules failed:', e && e.message, JSON.stringify(rules));
