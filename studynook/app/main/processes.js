@@ -64,6 +64,26 @@ async function listProcesses(platform) {
   return raw.map((r) => ({ pid: r.pid, name: r.name, norm: catalog.normalizeProcName(r.name) })).filter((r) => r.norm);
 }
 
+/* One process list for everyone. Listing spawns `tasklist` (~400 ms on Windows), and the
+   guard, the Iron browser check and the allowlist preview used to each spawn their own.
+   Callers that only DECIDE (scan, preview) may reuse a list up to `maxAgeMs` old and
+   share an in-flight request; callers about to KILL something use listProcesses()
+   directly so they verify against a fresh list (PID-reuse safety). */
+function makeShared(fetchList, now) {
+  now = now || Date.now;
+  let cache = { at: -Infinity, rows: [] }, inflight = null;
+  return function shared(maxAgeMs) {
+    maxAgeMs = maxAgeMs === undefined ? 1500 : maxAgeMs;
+    if (now() - cache.at < maxAgeMs) return Promise.resolve(cache.rows);
+    if (!inflight) {
+      inflight = Promise.resolve().then(fetchList).then((rows) => { cache = { at: now(), rows }; return rows; })
+        .finally(() => { inflight = null; });
+    }
+    return inflight;
+  };
+}
+const listProcessesShared = makeShared(() => listProcesses());
+
 /* SECURITY FIX: the old wrapper collapsed errors into '' and this function
    returned `out !== '' || true` — a literal always-true expression that could
    never distinguish "killed it" from "the kill command failed". Now we use a
@@ -88,4 +108,4 @@ async function killProcess(pid, platform) {
   return r.err === null;            // kill prints nothing on success — exit status is the truth
 }
 
-module.exports = { listProcesses, killProcess, parseTasklistCsv, parsePs };
+module.exports = { listProcesses, listProcessesShared, makeShared, killProcess, parseTasklistCsv, parsePs };

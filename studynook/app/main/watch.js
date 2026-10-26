@@ -38,7 +38,7 @@ function createWatch(ctx) {
       const proc = ExtWatch.browserProcess(d.ext.browser);
       const silent = now - (d.ext.lastSeen || 0) > ExtWatch.SILENT_MS;
       if (!(st.active && st.phase === 'focus' && st.blockActive && d.sites.enabled && proc && silent)) { browserSeenSince = null; return; }
-      const running = (await processes.listProcesses()).some((p) => p.norm === proc);
+      const running = (await processes.listProcessesShared()).some((p) => p.norm === proc);
       if (!running) { browserSeenSince = null; return; }
       if (!browserSeenSince) browserSeenSince = now;
       if (!ExtWatch.shouldCloseBrowser({ ironFocus: true, sitesEnabled: d.sites.enabled, lastSeen: d.ext.lastSeen, now, browser: d.ext.browser, runningSince: browserSeenSince })) return;
