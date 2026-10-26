@@ -28,6 +28,7 @@ const progress = require('../shared/progress.js');
 const catalog = require('../shared/catalog.js');
 const NookRules = require('../../extension/rules.js');
 const NookLinks = require('../shared/links.js');
+const ExtWatch = require('../shared/extwatch.js');
 const dedupe = (arr) => arr.filter((x, i) => arr.indexOf(x) === i);
 
 const APP_ROOT = path.join(__dirname, '..', '..');          // project folder
@@ -41,6 +42,8 @@ const ASSET = (f) => path.join(APP_ROOT, 'assets', f);
 let store, session, guardian, server;
 let win = null, miniWin = null, remindWin = null, tray = null;
 let extConnected = false;
+let extGoneWarned = false;   // one "blocker went quiet" warning per silence
+let rendererReloads = 0;     // crash-reload budget for the main window
 let lastAmbientAward = 0;
 let gateCleared = false;   // iron session: window-close gate passed?
 const SOUND_IDS = new Set(['rain', 'waves', 'fire', 'cafe']);
@@ -161,12 +164,18 @@ function ensureBackups() {
 /* ------------------------------------------------------------
    Boot
 ------------------------------------------------------------ */
-if (!app.requestSingleInstanceLock()) { app.quit(); }
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) { app.quit(); }
 app.on('second-instance', () => { if (win) { win.show(); win.focus(); } });
 
 app.whenReady().then(() => {
+  // A second copy must not boot at all: it would race the first for the data
+  // files, session.json recovery and the bridge port while it quits.
+  if (!gotLock) return;
   if (process.platform === 'win32') app.setAppUserModelId('StudyNook');
-  fs.mkdirSync(SOUNDS_DIR, { recursive: true });   // sounds drop-in folder always exists
+  // Sounds are optional. A read-only folder here used to throw out of boot and
+  // leave the student with no window at all.
+  try { fs.mkdirSync(SOUNDS_DIR, { recursive: true }); } catch (e) { console.error('[sounds]', e.message); }
   migrateOldData();
   store = new Store(path.join(DATA_DIR, 'data.json'));
   progress.refreshStreak(store.data);
@@ -260,6 +269,13 @@ function createMainWindow() {
   win.loadFile(UI('index.html'));
   win.once('ready-to-show', () => win.show());
   win.on('closed', () => { win = null; });
+  // If the UI process crashes mid-session the student is left with a blank,
+  // unclosable window and no timer. Reload it (the snapshot is re-pulled).
+  win.webContents.on('render-process-gone', (_e, details) => {
+    if (details && details.reason === 'clean-exit') return;
+    if (rendererReloads++ >= 5) return;   // not a crash loop
+    setTimeout(() => { if (win && !win.isDestroyed()) win.reload(); }, 500);
+  });
   // Iron session: Alt+F4 / OS close during focus → open the gate instead.
   // Any running session: the window is unclosable (nook stays open).
   // Any existing session (RUNNING OR PAUSED) makes the window unclosable —
@@ -474,6 +490,28 @@ function notify(title, body) {
 function pollExtStatus() {
   const ok = server.connected();
   if (ok !== extConnected) { extConnected = ok; pushSnapshot(); }
+  watchExtension();
+}
+
+/* Chrome extension removed/disabled (or Chrome closed) in the middle of a
+   focus: website blocking silently stops. Say so once, loudly enough to see. */
+function watchExtension() {
+  const d = store.data;
+  const st = session.publicState();
+  const focusing = st.active && st.phase === 'focus' && (st.running || st.blockActive);
+  if (!focusing || Date.now() - (d.ext.lastSeen || 0) <= ExtWatch.SILENT_MS) { extGoneWarned = false; return; }
+  const warn = ExtWatch.shouldWarn({ focusing, sitesEnabled: d.sites.enabled, lastSeen: d.ext.lastSeen, now: Date.now(), warned: extGoneWarned });
+  if (!warn) return;
+  extGoneWarned = true;
+  const msg = 'StudyNook lost the Chrome extension, so websites are not being blocked. If you removed or disabled it, add it back. (Ignore this if you are not using Chrome.)';
+  notify('Website blocker is off', msg);
+  broadcast('toast', { title: 'Website blocker is off', msg });
+  store.mutate((dd) => {
+    dd.feed = dd.feed || [];
+    dd.feed.unshift({ t: Date.now(), emoji: '🧩', kind: 'warn', text: 'Chrome extension went quiet during focus — sites are not blocked' });
+    if (dd.feed.length > 40) dd.feed.length = 40;
+  });
+  pushSnapshot();
 }
 
 /* ------------------------------------------------------------

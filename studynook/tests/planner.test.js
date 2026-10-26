@@ -76,3 +76,17 @@ suite('catalog · normalization', () => {
     }
   });
 });
+
+suite('planner · allow mode safety', () => {
+  const procs = [PROC(1, 'Code.exe'), PROC(2, 'WINWORD.EXE'), PROC(3, 'Discord.exe')];
+  test('empty allowlist closes nothing (would otherwise wipe every open program)', () => {
+    expect(planner.chooseTargets(procs, OPTS({ mode: 'allow', allow: [] })).length).toBe(0);
+  });
+  test('all allow entries disabled behaves like an empty list', () => {
+    expect(planner.chooseTargets(procs, OPTS({ mode: 'allow', allow: [{ label: 'Code', procs: ['code'], enabled: false }] })).length).toBe(0);
+  });
+  test('with an allowlist, everything else is still closed', () => {
+    const t = planner.chooseTargets(procs, OPTS({ mode: 'allow', allow: [{ label: 'Code', procs: ['code'], enabled: true }] }));
+    expect(t.length).toBe(2);
+  });
+});
