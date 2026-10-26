@@ -32,7 +32,8 @@
   nook.on('tick', paint);
   nook.on('snapshot', apply);
   nook.invoke('get-snapshot').then(apply);
-  // pull the state every second in case a push event is missed
-  setInterval(() => { nook.invoke('get-snapshot').then(apply).catch(() => {}); }, 1000);
+  // The timer arrives by 'tick' (every second) and changes by 'snapshot'. This slow pull is only a
+  // safety net for a missed push; it used to run every second and fetch the whole data set.
+  setInterval(() => { nook.invoke('get-snapshot').then(apply).catch(() => {}); }, 15000);
   pill.addEventListener('click', () => nook.invoke('win:show-main'));
 })();

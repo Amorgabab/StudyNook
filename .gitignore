@@ -1,1 +1,11 @@
-(empty output)
+# dependencies and build output
+node_modules/
+studynook/dist-installer/
+
+# runtime data written when running from source
+studynook/data/
+*.log
+
+# editor / tool state
+.claude/
+.vscode/
