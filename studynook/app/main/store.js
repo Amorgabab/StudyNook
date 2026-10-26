@@ -39,7 +39,7 @@ function defaultData() {
       block: ['youtube.com', 'twitter.com', 'x.com', 'reddit.com', 'twitch.tv', 'instagram.com', 'tiktok.com', 'facebook.com'],
       allow: ['wikipedia.org', 'google.com', 'docs.google.com', 'drive.google.com', 'classroom.google.com', 'chatgpt.com', 'github.com', 'stackoverflow.com']
     },
-    ext: { token: crypto.randomBytes(16).toString('hex'), code: makeCode(), lastSeen: 0, version: '' },
+    ext: { token: crypto.randomBytes(16).toString('hex'), code: makeCode(), lastSeen: 0, version: '', browser: '' },
     tasks: [],           // single source of truth — a task with date/at IS the Week Schedule (no second store)
     sessions: [],          // capped at 500
     daily: {},             // "YYYY-MM-DD": {min, sessions, kills, tasks}
@@ -196,6 +196,7 @@ function sanitizeData(d) {
   }
   d.ext = obj(d.ext);
   d.ext.token = str(d.ext.token, '', 64); d.ext.code = str(d.ext.code, '', 6);
+  d.ext.browser = d.ext.browser === 'edge' || d.ext.browser === 'chrome' ? d.ext.browser : '';
   d.onboarded = !!d.onboarded;
   return d;
 }

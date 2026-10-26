@@ -64,3 +64,12 @@ suite('store · defensive sanitization (load & import)', () => {
     expect(d.sites.block[0].length).toBe(200);
   });
 });
+
+suite('store · remembered browser', () => {
+  test('ext.browser keeps edge/chrome and drops anything else', () => {
+    expect(sanitizeData({ ext: { browser: 'edge' } }).ext.browser).toBe('edge');
+    expect(sanitizeData({ ext: { browser: 'chrome' } }).ext.browser).toBe('chrome');
+    expect(sanitizeData({ ext: { browser: '<script>' } }).ext.browser).toBe('');
+    expect(defaultData().ext.browser).toBe('');
+  });
+});

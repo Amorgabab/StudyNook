@@ -24,6 +24,23 @@ Not implemented on purpose: forcing installation through the
 `ExtensionInstallForcelist` policy (needs admin rights and a hosted package,
 and is the mechanism malware uses).
 
+### Removing / disabling the extension
+
+Chrome never lets an app stop its user removing or disabling an extension, so
+the app can only react:
+
+* Any focus: once the extension has been silent for 45 s, a toast, a desktop
+  notification and a feed entry say so (and what state the browser reports).
+* **Iron focus only:** the app remembers which browser the extension lives in
+  (`ext.browser`, from the User-Agent its requests carry: Chrome or Edge). If the
+  extension stays silent and that browser has been open for 90 s, the app closes
+  it (via the guardian's normal kill path) and logs `iron-closed-browser`. Reopening
+  the browser starts a fresh 90 s repair window, long enough to re-enable the
+  extension at `chrome://extensions`. Not applied outside Iron, when site blocking
+  is off, when the extension was never paired, or when it has been gone > 2 weeks.
+* Brave/Chromium are reported as "chrome" by their User-Agent, so for them the
+  app may close `chrome.exe` rather than their own process.
+
 ## 2. Auto-recovery — `app/main/watchdog.js`, `app/main/lifecycle.js`
 
 * While a session exists, `main.js` keeps one background **watchdog** running

@@ -500,6 +500,40 @@ function pollExtStatus() {
   const ok = server.connected();
   if (ok !== extConnected) { extConnected = ok; pushSnapshot(); }
   watchExtension();
+  enforceBlocker();
+}
+
+/* Iron focus only: Chrome cannot stop anyone removing/disabling an extension,
+   so if the blocker is gone the app closes the browser it lived in — but only
+   after the browser has been open for REPAIR_MS with the extension silent,
+   which leaves time to re-enable it. Closing restarts that window. */
+let browserSeenSince = null, enforcing = false;
+async function enforceBlocker() {
+  if (enforcing) return;
+  enforcing = true;
+  try {
+    const d = store.data, st = session.publicState(), now = Date.now();
+    const proc = ExtWatch.browserProcess(d.ext.browser);
+    const silent = now - (d.ext.lastSeen || 0) > ExtWatch.SILENT_MS;
+    if (!(st.active && st.phase === 'focus' && st.blockActive && d.sites.enabled && proc && silent)) { browserSeenSince = null; return; }
+    const running = (await processes.listProcesses()).some((p) => p.norm === proc);
+    if (!running) { browserSeenSince = null; return; }
+    if (!browserSeenSince) browserSeenSince = now;
+    if (!ExtWatch.shouldCloseBrowser({ ironFocus: true, sitesEnabled: d.sites.enabled, lastSeen: d.ext.lastSeen, now, browser: d.ext.browser, runningSince: browserSeenSince })) return;
+    const closed = await guardian.killNow(proc);
+    browserSeenSince = null;
+    lifeLog('iron-closed-browser', { proc, closed });
+    if (closed) {
+      store.mutate((dd) => {
+        dd.feed = dd.feed || [];
+        dd.feed.unshift({ t: Date.now(), emoji: '🧩', kind: 'warn', text: 'Iron mode: closed your browser because the StudyNook extension was missing' });
+        if (dd.feed.length > 40) dd.feed.length = 40;
+      });
+      broadcast('toast', { title: 'Browser closed', msg: 'Iron mode: the website blocker was missing. Re-enable the extension before reopening your browser.' });
+      pushSnapshot();
+    }
+  } catch (e) { lifeLog('enforce-blocker-error', e.message); }
+  finally { enforcing = false; }
 }
 
 /* Auto-recovery: while a session exists keep a background watchdog alive that
@@ -535,7 +569,8 @@ function watchExtension() {
   extGoneWarned = true;
   let hint = 'If you removed or disabled it, add it back. (Ignore this if you are not using Chrome.)';
   try { hint = ExtFinder.describe(ExtFinder.detect({ extDir: EXT_DIR })).detail; } catch (e) {}   // say exactly what state the browser is in
-  const msg = 'StudyNook lost the Chrome extension, so websites are not being blocked. ' + hint;
+  const ironNote = st.blockActive && d.ext.browser ? ' Iron mode: your browser will be closed in about a minute and a half unless the extension is back.' : '';
+  const msg = 'StudyNook lost the Chrome extension, so websites are not being blocked. ' + hint + ironNote;
   notify('Website blocker is off', msg);
   broadcast('toast', { title: 'Website blocker is off', msg });
   store.mutate((dd) => {
