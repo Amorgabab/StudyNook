@@ -13,7 +13,7 @@
    ============================================================ */
 'use strict';
 
-const { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell, nativeImage, globalShortcut } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -29,6 +29,9 @@ const catalog = require('../shared/catalog.js');
 const NookRules = require('../../extension/rules.js');
 const NookLinks = require('../shared/links.js');
 const ExtWatch = require('../shared/extwatch.js');
+const ExtFinder = require('./extfinder.js');
+const Lifecycle = require('./lifecycle.js');
+const Watchdog = require('./watchdog.js');
 const dedupe = (arr) => arr.filter((x, i) => arr.indexOf(x) === i);
 
 const APP_ROOT = path.join(__dirname, '..', '..');          // project folder
@@ -38,6 +41,8 @@ const SOUNDS_DIR = app.isPackaged ? path.join(app.getPath('userData'), 'sounds')
 const EXT_DIR = app.isPackaged ? path.join(process.resourcesPath, 'extension') : path.join(APP_ROOT, 'extension');
 const UI = (f) => path.join(__dirname, '..', 'ui', f);
 const ASSET = (f) => path.join(APP_ROOT, 'assets', f);
+// Plain-text trail of boots, quits, crashes and watchdog relaunches (data/lifecycle.log).
+const lifeLog = Lifecycle.makeLogger(path.join(DATA_DIR, 'lifecycle.log'), 'app');
 
 let store, session, guardian, server;
 let win = null, miniWin = null, remindWin = null, tray = null;
@@ -106,6 +111,7 @@ function recoverInterruptedSession() {
   try { st = session.restore(s); } catch (e) { console.error('[recover]', e); st = null; }
   if (!st || !st.active) { salvageInterruptedSession(s, 'app closed mid-focus'); return; }
   session._persist();
+  lifeLog('session-restored', { phase: st.phase, remainingSec: st.remainingSec });
   store.mutate((d) => {
     d.feed = d.feed || [];
     d.feed.unshift({
@@ -178,6 +184,7 @@ app.whenReady().then(() => {
   try { fs.mkdirSync(SOUNDS_DIR, { recursive: true }); } catch (e) { console.error('[sounds]', e.message); }
   migrateOldData();
   store = new Store(path.join(DATA_DIR, 'data.json'));
+  lifeLog('boot', { version: app.getVersion(), packaged: app.isPackaged, afterWatchdogRelaunch: process.argv.includes('--restarted-by-watchdog') });
   progress.refreshStreak(store.data);
   ensureBackups();
 
@@ -231,17 +238,19 @@ app.whenReady().then(() => {
 
   createMainWindow();
   createTray();
-  setInterval(() => { if (store.data.settings.miniWindow && session.isActive()) ensureMini(); else hideMini(); }, 2000);
+  setInterval(() => { if (store.data.settings.miniWindow && session.isActive()) ensureMini(); else hideMini(); ensureWatchdog(); }, 2000);
 
   registerIpc();
 });
 
-app.on('window-all-closed', () => { app.quit(); });
+app.on('window-all-closed', () => { lifeLog('window-all-closed'); app.quit(); });
 app.on('before-quit', () => {
+  lifeLog('before-quit', { sessionActive: !!(session && session.isActive()) });
   try { guardian.stop(); server.stop(); store.saveNow(); } catch (e) {}
 });
 process.on('uncaughtException', (e) => {
   console.error('[crash]', e);
+  lifeLog('uncaughtException', String((e && e.message) || e));
   try { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.appendFileSync(path.join(DATA_DIR, 'crash.log'), new Date().toISOString() + ' ' + (e && e.stack || e) + '\n'); } catch (_) {}
 });
 
@@ -273,6 +282,7 @@ function createMainWindow() {
   // unclosable window and no timer. Reload it (the snapshot is re-pulled).
   win.webContents.on('render-process-gone', (_e, details) => {
     if (details && details.reason === 'clean-exit') return;
+    lifeLog('render-process-gone', details && details.reason);
     if (rendererReloads++ >= 5) return;   // not a crash loop
     setTimeout(() => { if (win && !win.isDestroyed()) win.reload(); }, 500);
   });
@@ -458,8 +468,7 @@ function handleGuardEvent(ev) {
       if (d.feed.length > 40) d.feed.length = 40;
     });
     broadcast('guard', ev);
-    const earned = grantAchievements({});
-    void earned;
+    grantAchievements({});
     pushSnapshot();
   } else if (ev.type === 'warn') {
     broadcast('guard', ev);
@@ -493,6 +502,27 @@ function pollExtStatus() {
   watchExtension();
 }
 
+/* Auto-recovery: while a session exists keep a background watchdog alive that
+   relaunches the app if it is closed or killed mid-session (see watchdog.js).
+   Checked every ~10 s; cheap when one is already running. */
+let lastWatchdogCheck = 0;
+function ensureWatchdog() {
+  if (process.env.NOOK_SMOKE || !session || !session.isActive()) return;
+  const now = Date.now();
+  if (now - lastWatchdogCheck < 10000) return;
+  lastWatchdogCheck = now;
+  try {
+    const started = Watchdog.ensure({
+      execPath: process.execPath,
+      scriptPath: path.join(__dirname, 'watchdog.js'),
+      mainPid: process.pid,
+      dataDir: DATA_DIR,
+      launch: [process.execPath].concat(app.isPackaged ? [] : [app.getAppPath()])
+    });
+    if (started) lifeLog('watchdog-started', { watching: process.pid });
+  } catch (e) { lifeLog('watchdog-start-failed', e.message); }
+}
+
 /* Chrome extension removed/disabled (or Chrome closed) in the middle of a
    focus: website blocking silently stops. Say so once, loudly enough to see. */
 function watchExtension() {
@@ -503,7 +533,9 @@ function watchExtension() {
   const warn = ExtWatch.shouldWarn({ focusing, sitesEnabled: d.sites.enabled, lastSeen: d.ext.lastSeen, now: Date.now(), warned: extGoneWarned });
   if (!warn) return;
   extGoneWarned = true;
-  const msg = 'StudyNook lost the Chrome extension, so websites are not being blocked. If you removed or disabled it, add it back. (Ignore this if you are not using Chrome.)';
+  let hint = 'If you removed or disabled it, add it back. (Ignore this if you are not using Chrome.)';
+  try { hint = ExtFinder.describe(ExtFinder.detect({ extDir: EXT_DIR })).detail; } catch (e) {}   // say exactly what state the browser is in
+  const msg = 'StudyNook lost the Chrome extension, so websites are not being blocked. ' + hint;
   notify('Website blocker is off', msg);
   broadcast('toast', { title: 'Website blocker is off', msg });
   store.mutate((dd) => {
@@ -851,7 +883,7 @@ function registerIpc() {
     for (const p of procs) {
       if (seen.has(p.norm)) continue;
       seen.add(p.norm);
-      rows.push({ pid: p.pid, name: p.name, norm: p.norm, listed });
+      rows.push({ pid: p.pid, name: p.name, norm: p.norm });
     }
     rows.sort((a, b) => a.norm.localeCompare(b.norm));
     return rows.map((r) => ({ pid: r.pid, name: r.name, norm: r.norm, listed: listed.has(r.norm) }));
@@ -883,6 +915,19 @@ function registerIpc() {
     });
     pushSnapshot();
     return true;
+  });
+
+  /* ---- extension finder (read-only detect / launch browser with the extension) ---- */
+  H('ext:detect', () => {
+    const r = ExtFinder.detect({ extDir: EXT_DIR });
+    return Object.assign({ status: r.status }, ExtFinder.describe(r));
+  });
+  H('ext:forceLoad', () => {
+    const r = ExtFinder.forceLoad({ extDir: EXT_DIR });
+    lifeLog('ext-force-load', { ok: r.ok, browser: r.browser, reason: r.reason });
+    return r.ok
+      ? { ok: true, title: 'Opening ' + r.name + ' with the extension', detail: r.detail }
+      : { ok: false, title: 'Could not open a browser', detail: r.detail };
   });
 
   /* ---- subjects & notes ---- */

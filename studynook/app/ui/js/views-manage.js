@@ -375,6 +375,11 @@ Views.sites = function (c) {
     ['4', 'Click the StudyNook extension icon → paste the pairing code above → Pair']
   ].forEach(([n, t]) => steps.appendChild(N.el('div', { class: 'list-row' }, N.el('span', { class: 'tag', text: n }), N.el('div', { class: 'grow' }, N.el('div', { class: 'title', style: 'font-weight:600', text: t })))));
   extCard.appendChild(steps);
+  const showResult = (r) => App.toast(r.title, r.detail, 12000);
+  extCard.appendChild(N.el('div', { class: 'row mt' },
+    N.el('button', { class: 'btn btn-sm', text: '🔍 Check extension', onclick: async () => showResult(await nook.invoke('ext:detect')) }),
+    N.el('button', { class: 'btn btn-sm btn-sage', text: '🚀 Open browser with extension', onclick: async () => showResult(await nook.invoke('ext:forceLoad')) })
+  ));
   if (!ext.connected) {
     extCard.appendChild(N.el('div', { class: 'banner good mt' }, N.el('span', { text: '🌈' }), N.el('span', { text: 'No desktop app running? The extension still works on its own — open its popup for a built-in mini timer & lists. When StudyNook is open, the desktop settings win.' })));
   }
