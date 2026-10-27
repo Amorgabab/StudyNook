@@ -9,6 +9,10 @@ the readable version of it.
 
 ## 1.5.3
 
+- **Session recovery fixed.** If StudyNook was force-closed twice during one session, the second
+  recovery restarted the timer from the full length. It now keeps its place however many times
+  it is killed. Ending a recovered session early also counts the minutes focused before the
+  kill (it counted none).
 - **Mini timer fixed.** Clicking it now brings StudyNook back (it could only be dragged before:
   Electron swallows clicks on a drag region). Drag it by its icon instead. The faint square
   around it is gone, and it can no longer be dragged off the screen.

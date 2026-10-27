@@ -261,6 +261,13 @@ class SessionEngine {
     const iron = locked || Iron.resolveIron(t.iron, t.ironLockedUntil, Date.now()) || !!st.iron;
     const accum = Math.max(0, Number(st.accumSec) || 0);
     const phaseBanked = SessionEngine._phaseBankedSec(st, accum);
+    const now = Date.now();
+    const phase = ['focus', 'short', 'long'].includes(st.phase) ? st.phase : 'focus';
+    // A running focus resumes as if its phase had started `phaseBanked` seconds ago: the next
+    // save then still shows the true elapsed time, so a second kill restores the same countdown
+    // (stamping the phase as starting now made it rewind to the full length). A paused phase's
+    // banked seconds already sit inside the session total.
+    const liveFocus = phase === 'focus' && !!st.running;
     this.s = {
       mode: st.mode === 'free' ? 'free' : 'pomodoro',
       running: !!st.running,
@@ -271,9 +278,9 @@ class SessionEngine {
       roundIdx: Math.max(0, Number(st.roundIdx) || 0),
       rounds: Math.max(1, Number(st.rounds) || 4),
       startedAt: Number(st.startedAt) || Date.now(),
-      sessionFocusSec: Math.max(0, accum - phaseBanked),
+      sessionFocusSec: liveFocus ? Math.max(0, accum - phaseBanked) : accum,
       phaseAccumStart: Math.max(0, accum - phaseBanked),
-      phaseStartAt: Date.now(),
+      phaseStartAt: liveFocus ? now - phaseBanked * 1000 : now,
       taskId: st.taskId || null, label: String(st.label || ''),
       iron
     };

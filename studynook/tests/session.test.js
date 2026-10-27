@@ -162,6 +162,52 @@ suite('session · kill recovery (End task / crash)', () => {
     eng4.stop({});
   });
 
+  test('killed twice in a row, the countdown keeps its place (no rewind to the full length)', () => {
+    const eng = makeEngine(S);
+    eng.start({ mode: 'free', freeMin: 15 });
+    // 4 minutes into a 15-minute free focus
+    eng.s.phaseStartAt = Date.now() - 4 * 60 * 1000;
+    eng.s.endsAt = Date.now() + 11 * 60 * 1000;
+    const snap1 = snapshotFrom(eng, Date.now());
+    eng._stopLoop();
+    // first kill → restored
+    const eng2 = makeEngine(S);
+    const st2 = eng2.restore(snap1);
+    expect(Math.abs(st2.remainingSec - 11 * 60) <= 2).toBeTruthy();
+    // a few seconds later, the app is killed again: whatever it saved right after restoring
+    const snap2 = snapshotFrom(eng2, Date.now() + 5000);
+    snap2.endsAt += 5000; snap2.phaseStartAt += 0;
+    eng2._stopLoop();
+    expect(SessionEngine.recoverable(snap2).ok).toBeTruthy();
+    const eng3 = makeEngine(S);
+    const st3 = eng3.restore(snap2);
+    // still ~11 minutes left, not 15
+    expect(st3.remainingSec <= 11 * 60 + 2).toBeTruthy();
+    expect(st3.remainingSec > 10 * 60).toBeTruthy();
+    // and the 4 focused minutes before the first kill were not lost
+    expect(Math.round(snap2.accumSec / 60)).toBe(4);
+    // a third time, much later (app dead for ages): dead time is still free
+    const shift = (o, ms) => { for (const k of ['savedAt', 'endsAt', 'phaseStartAt', 'startedAt']) { if (typeof o[k] === 'number') o[k] -= ms; } return o; };
+    const eng4 = makeEngine(S);
+    const st4 = eng4.restore(shift(snapshotFrom(eng3, Date.now()), 3 * 60 * 60 * 1000));
+    expect(st4.remainingSec <= 11 * 60 + 2).toBeTruthy();
+    expect(st4.remainingSec > 10 * 60).toBeTruthy();
+    eng3._stopLoop(); eng4.stop({});
+  });
+
+  test('ending a recovered focus early still counts the minutes focused before the kill', () => {
+    const eng = makeEngine(S);
+    eng.start({ mode: 'free', freeMin: 15 });
+    eng.s.phaseStartAt = Date.now() - 6 * 60 * 1000;
+    eng.s.endsAt = Date.now() + 9 * 60 * 1000;
+    const snap = snapshotFrom(eng, Date.now());
+    eng._stopLoop();
+    const eng2 = makeEngine(S);
+    eng2.restore(snap);
+    const info = eng2.stop({});
+    expect(info && info.minutes).toBe(6);
+  });
+
   test('paused focus stays paused after a kill, with frozen remaining', () => {
     const eng = makeEngine(S);
     eng.start({ mode: 'pomodoro' });
