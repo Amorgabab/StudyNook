@@ -18,11 +18,13 @@
     "electron": "^45.0.0",
     "electron-builder": "^26.18.0",
     "eslint": "9.39.5",
-    "globals": "17.13.0"
+    "globals": "17.13.0",
+    "rcedit": "^5.0.2"
   },
   "build": {
     "appId": "app.studynook.desktop",
     "productName": "StudyNook",
+    "afterPack": "build/afterPack.js",
     "artifactName": "StudyNook-Setup-${version}.exe",
     "files": [
       "app/**/*",

@@ -14,6 +14,9 @@ the readable version of it.
   it is killed. Ending a recovered session early also counts the minutes focused before the
   kill (it counted none). The saved session file is now written atomically, so a kill in the
   middle of a save can no longer corrupt it.
+- **Taskbar icon fixed.** `StudyNook.exe` carried Electron's default atom icon (the build skipped
+  editing the executable), so the taskbar, Start menu and file lists showed it instead of the
+  StudyNook icon. The build now stamps the real icon and product name into the exe.
 - **Mini timer fixed.** Clicking it now brings StudyNook back (it could only be dragged before:
   Electron swallows clicks on a drag region). Drag it by its icon instead. The faint square
   around it is gone, and it can no longer be dragged off the screen.
