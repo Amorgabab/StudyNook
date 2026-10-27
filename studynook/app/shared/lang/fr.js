@@ -83,7 +83,7 @@
   'apps.allowWarn.t': 'Mode liste d’autorisation', 'apps.allowWarn': 'Tout programme absent de votre liste « Autorisées » sera fermé pendant la concentration. Les processus système sont toujours protégés.',
   'apps.preview': 'Aperçu', 'apps.preview.title': 'Ce que le mode liste d’autorisation fermerait maintenant', 'apps.preview.none': 'Rien ne serait fermé pour l’instant.', 'apps.preview.procs': '{n} processus',
   'apps.tab.blocked': 'Bloquées', 'apps.tab.allowed': 'Autorisées', 'apps.tab.library': 'Bibliothèque', 'apps.tab.running': 'En cours',
-  'apps.frozen': 'Une concentration Iron est en cours : vous pouvez bloquer d’autres applis, mais rien ne peut être retiré, désactivé ni autorisé avant la fin.',
+  'apps.frozen': 'Le verrou Iron est actif : vous pouvez bloquer d’autres applis, mais rien ne peut être retiré, désactivé ni autorisé avant la fin du verrou.',
   'apps.frozen.short': 'Verrouillé pendant la concentration Iron',
   'apps.empty.block.t': 'Aucune appli bloquée', 'apps.empty.allow.t': 'Aucune appli autorisée', 'apps.empty.d': 'Ajoutez des applis depuis les onglets Bibliothèque ou En cours, ou par leur nom ci-dessous.',
   'apps.entry.toggle': 'Activer {app}', 'apps.entry.remove': 'Retirer {app}',

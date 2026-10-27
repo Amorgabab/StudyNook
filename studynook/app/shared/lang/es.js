@@ -83,7 +83,7 @@
   'apps.allowWarn.t': 'Modo lista de permitidas', 'apps.allowWarn': 'Durante la concentración se cerrará cualquier programa que no esté en tu lista de permitidas. Los procesos del sistema siempre están protegidos.',
   'apps.preview': 'Vista previa', 'apps.preview.title': 'Qué cerraría ahora el modo lista de permitidas', 'apps.preview.none': 'Ahora mismo no se cerraría nada.', 'apps.preview.procs': '{n} procesos',
   'apps.tab.blocked': 'Bloqueadas', 'apps.tab.allowed': 'Permitidas', 'apps.tab.library': 'Biblioteca', 'apps.tab.running': 'En ejecución',
-  'apps.frozen': 'Hay una concentración Iron en curso: puedes bloquear más apps, pero no puedes quitar, desactivar ni permitir nada hasta que termine.',
+  'apps.frozen': 'El bloqueo Iron está activo: puedes bloquear más apps, pero no puedes quitar, desactivar ni permitir nada hasta que termine el bloqueo.',
   'apps.frozen.short': 'Bloqueado durante la concentración Iron',
   'apps.empty.block.t': 'No hay apps bloqueadas', 'apps.empty.allow.t': 'No hay apps permitidas', 'apps.empty.d': 'Añade apps desde las pestañas Biblioteca o En ejecución, o por su nombre abajo.',
   'apps.entry.toggle': 'Activar {app}', 'apps.entry.remove': 'Quitar {app}',

@@ -91,7 +91,7 @@
   'apps.allowWarn.t': 'Allowlist mode', 'apps.allowWarn': 'Every program that is not on your Allowed list will be closed during focus. System processes are always protected.',
   'apps.preview': 'Preview', 'apps.preview.title': 'What allowlist mode would close now', 'apps.preview.none': 'Nothing would be closed right now.', 'apps.preview.procs': '{n} processes',
   'apps.tab.blocked': 'Blocked', 'apps.tab.allowed': 'Allowed', 'apps.tab.library': 'Library', 'apps.tab.running': 'Running now',
-  'apps.frozen': 'Iron focus is running: you can add apps to block, but nothing can be removed, disabled or allowed until it ends.',
+  'apps.frozen': 'Iron lock is active: you can add apps to block, but nothing can be removed, disabled or allowed until the lock ends.',
   'apps.frozen.short': 'Locked during Iron focus',
   'apps.empty.block.t': 'No blocked apps', 'apps.empty.allow.t': 'No allowed apps', 'apps.empty.d': 'Add apps from the Library or Running now tabs, or by name below.',
   'apps.entry.toggle': 'Enable {app}', 'apps.entry.remove': 'Remove {app}',
