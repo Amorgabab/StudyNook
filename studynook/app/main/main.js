@@ -13,11 +13,12 @@
    ============================================================ */
 'use strict';
 
-const { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell, nativeImage, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell, nativeImage, nativeTheme, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 const { Store } = require('./store.js');
+const { clampToArea } = require('./bounds.js');
 const { SessionEngine } = require('./session.js');
 const Iron = require('../shared/iron.js');
 const { Guardian } = require('./guardian.js');
@@ -244,6 +245,8 @@ app.whenReady().then(() => {
 
   createMainWindow();
   createTray();
+  screen.on('display-metrics-changed', clampMini);
+  screen.on('display-removed', clampMini);
   setInterval(() => { if (store.data.settings.miniWindow && session.isActive()) ensureMini(); else hideMini(); watch.ensureWatchdog(); }, 2000);
 
   registerIpc(ctx);
@@ -337,8 +340,19 @@ function ensureMini() {
     skipTaskbar: true, transparent: true, hasShadow: false, focusable: false
   }));
   miniWin.loadFile(UI('mini.html'));
-  miniWin.once('ready-to-show', () => miniWin.show());
+  miniWin.once('ready-to-show', () => { clampMini(); miniWin.show(); });
+  // The pill can be dragged by its icon; never let it leave the screen.
+  miniWin.on('will-move', (e, next) => {
+    const fit = clampToArea(next, screen.getDisplayMatching(next).workArea);
+    if (fit.x !== next.x || fit.y !== next.y) { e.preventDefault(); miniWin.setBounds(fit); }
+  });
+  miniWin.on('moved', clampMini);
   miniWin.on('closed', () => { miniWin = null; });
+}
+function clampMini() {
+  if (!miniWin || miniWin.isDestroyed()) return;
+  const b = miniWin.getBounds(), fit = clampToArea(b, screen.getDisplayMatching(b).workArea);
+  if (fit.x !== b.x || fit.y !== b.y) miniWin.setBounds(fit);
 }
 function hideMini() { if (miniWin && !miniWin.isDestroyed() && miniWin.isVisible()) miniWin.hide(); }
 

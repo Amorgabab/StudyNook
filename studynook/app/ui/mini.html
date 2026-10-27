@@ -7,13 +7,13 @@
   <style>
     html, body { background: transparent !important; }
     #pill {
-      position: absolute; inset: 6px; border-radius: 999px; display: flex; align-items: center; gap: 10px;
+      position: absolute; inset: 10px; border-radius: 999px; display: flex; align-items: center; gap: 10px;
       padding-inline: 14px 18px; background: var(--surface); border: 1px solid var(--border);
-      border-inline-start: 3px solid var(--accent); box-shadow: var(--shadow-2);
-      -webkit-app-region: drag; cursor: pointer;
+      border-inline-start: 3px solid var(--accent); box-shadow: 0 2px 6px rgba(0, 0, 0, .28);   /* stays inside the 10px margin: a bigger one is clipped into a visible square */
+      cursor: pointer;   /* click anywhere but the icon to bring StudyNook back (a drag region swallows clicks) */
     }
     #pill.brk { border-inline-start-color: var(--success); }
-    #stage { width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+    #stage { -webkit-app-region: drag; cursor: grab; width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
     #pill.brk #stage { background: var(--success-soft); color: var(--success); }
     #time { font-size: 20px; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; direction: ltr; }
     #lbl { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -9,6 +9,9 @@ the readable version of it.
 
 ## 1.5.3
 
+- **Mini timer fixed.** Clicking it now brings StudyNook back (it could only be dragged before:
+  Electron swallows clicks on a drag region). Drag it by its icon instead. The faint square
+  around it is gone, and it can no longer be dragged off the screen.
 - Build tooling: electron-builder 24 → 26.18. This clears all `npm audit` findings (they
   affected the build machine, not the installed app). No change to how the app behaves.
 - Added `THIRD-PARTY-NOTICES.md` (Electron, Lucide, Inter) and ship it with the installer.
