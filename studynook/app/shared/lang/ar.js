@@ -168,6 +168,7 @@
   'set.sec.general': 'عام', 'set.sec.appearance': 'المظهر', 'set.sec.timer': 'مؤقّت التركيز', 'set.sec.blocking': 'الحظر',
   'set.sec.notifications': 'الإشعارات', 'set.sec.sound': 'الصوت', 'set.sec.data': 'البيانات والخصوصية', 'set.sec.about': 'حول',
   'set.lang': 'اللغة', 'set.lang.desc': 'تُستخدم في التطبيق والإشعارات وقائمة شريط المهام وإضافة المتصفح.',
+  'set.tray': 'البقاء في شريط المهام', 'set.tray.desc': 'إغلاق النافذة يُخفي StudyNook بدل الخروج. يكون مفعّلًا دائمًا إذا كان الحارس أو حظر المواقع يعمل طوال الوقت.',
   'set.startup': 'التشغيل مع Windows', 'set.startup.desc': 'فتح StudyNook في شريط المهام عند تسجيل الدخول.', 'set.startup.dev': 'متاح في التطبيق المثبّت.',
   'set.name': 'اسمك', 'set.name.desc': 'يُستخدم في رسائل الترحيب في صفحة التركيز.',
   'set.pet': 'اسم الرفيق', 'set.pet.desc': 'ينمو الرفيق مع إجمالي وقت تركيزك.',

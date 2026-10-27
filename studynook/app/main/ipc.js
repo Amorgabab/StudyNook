@@ -111,7 +111,7 @@ function registerIpc(ctx) {
           } else if (k === 'theme') v = Prefs.THEMES.includes(v) ? v : 'system';
           else if (k === 'language') v = Prefs.normLang(v);
           else if (k === 'dailyGoalMin') v = num(v, 120, 0, 720);
-          else if (k === 'miniWindow' || k === 'bridgeAllowOrigins' || k === 'startWithWindows') v = !!v;
+          else if (k === 'miniWindow' || k === 'bridgeAllowOrigins' || k === 'startWithWindows' || k === 'closeToTray') v = !!v;
           clean[k] = v;
         }
         if (RAW_SECTIONS.includes(p.section)) {
@@ -410,6 +410,11 @@ function registerIpc(ctx) {
     // button raises the gate instead of hiding straight to the tray.
     if (session && session.isActive()) { broadcast('close-blocked', {}); return false; }
     if (session && session.isIronFocus() && !ctx.gateCleared) { broadcast('iron-gate', {}); return false; }
+    // Nothing left to protect → really quit, so no process lingers in Task Manager.
+    // The guard or website blocking set to "always", or the student's own choice, keep the tray.
+    const st = store.data, g = st.settings.guardian || {};
+    const keepRunning = st.settings.closeToTray || (g.enabled && g.onlyDuringSessions === false) || (st.sites.enabled && st.sites.when === 'always');
+    if (!keepRunning && ctx.quitApp) { ctx.quitApp(); return true; }
     const w = ctx.win();
     if (w) w.hide();   // hiding keeps timer+guard alive in tray
     return true;

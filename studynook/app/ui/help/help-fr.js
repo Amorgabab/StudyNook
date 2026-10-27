@@ -19,7 +19,7 @@
           '**Sites web** : ajoutez les sites qui vous distraient, puis installez et associez l’extension (voir **Bloquer des sites**).'
         ] },
         { h: 'Où se trouve le minuteur' },
-        { p: 'Fermer la fenêtre masque StudyNook dans la barre des tâches (en bas à droite). Pendant une session, un petit **mini minuteur** reste au-dessus des autres fenêtres ; cliquez dessus pour rouvrir StudyNook.' },
+        { p: 'Fermer la fenêtre quitte StudyNook quand rien n’a besoin de continuer. Il se masque dans la barre des tâches (en bas à droite) si une session est en cours, si le garde ou le blocage de sites fonctionne en permanence, ou si vous activez Réglages → Général → Rester dans la barre des tâches. Pendant une session, un petit **mini minuteur** reste au-dessus des autres fenêtres ; cliquez dessus pour rouvrir StudyNook.' },
         { note: 'Vous ne pouvez pas fermer ni quitter StudyNook tant qu’une session existe, même en pause. Arrêtez d’abord la session.', kind: 'info' }
       ]
     },

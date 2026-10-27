@@ -41,6 +41,7 @@ Views.settings = function (c) {
     card.appendChild(row(t('set.lang'), t('set.lang.desc'), lang));
     card.appendChild(row(t('set.startup'), S.packaged ? t('set.startup.desc') : t('set.startup.dev'),
       N.toggle(!!s.startWithWindows, (v) => set('startWithWindows', v), { label: t('set.startup'), disabled: !S.packaged })));
+    card.appendChild(row(t('set.tray'), t('set.tray.desc'), N.toggle(!!s.closeToTray, (v) => set('closeToTray', v), { label: t('set.tray') })));
     card.appendChild(row(t('set.name'), t('set.name.desc'), text(d.profile.name, 40, (v) => nook.invoke('profile:set', { name: v }), t('set.name'))));
     card.appendChild(row(t('set.pet'), t('set.pet.desc'), text(d.pet.name, 20, (v) => nook.invoke('pet:rename', { name: v }), t('set.pet'))));
     card.appendChild(row(t('set.goal'), t('set.goal.desc'), num(s.dailyGoalMin || 0, 0, 720, (v) => set('dailyGoalMin', v), t('unit.min'), 15, t('set.goal'))));

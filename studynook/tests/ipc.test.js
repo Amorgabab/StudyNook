@@ -100,6 +100,18 @@ suite('ipc · handlers', () => {
     expect(r.sent.some((s) => s[0] === 'close-blocked')).toBe(true);
     r.session.stop({});
   });
+  test('closing the idle window quits, unless something must keep running', async () => {
+    const r = rig(); let quit = 0, hid = 0;
+    r.ctx.quitApp = () => { quit++; }; r.ctx.win = () => ({ hide: () => { hid++; } });
+    await r.call('win:close');
+    expect([quit, hid]).toEqual([1, 0]);
+    r.store.data.settings.closeToTray = true;
+    await r.call('win:close');
+    expect([quit, hid]).toEqual([1, 1]);
+    r.store.data.settings.closeToTray = false; r.store.data.sites.when = 'always';
+    await r.call('win:close');
+    expect([quit, hid]).toEqual([1, 2]);
+  });
 });
 
 suite('snapshots · each window gets only what it draws', () => {

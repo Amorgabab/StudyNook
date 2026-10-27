@@ -179,6 +179,7 @@
   'set.sec.general': 'General', 'set.sec.appearance': 'Appearance', 'set.sec.timer': 'Focus timer', 'set.sec.blocking': 'Blocking',
   'set.sec.notifications': 'Notifications', 'set.sec.sound': 'Sound', 'set.sec.data': 'Data & privacy', 'set.sec.about': 'About',
   'set.lang': 'Language', 'set.lang.desc': 'Used for the app, notifications, the tray menu and the browser extension.',
+  'set.tray': 'Keep running in the tray', 'set.tray.desc': 'Closing the window hides StudyNook instead of quitting. Always on while the guard or website blocking is set to run all the time.',
   'set.startup': 'Start with Windows', 'set.startup.desc': 'Open StudyNook in the tray when you sign in.', 'set.startup.dev': 'Available in the installed app.',
   'set.name': 'Your name', 'set.name.desc': 'Used in greetings on the Focus page.',
   'set.pet': 'Companion name', 'set.pet.desc': 'The companion grows with your total focus time.',
