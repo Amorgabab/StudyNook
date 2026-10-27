@@ -1,0 +1,68 @@
+StudyNook Personal Use License
+
+Copyright (c) 2026 Amorgabab. All rights reserved.
+
+StudyNook is NOT open-source software. The source code is published so that
+people can read it, and the software may be downloaded and used, but it may
+not be shared or redistributed. The terms below are the only rights granted.
+
+1. WHAT YOU MAY DO
+
+   Subject to the restrictions in section 2, you may:
+
+   a. download StudyNook, in source or built form, from the official
+      repository (https://github.com/Amorgabab/StudyNook);
+   b. install and run it on devices that you own or control, for your own
+      personal use;
+   c. read the source code, to understand how it works or to learn from it.
+
+2. WHAT YOU MAY NOT DO
+
+   Without prior written permission from the copyright holder, you may not:
+
+   a. copy, share, publish, upload, mirror, host or otherwise redistribute
+      StudyNook, or any part of it, in source or built form, whether modified
+      or unmodified, free of charge or for a fee;
+   b. sell, rent, lease, sublicense or otherwise commercially exploit it, or
+      offer it to others as a service;
+   c. distribute modified versions or derivative works of it;
+   d. remove or alter copyright, license or attribution notices;
+   e. use the name "StudyNook" or its icon to suggest that a product or
+      service is official or endorsed.
+
+3. GITHUB
+
+   This repository is public on GitHub. The GitHub Terms of Service allow
+   other GitHub users to view and fork public repositories within GitHub.
+   That permission comes from GitHub's terms and is limited to what they
+   provide. Nothing in this license allows distribution outside GitHub or any
+   use of a fork beyond what section 1 allows.
+
+4. THIRD-PARTY COMPONENTS
+
+   StudyNook includes or depends on third-party components that stay under
+   their own licenses, which are not changed by this one: the Inter typeface
+   (SIL Open Font License 1.1; see studynook/app/ui/fonts/OFL-Inter.txt), the
+   Lucide icons (ISC License; https://lucide.dev), Electron (MIT License) and
+   the npm packages listed in studynook/package.json.
+
+5. NO WARRANTY
+
+   STUDYNOOK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+   OR IN CONNECTION WITH THE SOFTWARE OR ITS USE. StudyNook closes programs
+   and blocks websites that you choose; save your work before a focus session.
+
+6. TERMINATION
+
+   Your rights under this license end automatically if you breach it. When
+   they end you must stop using StudyNook and delete all copies of it that you
+   are not otherwise entitled to keep.
+
+7. PERMISSIONS
+
+   To ask for permission to do something this license does not allow, open an
+   issue at https://github.com/Amorgabab/StudyNook/issues.

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Layout
 
-The Electron app lives in `studynook/`; the repo root only holds the README, LICENSE and `.gitignore`. Run all npm commands from `studynook/`.
+The Electron app lives in `studynook/`. The repo root holds the README, the LICENSE (a personal-use, no-redistribution license, not MIT), `.github/` (CI), and `docs/`, the GitHub Pages website (`docs/index.html` plus `docs/assets/` screenshots; engineering notes live in `studynook/docs/`). Run all npm commands from `studynook/`. `tests/pages.test.js` checks that the README, the site and the license stay consistent; if the UI changes a lot, retake the screenshots in `docs/assets/`.
 
 ## Commands (run from `studynook/`)
 
