@@ -19,6 +19,7 @@ const fs = require('fs');
 
 const { Store } = require('./store.js');
 const { clampToArea } = require('./bounds.js');
+const { writeFileAtomic } = require('./atomic.js');
 const { SessionEngine } = require('./session.js');
 const Iron = require('../shared/iron.js');
 const { Guardian } = require('./guardian.js');
@@ -212,7 +213,7 @@ app.whenReady().then(() => {
         const f = SESSION_FILE();
         if (!st) { if (fs.existsSync(f)) fs.unlinkSync(f); return; }
         fs.mkdirSync(DATA_DIR, { recursive: true });
-        fs.writeFileSync(f, JSON.stringify(st));
+        writeFileAtomic(f, JSON.stringify(st));
       } catch (e) {}
     }
   });
