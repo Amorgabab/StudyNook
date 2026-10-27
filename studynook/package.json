@@ -1,7 +1,7 @@
 {
   "name": "studynook",
   "productName": "StudyNook",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "Study focus app with app and website blocking, Pomodoro timer, tasks, notes, stats and a study pet.",
   "main": "app/main/main.js",
   "scripts": {
@@ -16,7 +16,7 @@
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "electron": "^45.0.0",
-    "electron-builder": "^24.13.3",
+    "electron-builder": "^26.18.0",
     "eslint": "9.39.5",
     "globals": "17.13.0"
   },
@@ -40,6 +40,14 @@
       {
         "from": "assets/icon.ico",
         "to": "icon.ico"
+      },
+      {
+        "from": "../THIRD-PARTY-NOTICES.md",
+        "to": "THIRD-PARTY-NOTICES.md"
+      },
+      {
+        "from": "../LICENSE",
+        "to": "LICENSE.txt"
       }
     ],
     "directories": {

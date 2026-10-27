@@ -1,0 +1,39 @@
+name: Bug report
+description: Something in StudyNook is broken or behaves unexpectedly.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: StudyNook version
+      description: Settings → About shows it.
+      placeholder: "1.5.3"
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what you saw instead.
+    validations: { required: true }
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start a focus session
+        2. ...
+  - type: dropdown
+    id: during
+    attributes:
+      label: Was a focus session running?
+      options: ["No", "Yes, normal session", "Yes, Iron session"]
+  - type: input
+    id: system
+    attributes:
+      label: Windows version and browser
+      placeholder: "Windows 11, Chrome 156"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots (optional)
+      description: "`lifecycle.log` in `%APPDATA%\StudyNook` helps with crashes. Remove anything private first."

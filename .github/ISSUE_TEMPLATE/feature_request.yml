@@ -1,0 +1,14 @@
+name: Idea or request
+description: Suggest a feature or a change, or ask for permission the license does not give.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The problem first, then the idea.
+    validations: { required: true }
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like StudyNook to do?
