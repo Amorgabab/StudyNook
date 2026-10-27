@@ -23,6 +23,7 @@ Views.tasks = function (c) {
     if (!v) { txt.focus(); return; }
     nook.invoke('tasks:add', { text: v, subject: subj.value, min: minVal, est: est.value })
       .then((r) => { if (!r) App.toast(t('tasks.addFailed.t'), t('tasks.addFailed.d'), { kind: 'warning' }); });
+    txt.value = '';   // sent: the redraw must not restore it as a draft
     Audio2.pop();
   };
   txt.addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
@@ -167,7 +168,7 @@ Views.apps = function (c) {
     const canAdd = !(frozen && tab === 'allow');
     lists.appendChild(N.el('div', { class: 'add-row' }, lbl, procs,
       N.btn(t('common.add'), { cls: 'btn-primary', icon: 'plus', disabled: !canAdd, title: canAdd ? null : t('apps.frozen.short'),
-        onclick: () => { if (lbl.value.trim() && procs.value.trim()) nook.invoke('apps:add', { list: tab, label: lbl.value, procs: procs.value.split(',').map((s) => s.trim()).filter(Boolean) }); } })));
+        onclick: () => { if (lbl.value.trim() && procs.value.trim()) { nook.invoke('apps:add', { list: tab, label: lbl.value, procs: procs.value.split(',').map((s) => s.trim()).filter(Boolean) }); lbl.value = ''; procs.value = ''; } } })));
   }
 
   if (tab === 'lib') {
