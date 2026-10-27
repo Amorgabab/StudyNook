@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StudyNook — study without the distractions</title>
+<meta name="description" content="A focus timer for Windows that closes distracting apps and blocks distracting websites while you study. Local-first: no account, no cloud, no tracking.">
+<meta name="theme-color" content="#C8643F">
+<meta property="og:type" content="website">
+<meta property="og:title" content="StudyNook — study without the distractions">
+<meta property="og:description" content="A focus timer that closes distracting apps and blocks distracting websites. Local-first, in four languages.">
+<meta property="og:url" content="https://amorgabab.github.io/StudyNook/">
+<meta property="og:image" content="https://amorgabab.github.io/StudyNook/assets/focus-light.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C8643F'/%3E%3Cpath d='M16 10.5C14.4 9.3 12.2 8.8 9.5 9v12c2.7-.2 4.9.3 6.5 1.5 1.6-1.2 3.8-1.7 6.5-1.5V9c-2.7-.2-4.9.3-6.5 1.5Z' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linejoin='round'/%3E%3Cpath d='M16 10.5v12' stroke='%23fff' stroke-width='1.8'/%3E%3C/svg%3E">
+<style>
+@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;font-display:swap;src:url("assets/fonts/inter-latin-wght-normal.woff2") format("woff2-variations")}
+:root{--bg:#F7F5F2;--surface:#fff;--surface-2:#F2EFEB;--border:#E6E1DB;--border-strong:#D4CDC5;--text:#1F1B18;--muted:#6B625B;--accent:#C8643F;--accent-hover:#B4552F;--accent-soft:#F8E9E2;--on-accent:#fff;--shadow:0 1px 2px rgba(31,27,24,.06);--shadow-lg:0 20px 50px rgba(31,27,24,.14);--ring:0 0 0 3px rgba(200,100,63,.35);color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#171513;--surface:#211E1B;--surface-2:#2A2622;--border:#38332E;--border-strong:#4A443E;--text:#F2EEE9;--muted:#A8A099;--accent:#E08A66;--accent-hover:#EA9A78;--accent-soft:#3A2A22;--on-accent:#1A1310;--shadow:0 1px 2px rgba(0,0,0,.4);--shadow-lg:0 20px 50px rgba(0,0,0,.5);--ring:0 0 0 3px rgba(224,138,102,.45);color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:"Inter","Segoe UI",system-ui,sans-serif;font-size:16px;line-height:1.6;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:none;box-shadow:var(--ring);border-radius:8px}
+.wrap{max-width:1080px;margin-inline:auto;padding-inline:24px}
+.skip{position:absolute;left:-999px;top:8px;background:var(--accent);color:var(--on-accent);padding:8px 14px;border-radius:8px;z-index:10}
+.skip:focus{left:8px}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:16px;height:68px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:650;text-decoration:none}
+.mark{width:28px;height:28px;border-radius:8px;background:var(--accent);color:var(--on-accent);display:inline-flex;align-items:center;justify-content:center}
+.nav ul{display:flex;gap:6px;list-style:none;align-items:center}
+.nav ul a{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;text-decoration:none;color:var(--muted);font-size:14.5px;font-weight:500}
+.nav ul a:hover{color:var(--text);background:var(--surface-2)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:46px;padding-inline:22px;border-radius:12px;font-weight:600;font-size:15.5px;text-decoration:none;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);transition:background .15s,border-color .15s}
+.btn:hover{background:var(--surface-2)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.nav ul a.btn{height:38px;padding-inline:16px;font-size:14.5px;border-radius:10px;color:var(--text)}
+.hero{padding:56px 0 32px;text-align:center}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:6px 14px;border-radius:999px;margin-bottom:22px}
+h1{font-size:clamp(2.1rem,5.2vw,3.7rem);line-height:1.1;font-weight:700;letter-spacing:-.025em;max-width:16ch;margin-inline:auto}
+.lead{font-size:clamp(1.05rem,2vw,1.22rem);color:var(--muted);max-width:56ch;margin:22px auto 32px}
+.cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.note{font-size:13.5px;color:var(--muted);margin-top:16px}
+.hero-shot{display:block;margin-top:52px}
+.frame{display:block;width:100%;height:auto;border-radius:14px;border:1px solid var(--border);box-shadow:var(--shadow-lg);background:var(--surface)}
+section{padding:72px 0}
+.sec-head{text-align:center;max-width:60ch;margin:0 auto 44px}
+h2{font-size:clamp(1.6rem,3.4vw,2.2rem);line-height:1.2;letter-spacing:-.02em;font-weight:700}
+.sec-head p{color:var(--muted);margin-top:12px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;box-shadow:var(--shadow)}
+.card .ico{width:44px;height:44px;border-radius:12px;background:var(--accent-soft);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px}
+h3{font-size:1.08rem;line-height:1.35;font-weight:650;margin-bottom:8px}
+.card p{color:var(--muted);font-size:15px}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;counter-reset:s}
+.step{position:relative;padding-top:56px}
+.step::before{counter-increment:s;content:counter(s);position:absolute;top:0;left:0;width:40px;height:40px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:700;display:flex;align-items:center;justify-content:center}
+.step p{color:var(--muted);font-size:15px}
+.band{background:var(--surface-2);border-block:1px solid var(--border)}
+.iron{display:grid;grid-template-columns:1.1fr .9fr;gap:44px;align-items:center}
+.iron p{color:var(--muted);margin-top:14px}
+.ticks{list-style:none;display:grid;gap:12px}
+.ticks li{display:flex;gap:12px;align-items:flex-start;font-size:15px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.ticks svg{color:var(--accent);margin-top:2px}
+.shots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px}
+figure figcaption{margin-top:12px;font-size:14.5px;color:var(--muted)}
+figure figcaption b{color:var(--text);font-weight:650}
+.facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;text-align:center}
+.fact b{display:block;font-size:1.9rem;line-height:1.2;color:var(--accent);font-weight:700}
+.fact span{font-size:14.5px;color:var(--muted)}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+pre{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:16px 18px;overflow:auto;font:13.5px/1.7 ui-monospace,"Cascadia Mono",Consolas,monospace;margin-top:14px}
+code{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.92em;background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:1px 6px}
+pre code{background:none;border:none;padding:0}
+footer{border-top:1px solid var(--border);padding:36px 0 56px;color:var(--muted);font-size:14.5px}
+footer .row{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}
+footer a{color:var(--text)}
+@media (max-width:860px){.grid,.steps,.two,.iron,.shots{grid-template-columns:minmax(0,1fr)}.facts{grid-template-columns:repeat(2,minmax(0,1fr))}.nav ul li:not(:last-child){display:none}section{padding:52px 0}.hero{padding-top:36px}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wrap nav">
+  <a class="brand" href="#top" id="top"><span class="mark"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></svg></span>StudyNook</a>
+  <nav aria-label="Main"><ul>
+    <li><a href="#features">Features</a></li><li><a href="#screens">Screenshots</a></li><li><a href="#install">Install</a></li>
+    <li><a class="btn" href="https://github.com/Amorgabab/StudyNook"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>GitHub</a></li>
+  </ul></nav>
+</header>
+
+<main id="main">
+<section class="hero"><div class="wrap">
+  <span class="eyebrow"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>Local-first · no account · no tracking</span>
+  <h1>Study without the distractions.</h1>
+  <p class="lead">StudyNook is a focus timer for Windows that closes the apps and blocks the websites that pull you away, so a study session stays a study session.</p>
+  <div class="cta">
+    <a class="btn btn-primary" href="https://github.com/Amorgabab/StudyNook/releases"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>Download for Windows</a>
+    <a class="btn" href="https://github.com/Amorgabab/StudyNook"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>View on GitHub</a>
+  </div>
+  <p class="note">English · العربية · Français · Español</p>
+  <picture class="hero-shot">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/focus-dark.png">
+    <img class="frame" src="assets/focus-light.png" width="1360" height="860" alt="The StudyNook Focus page: a running 25-minute timer, today's goal and the study companion">
+  </picture>
+</div></section>
+
+<section id="features"><div class="wrap">
+  <div class="sec-head"><h2>Everything a study session needs</h2><p>One app for the timer, the blockers and your progress.</p></div>
+  <div class="grid">
+    <article class="card"><span class="ico"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></svg></span><h3>Focus timer</h3><p>Pomodoro rounds with breaks, or one free-focus block of any length. It keeps running from the tray, with an optional mini timer that stays on top.</p></article>
+    <article class="card"><span class="ico"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/></svg></span><h3>App guard</h3><p>Closes the programs you list while you focus: warn first, close instantly, or just remind you. Blocklist or allowlist mode. System processes are never touched.</p></article>
+    <article class="card"><span class="ico"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></span><h3>Website blocking</h3><p>A Chrome, Edge or Brave extension blocks distracting sites, even a single path like youtube.com/shorts, and keeps blocking if the app is closed mid-session.</p></article>
+    <article class="card"><span class="ico"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span><h3>Iron sessions</h3><p>A promise to yourself. Blockers can’t be paused, lists can only grow, and ending early takes a cool-down and a typed sentence.</p></article>
+    <article class="card"><span class="ico"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></span><h3>Crash recovery</h3><p>If the app is closed or killed during a session, a small helper reopens it and your session continues where it left off.</p></article>
+    <article class="card"><span class="ico"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></span><h3>Progress</h3><p>XP, levels, streaks, a daily goal, a 13-week activity map, 24 achievements and a companion that grows with your focus time.</p></article>
+  </div>
+</div></section>
+
+<section class="band"><div class="wrap">
+  <div class="sec-head"><h2>How it works</h2></div>
+  <div class="steps">
+    <div class="step"><h3>Pick what to study</h3><p>Add a task, or just start a free focus. Choose Pomodoro rounds or one long block.</p></div>
+    <div class="step"><h3>Choose what to block</h3><p>List the apps and websites that pull you away. Pair the browser extension once with a 6-letter code.</p></div>
+    <div class="step"><h3>Start focusing</h3><p>StudyNook closes the distractions and shows a calm page instead of blocked sites. When the timer ends, you earn XP and grow your streak.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap iron">
+  <div>
+    <h2>Iron sessions, for when you mean it</h2>
+    <p>Willpower is weakest right when you need it. Turn on an Iron session and StudyNook makes giving up take effort, so a wobble doesn’t end the session.</p>
+  </div>
+  <ul class="ticks">
+    <li><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span>The app guard can’t be paused, and lists can only grow during a session.</span></li>
+    <li><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></svg><span>Ending early needs a 60-second cool-down and a typed sentence.</span></li>
+    <li><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg><span>If the browser extension disappears, the browser is closed after about 90 seconds.</span></li>
+    <li><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span>The switch itself stays locked for the number of days you choose.</span></li>
+  </ul>
+</div></section>
+
+<section id="screens" class="band"><div class="wrap">
+  <div class="sec-head"><h2>A calm, focused interface</h2><p>Light, dark, system or automatic theme, in four languages.</p></div>
+  <div class="shots">
+    <figure><img class="frame" loading="lazy" src="assets/tasks-light.png" width="1360" height="860" alt="Tasks: Plan what to study, with subjects, estimates and study links."><figcaption><b>Tasks.</b> Plan what to study, with subjects, estimates and study links.</figcaption></figure>
+    <figure><img class="frame" loading="lazy" src="assets/websites-dark.png" width="1360" height="860" alt="Websites: Blocked and allowed lists, plus the extension’s connection status."><figcaption><b>Websites.</b> Blocked and allowed lists, plus the extension’s connection status.</figcaption></figure>
+    <figure><img class="frame" loading="lazy" src="assets/progress-light.png" width="1360" height="860" alt="Progress: Level, streak, weekly chart and a 13-week activity map."><figcaption><b>Progress.</b> Level, streak, weekly chart and a 13-week activity map.</figcaption></figure>
+    <figure><img class="frame" loading="lazy" src="assets/settings-dark.png" width="1360" height="860" alt="Settings: Every option in one place, saved as you change it."><figcaption><b>Settings.</b> Every option in one place, saved as you change it.</figcaption></figure>
+    <figure><img class="frame" loading="lazy" src="assets/arabic-light.png" width="1360" height="860" alt="Right-to-left: Arabic, French and Spanish are fully supported, with a mirrored layout."><figcaption><b>Right-to-left.</b> Arabic, French and Spanish are fully supported, with a mirrored layout.</figcaption></figure>
+    <figure><img class="frame" loading="lazy" src="assets/blocked-light.png" width="1100" height="660" alt="The blocked page: What you see in the browser instead of a distracting site."><figcaption><b>The blocked page.</b> What you see in the browser instead of a distracting site.</figcaption></figure>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="facts">
+    <div class="fact"><b>0</b><span>accounts, clouds or trackers</span></div>
+    <div class="fact"><b>4</b><span>languages, including right-to-left</span></div>
+    <div class="fact"><b>24</b><span>achievements to earn</span></div>
+    <div class="fact"><b>7</b><span>daily backups kept on your PC</span></div>
+  </div>
+</div></section>
+
+<section id="install" class="band"><div class="wrap">
+  <div class="sec-head"><h2>Get StudyNook</h2><p>Built for Windows. Your data never leaves your computer.</p></div>
+  <div class="two">
+    <article class="card">
+      <h3>Installer</h3>
+      <p>Download the latest <code>StudyNook-Setup-&lt;version&gt;.exe</code> from Releases and run it.</p>
+      <p style="margin-top:18px"><a class="btn btn-primary" href="https://github.com/Amorgabab/StudyNook/releases"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>Open Releases</a></p>
+    </article>
+    <article class="card">
+      <h3>From source</h3>
+      <p>You need Node.js (LTS).</p>
+<pre><code>git clone https://github.com/Amorgabab/StudyNook.git
+cd StudyNook/studynook
+npm install
+npm start</code></pre>
+    </article>
+  </div>
+  <p class="note" style="text-align:center;margin-top:28px">Website blocking uses a bundled Chrome, Edge or Brave extension. Setup takes four steps and is described in the <a href="https://github.com/Amorgabab/StudyNook#connect-the-browser-extension">README</a>.</p>
+</div></section>
+</main>
+
+<footer><div class="wrap row">
+  <span>© 2026 Amorgabab. All rights reserved. Free to download and use; not open source.</span>
+  <span><a href="https://github.com/Amorgabab/StudyNook/blob/main/LICENSE">License</a> · <a href="https://github.com/Amorgabab/StudyNook">Source</a> · <a href="https://github.com/Amorgabab/StudyNook/issues">Issues</a></span>
+</div></footer>
+</body>
+</html>
