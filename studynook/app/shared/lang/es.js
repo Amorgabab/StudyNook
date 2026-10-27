@@ -168,6 +168,7 @@
   'set.sec.general': 'General', 'set.sec.appearance': 'Apariencia', 'set.sec.timer': 'Temporizador', 'set.sec.blocking': 'Bloqueo',
   'set.sec.notifications': 'Notificaciones', 'set.sec.sound': 'Sonido', 'set.sec.data': 'Datos y privacidad', 'set.sec.about': 'Acerca de',
   'set.lang': 'Idioma', 'set.lang.desc': 'Se usa en la aplicación, las notificaciones, el menú de la bandeja y la extensión.',
+  'set.tray': 'Seguir en la bandeja', 'set.tray.desc': 'Al cerrar la ventana, StudyNook se oculta en lugar de salir. Siempre activo si el guardián o el bloqueo de sitios funcionan todo el tiempo.',
   'set.startup': 'Iniciar con Windows', 'set.startup.desc': 'Abrir StudyNook en la bandeja al iniciar sesión.', 'set.startup.dev': 'Disponible en la aplicación instalada.',
   'set.name': 'Tu nombre', 'set.name.desc': 'Se usa en los saludos de la página Concentración.',
   'set.pet': 'Nombre del compañero', 'set.pet.desc': 'El compañero crece con tu tiempo total de concentración.',

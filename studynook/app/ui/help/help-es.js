@@ -19,7 +19,7 @@
           '**Sitios web**: añade los sitios que te distraen y luego instala y vincula la extensión (consulta **Bloquear sitios**).'
         ] },
         { h: 'Dónde está el temporizador' },
-        { p: 'Al cerrar la ventana, StudyNook se oculta en la bandeja (abajo a la derecha de la barra de tareas). Durante una sesión, un pequeño **minitemporizador** queda por encima de las demás ventanas; haz clic en él para volver a StudyNook.' },
+        { p: 'Al cerrar la ventana, StudyNook se cierra cuando nada necesita seguir activo. Se oculta en la bandeja (abajo a la derecha de la barra de tareas) si hay una sesión en curso, si el guardián o el bloqueo de sitios funcionan todo el tiempo, o si activas Ajustes → General → Seguir en la bandeja. Durante una sesión, un pequeño **minitemporizador** queda por encima de las demás ventanas; haz clic en él para volver a StudyNook.' },
         { note: 'No puedes cerrar ni salir de StudyNook mientras exista una sesión, aunque esté en pausa. Termina primero la sesión.', kind: 'info' }
       ]
     },

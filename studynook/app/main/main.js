@@ -163,7 +163,7 @@ const ctx = {
   extConnected: false,     // is the Chrome extension talking to the bridge?
   gateCleared: false,      // iron session: window-close gate passed?
   T, notify, broadcast, pushSnapshot, addFeed, lifeLog, snapshotFor,
-  grantXp, sendRewardEvents, grantAchievements, writeBackup, applyLoginItem, buildTrayMenu, hideReminderWindow,
+  grantXp, sendRewardEvents, grantAchievements, writeBackup, applyLoginItem, buildTrayMenu, hideReminderWindow, quitApp: () => app.quit(),
   win: () => win
 };
 

@@ -29,6 +29,7 @@ function defaultData() {
       theme: 'system',     // system | light | dark | auto (dark 19:00–07:00)
       language: 'en',      // en | ar | fr | es
       startWithWindows: false,
+      closeToTray: false,  // false: the X quits when nothing needs to keep running
       dailyGoalMin: 120,   // 0 = no daily goal
       notify: { focusEnd: true, breakEnd: true, blocker: true },
       miniWindow: true,
@@ -128,6 +129,7 @@ function sanitizeData(d) {
   s.theme = Prefs.THEMES.includes(s.theme) ? s.theme : 'system';
   s.language = Prefs.normLang(s.language);
   s.startWithWindows = s.startWithWindows === true;
+  s.closeToTray = s.closeToTray === true;
   s.dailyGoalMin = num(s.dailyGoalMin, 120, 0, 720);
   const nt = obj(s.notify); s.notify = nt;
   for (const k of ['focusEnd', 'breakEnd', 'blocker']) nt[k] = nt[k] !== false;

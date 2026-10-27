@@ -21,7 +21,7 @@
           '**Websites**: add distracting sites, then install and pair the browser extension (see **Blocking websites**).'
         ] },
         { h: 'Where the timer lives' },
-        { p: 'Closing the window hides StudyNook to the tray (bottom-right of the taskbar). While a session runs, a small **mini timer** stays on top of other windows; click it to bring StudyNook back.' },
+        { p: 'Closing the window quits StudyNook when nothing needs to keep running. It hides to the tray (bottom-right of the taskbar) if a session is running, if the guard or website blocking is set to run all the time, or if you turn on Settings → General → Keep running in the tray. While a session runs, a small **mini timer** stays on top of other windows; click it to bring StudyNook back.' },
         { note: 'You cannot close or quit StudyNook while a session exists, even when it is paused. End the session first.', kind: 'info' }
       ]
     },

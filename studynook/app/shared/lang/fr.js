@@ -168,6 +168,7 @@
   'set.sec.general': 'Général', 'set.sec.appearance': 'Apparence', 'set.sec.timer': 'Minuteur', 'set.sec.blocking': 'Blocage',
   'set.sec.notifications': 'Notifications', 'set.sec.sound': 'Son', 'set.sec.data': 'Données et confidentialité', 'set.sec.about': 'À propos',
   'set.lang': 'Langue', 'set.lang.desc': 'Utilisée pour l’application, les notifications, le menu de la barre des tâches et l’extension.',
+  'set.tray': 'Rester dans la barre des tâches', 'set.tray.desc': 'Fermer la fenêtre masque StudyNook au lieu de quitter. Toujours actif si le garde ou le blocage de sites fonctionne en permanence.',
   'set.startup': 'Lancer avec Windows', 'set.startup.desc': 'Ouvrir StudyNook dans la barre des tâches à la connexion.', 'set.startup.dev': 'Disponible dans l’application installée.',
   'set.name': 'Votre prénom', 'set.name.desc': 'Utilisé dans les messages d’accueil de la page Concentration.',
   'set.pet': 'Nom du compagnon', 'set.pet.desc': 'Le compagnon grandit avec votre temps de concentration total.',
