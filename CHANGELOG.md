@@ -7,6 +7,14 @@ extension has its own version number (see `studynook/extension/manifest.json`).
 The commit history before 1.5.1 is rough (bulk uploads and auto-generated titles). This file is
 the readable version of it.
 
+## 1.5.4
+
+- **New Notes page.** A notes list on one side (newest first, with search) and a large editor on
+  the other. Every note has its own **Auto / LTR / RTL** text direction, so Arabic reads right to
+  left and English left to right. You can attach PDFs to a note (button or drag and drop, up to 20
+  of 50 MB each); they are copied into the data folder's `attachments` folder and open in your PDF
+  app. Dropping a file anywhere else in the window no longer replaces the whole interface.
+
 ## 1.5.3
 
 - **Session recovery fixed.** If StudyNook was force-closed twice during one session, the second
@@ -14,11 +22,6 @@ the readable version of it.
   it is killed. Ending a recovered session early also counts the minutes focused before the
   kill (it counted none). The saved session file is now written atomically, so a kill in the
   middle of a save can no longer corrupt it.
-- **New Notes page.** A notes list on one side (newest first, with search) and a large editor on
-  the other. Every note has its own **Auto / LTR / RTL** text direction, so Arabic reads right to
-  left and English left to right. You can attach PDFs to a note (button or drag and drop, up to 20
-  of 50 MB each); they are copied into the data folder's `attachments` folder and open in your PDF
-  app. Dropping a file anywhere else in the window no longer replaces the whole interface.
 - **Taskbar icon fixed.** `StudyNook.exe` carried Electron's default atom icon (the build skipped
   editing the executable), so the taskbar, Start menu and file lists showed it instead of the
   StudyNook icon. The build now stamps the real icon and product name into the exe.
