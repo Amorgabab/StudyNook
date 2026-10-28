@@ -118,7 +118,13 @@
         ] },
         { p: 'Elige una tarea en la lista **Tarea** de la página Concentración antes de empezar y la sesión contará para ella. Completar una tarea da 5 XP.' },
         { h: 'Notas' },
-        { p: 'Las notas son de texto sencillo y se guardan solas mientras escribes. Se almacenan con el resto de tus datos en este equipo.' }
+        { p: 'Las notas son de texto sencillo y se guardan solas mientras escribes. Se almacenan con el resto de tus datos en este equipo.' },
+        { ul: [
+          '**Lista de notas**: la columna izquierda muestra tus notas, de la más reciente a la más antigua. Usa **Buscar en las notas** para encontrar una por su título o su texto.',
+          '**Dirección del texto**: cada nota tiene su propio ajuste **Auto / LTR / RTL**. Auto sigue el idioma en el que escribes, así que las notas en árabe se leen de derecha a izquierda y las de español de izquierda a derecha. Elige LTR o RTL para forzarlo.',
+          '**PDF**: pulsa **Adjuntar PDF**, o suelta archivos PDF sobre una nota, para guardar contigo las diapositivas y los artículos (hasta 20 por nota, 50 MB cada uno). Haz clic en un PDF para abrirlo en tu lector de PDF.',
+          'Los PDF se copian a la carpeta **attachments** dentro de tu carpeta de datos (**Ajustes → Datos y privacidad → Carpeta de datos**). No forman parte de **Exportar datos** ni de las copias automáticas: copia esa carpeta si cambias de equipo.'
+        ] }
       ]
     },
     {

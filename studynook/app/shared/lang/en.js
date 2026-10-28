@@ -76,6 +76,7 @@
   'tasks.delete': 'Delete task', 'tasks.delete.confirm': 'Delete this task?',
 
   /* notes */
+  'notes.search': 'Search notes', 'notes.none': 'No notes match', 'notes.noText': 'No text yet', 'notes.words': '{n} words', 'notes.dir': 'Text direction', 'notes.dir.auto': 'Auto', 'notes.dir.auto.tip': 'Follow the language you type', 'notes.dir.ltr.tip': 'Left to right', 'notes.dir.rtl.tip': 'Right to left', 'notes.att.add': 'Attach PDF', 'notes.att.drop': 'Drop PDFs to attach them to this note', 'notes.att.open': 'Open {name}', 'notes.att.remove': 'Remove {name}', 'notes.att.remove.confirm': 'Remove this PDF from the note?', 'notes.att.skipped': 'Some files were not attached', 'notes.att.missing': 'Could not open the PDF', 'notes.att.err.not-pdf': 'only PDF files can be attached', 'notes.att.err.too-big': 'files over 50 MB are skipped', 'notes.att.err.limit': 'a note holds up to 20 PDFs', 'notes.att.err.unreadable': 'the file could not be read',
   'notes.title': 'Notes', 'notes.sub': 'Plain-text notes saved on this computer as you type.', 'notes.new': 'New note',
   'notes.empty.t': 'No notes yet', 'notes.empty.d': 'Use notes for lecture snippets, formulas and reminders.',
   'notes.untitled': 'Untitled', 'notes.placeholder': 'Start writing…', 'notes.field.title': 'Note title', 'notes.field.body': 'Note text',

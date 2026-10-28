@@ -120,7 +120,13 @@
         ] },
         { p: 'Select a task in the **Task** list on the Focus page before you start, and the session is counted against it. Completing a task earns 5 XP.' },
         { h: 'Notes' },
-        { p: 'Notes are plain text and save automatically as you type. They are stored with the rest of your data on this computer.' }
+        { p: 'Notes are plain text and save automatically as you type. They are stored with the rest of your data on this computer.' },
+        { ul: [
+          '**Notes list**: the left side lists your notes, newest first. Use **Search notes** to find one by title or text.',
+          '**Text direction**: each note has its own **Auto / LTR / RTL** setting. Auto follows the language you type, so Arabic notes read right to left and English notes left to right. Pick LTR or RTL to force it.',
+          '**PDFs**: press **Attach PDF**, or drop PDF files onto a note, to keep lecture slides and papers with it (up to 20 per note, 50 MB each). Click a PDF to open it in your PDF app.',
+          'PDFs are copied into the **attachments** folder inside your data folder (**Settings → Data & privacy → Data folder**). They are not part of **Export data** or the automatic backups, so copy that folder if you move computers.'
+        ] }
       ]
     },
     {

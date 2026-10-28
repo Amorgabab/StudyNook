@@ -20,6 +20,7 @@ const NookRules = require('../../extension/rules.js');
 const NookLinks = require('../shared/links.js');
 const ExtFinder = require('./extfinder.js');
 const processes = require('./processes.js');
+const NoteFiles = require('./note-files.js');
 
 const dedupe = (arr) => arr.filter((x, i) => arr.indexOf(x) === i);
 const SOUND_IDS = new Set(['rain', 'waves', 'fire', 'cafe']);
@@ -30,6 +31,7 @@ const RAW_SECTIONS = ['theme', 'miniWindow', 'bridgeAllowOrigins', 'language', '
 function registerIpc(ctx) {
   const { ipcMain, shell, store, session, guardian, T, broadcast, pushSnapshot, addFeed, grantXp, sendRewardEvents, grantAchievements, writeBackup, applyLoginItem, buildTrayMenu, DATA_DIR, SOUNDS_DIR, EXT_DIR } = ctx;
   let lastAmbientAward = 0;
+  const ATTACH_DIR = path.join(DATA_DIR, 'attachments');
   const H = (ch, fn) => ipcMain.handle(ch, async (e, payload) => {
     const r = await fn(payload || {}, e);
     return r === undefined ? null : r;
@@ -311,7 +313,7 @@ function registerIpc(ctx) {
     return true;
   });
   H('notes:add', () => {
-    const n = { id: 'n' + Date.now() + Math.floor(Math.random() * 999), title: '', body: '', updatedAt: Date.now() };
+    const n = { id: 'n' + Date.now() + Math.floor(Math.random() * 999), title: '', body: '', dir: 'auto', attachments: [], updatedAt: Date.now() };
     store.mutate((d) => { d.notes = d.notes || []; d.notes.unshift(n); });
     pushSnapshot();
     return n;
@@ -322,11 +324,54 @@ function registerIpc(ctx) {
       if (!n) return;
       if (p.title !== undefined) n.title = String(p.title).slice(0, 120);
       if (p.body !== undefined) n.body = String(p.body).slice(0, 50000);
+      if (p.dir !== undefined) n.dir = ['auto', 'ltr', 'rtl'].includes(p.dir) ? p.dir : 'auto';
       n.updatedAt = Date.now();
     });
     return true;   // no snapshot push: called on every keystroke
   });
-  H('notes:remove', (p) => { store.mutate((d) => { d.notes = (d.notes || []).filter((x) => x.id !== p.id); }); pushSnapshot(); return true; });
+  H('notes:remove', (p) => {
+    store.mutate((d) => { d.notes = (d.notes || []).filter((x) => x.id !== p.id); });
+    NoteFiles.removeNoteFiles(ATTACH_DIR, String(p.id || ''));
+    pushSnapshot();
+    return true;
+  });
+
+  /* ---- PDF attachments on notes (copied into <data>/attachments; the UI never sends a path to open) ---- */
+  const noteById = (id) => (store.data.notes || []).find((x) => x.id === id);
+  function attachFiles(noteId, paths) {
+    const note = noteById(noteId);
+    if (!note) return { added: 0, rejected: [], ok: false };
+    const room = Math.max(0, NoteFiles.MAX_PER_NOTE - (note.attachments || []).length);
+    const r = NoteFiles.addPdfs(ATTACH_DIR, noteId, paths, room);
+    if (r.added.length) {
+      store.mutate((d) => { const n = (d.notes || []).find((x) => x.id === noteId); if (n) { n.attachments = (n.attachments || []).concat(r.added); n.updatedAt = Date.now(); } });
+      pushSnapshot();
+    }
+    return { ok: true, added: r.added.length, rejected: r.rejected };
+  }
+  H('notes:attach', async (p) => {
+    if (!noteById(p.id)) return { ok: false, added: 0, rejected: [] };
+    const res = await ctx.dialog.showOpenDialog(ctx.win(), { properties: ['openFile', 'multiSelections'], filters: [{ name: 'PDF', extensions: ['pdf'] }] });
+    if (res.canceled || !res.filePaths.length) return { ok: true, added: 0, rejected: [] };
+    return attachFiles(p.id, res.filePaths);
+  });
+  H('notes:attachPaths', (p) => attachFiles(p.id, Array.isArray(p.paths) ? p.paths.filter((x) => typeof x === 'string' && x) : []));
+  H('notes:openAttachment', async (p) => {
+    const n = noteById(p.id);
+    const a = n && (n.attachments || []).find((x) => x.id === p.att);
+    const f = a && NoteFiles.attachmentPath(ATTACH_DIR, n.id, a.id);
+    if (!f || !fs.existsSync(f)) return { ok: false, error: 'missing' };
+    const err = await shell.openPath(f);
+    return err ? { ok: false, error: err } : { ok: true };
+  });
+  H('notes:removeAttachment', (p) => {
+    const n = noteById(p.id);
+    if (!n || !(n.attachments || []).some((x) => x.id === p.att)) return false;
+    NoteFiles.removeAttachmentFile(ATTACH_DIR, n.id, p.att);
+    store.mutate((d) => { const m = (d.notes || []).find((x) => x.id === p.id); if (m) { m.attachments = (m.attachments || []).filter((x) => x.id !== p.att); m.updatedAt = Date.now(); } });
+    pushSnapshot();
+    return true;
+  });
 
   /* ---- backups & sounds ---- */
   H('data:backupNow', () => ({ name: writeBackup() }));

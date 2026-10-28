@@ -81,31 +81,135 @@ Views.tasks = function (c) {
 };
 
 /* ============================= NOTES ============================= */
+/* Two panes, like a notes app: the list on the start side (search, newest first) and the open note on
+   the other. Each note has its own text direction (auto / LTR / RTL) and can carry PDF attachments. */
 Views.notes = function (c) {
+  c.classList.add('page-flush');
   const d = App.state.data;
-  c.appendChild(N.pageHead(t('notes.title'), t('notes.sub'), N.btn(t('notes.new'), { cls: 'btn-primary', icon: 'plus', onclick: () => nook.invoke('notes:add') })));
-  const notes = d.notes || [];
-  if (!notes.length) { const e = N.card(); e.appendChild(N.empty('notebook-pen', t('notes.empty.t'), t('notes.empty.d'))); c.appendChild(e); return; }
-  const grid = N.el('div', { class: 'notes-grid' });
-  for (const n of notes) {
-    const card = N.el('section', { class: 'card note-card' });
-    const title = N.el('input', { class: 'note-title', placeholder: t('notes.untitled'), value: n.title || '', 'aria-label': t('notes.field.title'), 'data-draft': 'notes:title:' + n.id });
-    const body = N.el('textarea', { class: 'note-body', placeholder: t('notes.placeholder'), 'aria-label': t('notes.field.body'), 'data-draft': 'notes:body:' + n.id });
-    body.value = n.body || '';
-    const saved = N.el('span', { class: 'caption', text: t('notes.saved', { when: N.timeAgo(n.updatedAt) }) });
-    let timer = null;
-    const save = () => {
-      clearTimeout(timer);
-      saved.textContent = t('notes.saving');
-      timer = setTimeout(() => { nook.invoke('notes:save', { id: n.id, title: title.value, body: body.value }); saved.textContent = t('notes.saved', { when: t('fmt.justNow') }); }, 500);
-    };
-    title.addEventListener('input', save);
-    body.addEventListener('input', save);
-    card.append(title, body, N.el('div', { class: 'row spread' }, saved,
-      N.iconBtn('trash', t('notes.delete'), () => App.confirm(t('notes.delete.confirm'), n.title || t('notes.untitled'), () => nook.invoke('notes:remove', { id: n.id }), t('common.delete')), 'danger')));
-    grid.appendChild(card);
+  const notes = (d.notes || []).slice().sort((a, b) => b.updatedAt - a.updatedAt);
+  const REASONS = ['not-pdf', 'too-big', 'limit', 'unreadable'];
+  const fmtSize = (b) => (b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
+  const words = (s) => (String(s).trim() ? String(s).trim().split(/\s+/).length : 0);
+  const snippet = (n) => (String(n.body || '').split('\n').map((l) => l.trim()).find(Boolean) || '').slice(0, 90);
+  const sel = notes.find((n) => n.id === App.noteId) || notes[0] || null;
+  if (sel) App.noteId = sel.id;
+
+  const app = N.el('div', { class: 'notes-app' });
+  const side = N.el('aside', { class: 'notes-side', 'aria-label': t('notes.title') });
+  const main = N.el('section', { class: 'notes-main' });
+  app.append(side, main);
+  c.appendChild(app);
+
+  const select = (id, focusTitle) => { App.noteId = id; App.noteFocusTitle = !!focusTitle; App.render(); };
+  const create = () => nook.invoke('notes:add').then((n) => { if (n) select(n.id, true); });
+
+  /* ---------- list pane ---------- */
+  const search = N.el('input', { class: 'input notes-search', type: 'search', placeholder: t('notes.search'), 'aria-label': t('notes.search'), 'data-draft': 'notes:search', value: App.noteQuery || '' });
+  const list = N.el('div', { class: 'notes-list', role: 'list' });
+  function paintList() {
+    list.innerHTML = '';
+    const q = (App.noteQuery || '').trim().toLowerCase();
+    const shown = q ? notes.filter((n) => (n.title + '\n' + n.body).toLowerCase().includes(q)) : notes;
+    if (!shown.length) list.appendChild(N.el('p', { class: 'notes-none small', text: notes.length ? t('notes.none') : t('notes.empty.d') }));
+    for (const n of shown) {
+      const att = (n.attachments || []).length;
+      list.appendChild(N.el('button', { type: 'button', class: 'note-item', role: 'listitem', 'data-id': n.id, 'aria-current': sel && n.id === sel.id ? 'true' : null, onclick: () => select(n.id) },
+        N.el('span', { class: 'nt-title ellipsis', dir: 'auto', text: n.title || t('notes.untitled') }),
+        N.el('span', { class: 'nt-snip ellipsis', dir: 'auto', text: snippet(n) || t('notes.noText') }),
+        N.el('span', { class: 'nt-meta' }, N.el('span', { text: N.timeAgo(n.updatedAt) }), att ? N.el('span', { class: 'nt-att' }, N.icon('paperclip', 12), String(att)) : null)));
+    }
   }
-  c.appendChild(grid);
+  search.addEventListener('input', () => { App.noteQuery = search.value; paintList(); });
+  search.addEventListener('keydown', (e) => { if (e.key === 'Escape' && search.value) { search.value = ''; App.noteQuery = ''; paintList(); } });
+  side.append(
+    N.el('div', { class: 'notes-side-head' }, N.el('h1', { class: 'notes-h', text: t('notes.title') }),
+      N.btn(t('notes.new'), { cls: 'btn-primary btn-sm', icon: 'file-plus', onclick: create })),
+    N.el('div', { class: 'notes-search-wrap' }, N.icon('search', 16), search),
+    list);
+  paintList();
+
+  /* ---------- editor pane ---------- */
+  if (!sel) {
+    main.appendChild(N.el('div', { class: 'notes-blank' }, N.empty('notebook-pen', t('notes.empty.t'), t('notes.empty.d')),
+      N.btn(t('notes.new'), { cls: 'btn-primary', icon: 'file-plus', onclick: create })));
+    return;
+  }
+  const n = sel;
+  const title = N.el('input', { class: 'note-title', placeholder: t('notes.untitled'), value: n.title || '', dir: n.dir || 'auto', 'aria-label': t('notes.field.title'), 'data-draft': 'notes:title:' + n.id });
+  const body = N.el('textarea', { class: 'note-body', placeholder: t('notes.placeholder'), dir: n.dir || 'auto', 'aria-label': t('notes.field.body'), 'data-draft': 'notes:body:' + n.id });
+  body.value = n.body || '';
+  const count = N.el('span', { class: 'caption', text: t('notes.words', { n: words(n.body) }) });
+  const saved = N.el('span', { class: 'caption', text: t('notes.saved', { when: N.timeAgo(n.updatedAt) }) });
+  const activeItem = () => list.querySelector('.note-item[aria-current="true"]');
+  let timer = null;
+  const save = () => {
+    clearTimeout(timer);
+    saved.textContent = t('notes.saving');
+    n.title = title.value; n.body = body.value; n.updatedAt = Date.now();   // keep the in-memory copy current across redraws
+    count.textContent = t('notes.words', { n: words(body.value) });
+    const it = activeItem();
+    if (it) {
+      it.querySelector('.nt-title').textContent = title.value || t('notes.untitled');
+      it.querySelector('.nt-snip').textContent = snippet(n) || t('notes.noText');
+    }
+    timer = setTimeout(() => { nook.invoke('notes:save', { id: n.id, title: n.title, body: n.body, dir: n.dir }); saved.textContent = t('notes.saved', { when: t('fmt.justNow') }); }, 450);
+  };
+  title.addEventListener('input', save);
+  body.addEventListener('input', save);
+  title.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); body.focus(); } });
+
+  const dirSeg = N.seg([['auto', t('notes.dir.auto'), 'languages'], ['ltr', 'LTR', 'pilcrow-right'], ['rtl', 'RTL', 'pilcrow-left']], n.dir || 'auto', (v) => {
+    n.dir = v; title.dir = v; body.dir = v;
+    nook.invoke('notes:save', { id: n.id, dir: v });
+    for (const b of dirSeg.querySelectorAll('button')) b.setAttribute('aria-pressed', b.dataset.v === v ? 'true' : 'false');
+  }, { label: t('notes.dir'), titles: { auto: t('notes.dir.auto.tip'), ltr: t('notes.dir.ltr.tip'), rtl: t('notes.dir.rtl.tip') } });
+  const DIRS = 'auto ltr rtl'.split(' ');
+  [...dirSeg.querySelectorAll('button')].forEach((b, i) => { b.dataset.v = DIRS[i]; });
+
+  /* attachments */
+  const reportRejected = (r) => {
+    if (r && r.rejected && r.rejected.length) {
+      const why = REASONS.includes(r.rejected[0].reason) ? r.rejected[0].reason : 'unreadable';
+      App.toast(t('notes.att.skipped'), r.rejected.map((x) => x.name).slice(0, 3).join(', ') + ' · ' + t('notes.att.err.' + why), { kind: 'warning' });
+    }
+  };
+  const attach = () => nook.invoke('notes:attach', { id: n.id }).then(reportRejected);
+  const chips = N.el('div', { class: 'att-list' });
+  for (const a of (n.attachments || [])) {
+    chips.appendChild(N.el('span', { class: 'att-chip' },
+      N.el('button', { type: 'button', class: 'att-open', title: t('notes.att.open', { name: a.name }), onclick: () => nook.invoke('notes:openAttachment', { id: n.id, att: a.id }).then((r) => { if (r && !r.ok) App.toast(t('notes.att.missing'), a.name, { kind: 'warning' }); }) },
+        N.icon('file-text', 16), N.el('span', { class: 'att-name ellipsis', dir: 'auto', text: a.name }), N.el('span', { class: 'caption', dir: 'ltr', text: fmtSize(a.size) })),
+      N.iconBtn('x', t('notes.att.remove', { name: a.name }), () => App.confirm(t('notes.att.remove.confirm'), a.name, () => nook.invoke('notes:removeAttachment', { id: n.id, att: a.id }), t('common.delete')), 'danger')));
+  }
+
+  const del = N.iconBtn('trash', t('notes.delete'), () => App.confirm(t('notes.delete.confirm'), n.title || t('notes.untitled'), () => {
+    const i = notes.findIndex((x) => x.id === n.id), next = notes[i + 1] || notes[i - 1];
+    App.noteId = next ? next.id : null;
+    nook.invoke('notes:remove', { id: n.id });
+  }, t('common.delete')), 'danger');
+
+  main.append(
+    N.el('div', { class: 'note-editor' },
+      title,
+      N.el('div', { class: 'note-bar' }, dirSeg,
+        N.btn(t('notes.att.add'), { cls: 'btn-sm btn-ghost', icon: 'paperclip', onclick: attach }),
+        N.el('span', { class: 'grow' }), count, N.el('span', { class: 'faint' }, '·'), saved, del),
+      chips,
+      body,
+      N.el('div', { class: 'note-drop-hint', 'aria-hidden': 'true' }, N.icon('paperclip', 20), t('notes.att.drop'))));
+
+  // drop PDFs anywhere on the note to attach them
+  const hasFiles = (e) => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+  main.addEventListener('dragover', (e) => { if (hasFiles(e)) { e.preventDefault(); main.classList.add('dropping'); } });
+  main.addEventListener('dragleave', (e) => { if (!main.contains(e.relatedTarget)) main.classList.remove('dropping'); });
+  main.addEventListener('drop', (e) => {
+    main.classList.remove('dropping');
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    const paths = Array.from(e.dataTransfer.files).map((f) => nook.pathForFile(f)).filter(Boolean);
+    if (paths.length) nook.invoke('notes:attachPaths', { id: n.id, paths }).then(reportRejected);
+  });
+  if (App.noteFocusTitle) { App.noteFocusTitle = false; setTimeout(() => title.focus(), 0); }
 };
 
 /* ============================= APPS ============================= */

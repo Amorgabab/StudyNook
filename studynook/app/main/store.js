@@ -37,7 +37,7 @@ function defaultData() {
     },
     apps: { block: [], allow: [], allowOnce: {} },   // allowOnce: {norm: untilMs} (temporary)
     subjects: ['Math', 'Science', 'English', 'History', 'Computer science', 'Other'],
-    notes: [],              // {id, title, body, updatedAt}
+    notes: [],              // {id, title, body, dir: auto|ltr|rtl, attachments: [{id, name, size, addedAt}], updatedAt}
     sites: {
       enabled: true,
       mode: 'block',       // block | allow
@@ -148,7 +148,10 @@ function sanitizeData(d) {
   d.subjects = arr(d.subjects).filter((x) => typeof x === 'string').map((x) => x.slice(0, 40)).slice(0, 40);
   d.notes = arr(d.notes).filter((n) => n && typeof n === 'object').map((n) => ({
     id: str(n.id, 'n' + Math.random().toString(36).slice(2), 40), title: str(n.title, '', 120),
-    body: str(n.body, '', 50000), updatedAt: num(n.updatedAt, 0, 0, 8.64e15)
+    body: str(n.body, '', 50000), updatedAt: num(n.updatedAt, 0, 0, 8.64e15),
+    dir: ['auto', 'ltr', 'rtl'].includes(n.dir) ? n.dir : 'auto',
+    attachments: arr(n.attachments).filter((a) => a && typeof a === 'object' && /^[A-Za-z0-9_-]{1,40}$/.test(a.id)).slice(0, 20)
+      .map((a) => ({ id: a.id, name: str(a.name, 'file.pdf', 120), size: num(a.size, 0, 0, 2 ** 40), addedAt: num(a.addedAt, 0, 0, 8.64e15) }))
   }));
   d.tasks = arr(d.tasks).filter((t) => t && typeof t === 'object').map((t) => Object.assign({}, t, {
     id: str(t.id, 't' + Math.random().toString(36).slice(2), 40), text: str(t.text, '', 200),

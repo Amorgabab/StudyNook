@@ -35,7 +35,7 @@ const NAMES = [
   'heart', 'flower',
   // settings & help
   'sliders-horizontal', 'palette', 'database', 'rocket', 'wrench', 'rotate-ccw', 'download', 'upload',
-  'folder-open', 'power', 'languages'
+  'folder-open', 'power', 'languages', 'pilcrow-left', 'pilcrow-right', 'file-plus', 'paperclip'
 ];
 
 const src = process.argv[2];

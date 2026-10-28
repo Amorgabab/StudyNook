@@ -69,6 +69,8 @@
   'tasks.source.open': 'Ouvrir dans le navigateur', 'tasks.source.remove': 'Retirer le lien',
   'tasks.delete': 'Supprimer la tâche', 'tasks.delete.confirm': 'Supprimer cette tâche ?',
 
+  'notes.search': 'Rechercher dans les notes', 'notes.none': 'Aucune note ne correspond', 'notes.noText': 'Pas encore de texte', 'notes.words': '{n} mots', 'notes.dir': 'Sens du texte', 'notes.dir.auto': 'Auto', 'notes.dir.auto.tip': 'Suit la langue que vous écrivez', 'notes.dir.ltr.tip': 'De gauche à droite', 'notes.dir.rtl.tip': 'De droite à gauche', 'notes.att.add': 'Joindre un PDF', 'notes.att.drop': 'Déposez des PDF pour les joindre à cette note', 'notes.att.open': 'Ouvrir {name}', 'notes.att.remove': 'Retirer {name}', 'notes.att.remove.confirm': 'Retirer ce PDF de la note ?', 'notes.att.skipped': 'Certains fichiers n’ont pas été joints', 'notes.att.missing': 'Impossible d’ouvrir le PDF', 'notes.att.err.not-pdf': 'seuls les fichiers PDF peuvent être joints', 'notes.att.err.too-big': 'les fichiers de plus de 50 Mo sont ignorés', 'notes.att.err.limit': 'une note contient jusqu’à 20 PDF', 'notes.att.err.unreadable': 'le fichier n’a pas pu être lu',
+
   'notes.title': 'Notes', 'notes.sub': 'Des notes en texte brut, enregistrées sur cet ordinateur pendant que vous tapez.', 'notes.new': 'Nouvelle note',
   'notes.empty.t': 'Aucune note pour l’instant', 'notes.empty.d': 'Utilisez les notes pour des extraits de cours, des formules et des rappels.',
   'notes.untitled': 'Sans titre', 'notes.placeholder': 'Commencez à écrire…', 'notes.field.title': 'Titre de la note', 'notes.field.body': 'Texte de la note',

@@ -118,7 +118,13 @@
         ] },
         { p: 'Choisissez une tâche dans la liste **Tâche** de la page Concentration avant de commencer, et la session lui sera comptée. Terminer une tâche rapporte 5 XP.' },
         { h: 'Notes' },
-        { p: 'Les notes sont en texte brut et s’enregistrent automatiquement pendant que vous tapez. Elles sont stockées avec le reste de vos données sur cet ordinateur.' }
+        { p: 'Les notes sont en texte brut et s’enregistrent automatiquement pendant que vous tapez. Elles sont stockées avec le reste de vos données sur cet ordinateur.' },
+        { ul: [
+          '**Liste des notes** : la colonne de gauche liste vos notes, de la plus récente à la plus ancienne. Utilisez **Rechercher dans les notes** pour en trouver une par son titre ou son texte.',
+          '**Sens du texte** : chaque note a son propre réglage **Auto / LTR / RTL**. Auto suit la langue que vous écrivez : les notes en arabe se lisent de droite à gauche, celles en français de gauche à droite. Choisissez LTR ou RTL pour l’imposer.',
+          '**PDF** : appuyez sur **Joindre un PDF**, ou déposez des fichiers PDF sur une note, pour garder vos supports de cours avec elle (jusqu’à 20 par note, 50 Mo chacun). Cliquez sur un PDF pour l’ouvrir dans votre lecteur PDF.',
+          'Les PDF sont copiés dans le dossier **attachments** de votre dossier de données (**Réglages → Données et confidentialité → Dossier de données**). Ils ne font pas partie de **Exporter les données** ni des sauvegardes automatiques : copiez ce dossier si vous changez d’ordinateur.'
+        ] }
       ]
     },
     {

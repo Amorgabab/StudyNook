@@ -69,6 +69,8 @@
   'tasks.source.open': 'فتح في المتصفح', 'tasks.source.remove': 'إزالة الرابط',
   'tasks.delete': 'حذف المهمة', 'tasks.delete.confirm': 'حذف هذه المهمة؟',
 
+  'notes.search': 'ابحث في الملاحظات', 'notes.none': 'لا توجد ملاحظات مطابقة', 'notes.noText': 'لا يوجد نص بعد', 'notes.words': '{n} كلمة', 'notes.dir': 'اتجاه النص', 'notes.dir.auto': 'تلقائي', 'notes.dir.auto.tip': 'يتبع اللغة التي تكتب بها', 'notes.dir.ltr.tip': 'من اليسار إلى اليمين', 'notes.dir.rtl.tip': 'من اليمين إلى اليسار', 'notes.att.add': 'إرفاق PDF', 'notes.att.drop': 'أفلت ملفات PDF لإرفاقها بهذه الملاحظة', 'notes.att.open': 'فتح {name}', 'notes.att.remove': 'إزالة {name}', 'notes.att.remove.confirm': 'إزالة ملف PDF هذا من الملاحظة؟', 'notes.att.skipped': 'لم تُرفق بعض الملفات', 'notes.att.missing': 'تعذّر فتح ملف PDF', 'notes.att.err.not-pdf': 'يمكن إرفاق ملفات PDF فقط', 'notes.att.err.too-big': 'تُتجاهل الملفات الأكبر من 50 ميغابايت', 'notes.att.err.limit': 'تتسع الملاحظة لـ 20 ملف PDF كحد أقصى', 'notes.att.err.unreadable': 'تعذّرت قراءة الملف',
+
   'notes.title': 'الملاحظات', 'notes.sub': 'ملاحظات نصية تُحفظ على هذا الجهاز أثناء الكتابة.', 'notes.new': 'ملاحظة جديدة',
   'notes.empty.t': 'لا توجد ملاحظات بعد', 'notes.empty.d': 'استخدم الملاحظات لمقتطفات المحاضرات والمعادلات والتذكيرات.',
   'notes.untitled': 'بدون عنوان', 'notes.placeholder': 'ابدأ الكتابة…', 'notes.field.title': 'عنوان الملاحظة', 'notes.field.body': 'نص الملاحظة',

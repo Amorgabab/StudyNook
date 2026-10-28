@@ -114,6 +114,57 @@ suite('ipc · handlers', () => {
   });
 });
 
+suite('ipc · notes and PDF attachments', () => {
+  const fs2 = require('fs');
+  const mkPdf = (r, name) => { const f = path.join(r.ctx.DATA_DIR, name); fs2.writeFileSync(f, '%PDF-1.4\n%%EOF\n'); return f; };
+  test('a note starts auto-direction with no attachments; direction is validated on save', async () => {
+    const r = rig();
+    const n = await r.call('notes:add');
+    expect(n.dir).toBe('auto');
+    expect(n.attachments).toEqual([]);
+    await r.call('notes:save', { id: n.id, dir: 'rtl' });
+    expect(r.store.data.notes[0].dir).toBe('rtl');
+    await r.call('notes:save', { id: n.id, dir: 'sideways' });
+    expect(r.store.data.notes[0].dir).toBe('auto');
+  });
+  test('attach by dialog and by path; open uses only ids; remove deletes the file', async () => {
+    const r = rig();
+    const n = await r.call('notes:add');
+    r.ctx.dialog = { showOpenDialog: async () => ({ canceled: false, filePaths: [mkPdf(r, 'one.pdf')] }) };
+    expect((await r.call('notes:attach', { id: n.id })).added).toBe(1);
+    const viaPath = await r.call('notes:attachPaths', { id: n.id, paths: [mkPdf(r, 'two.pdf'), '/etc/passwd', 42] });
+    expect(viaPath.added).toBe(1);
+    const atts = r.store.data.notes[0].attachments;
+    expect(atts.length).toBe(2);
+    const opened = [];
+    r.ctx.shell.openPath = async (f) => { opened.push(f); return ''; };
+    expect((await r.call('notes:openAttachment', { id: n.id, att: atts[0].id })).ok).toBe(true);
+    expect(opened[0].startsWith(path.join(r.ctx.DATA_DIR, 'attachments', n.id))).toBe(true);
+    expect((await r.call('notes:openAttachment', { id: n.id, att: '../../etc/passwd' })).ok).toBe(false);
+    expect(opened.length).toBe(1);
+    const file = opened[0];
+    expect(await r.call('notes:removeAttachment', { id: n.id, att: atts[0].id })).toBe(true);
+    expect(fs2.existsSync(file)).toBe(false);
+    expect(r.store.data.notes[0].attachments.length).toBe(1);
+  });
+  test('cancelling the dialog attaches nothing; a missing note is refused', async () => {
+    const r = rig();
+    const n = await r.call('notes:add');
+    r.ctx.dialog = { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) };
+    expect((await r.call('notes:attach', { id: n.id })).added).toBe(0);
+    expect((await r.call('notes:attachPaths', { id: 'nope', paths: [mkPdf(r, 'x.pdf')] })).ok).toBe(false);
+  });
+  test('deleting a note deletes its PDFs from disk', async () => {
+    const r = rig();
+    const n = await r.call('notes:add');
+    await r.call('notes:attachPaths', { id: n.id, paths: [mkPdf(r, 'gone.pdf')] });
+    const dir = path.join(r.ctx.DATA_DIR, 'attachments', n.id);
+    expect(fs2.existsSync(dir)).toBe(true);
+    await r.call('notes:remove', { id: n.id });
+    expect(fs2.existsSync(dir)).toBe(false);
+  });
+});
+
 suite('snapshots · each window gets only what it draws', () => {
   function heavy() {
     const r = rig();

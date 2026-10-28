@@ -103,6 +103,9 @@ window.App = (function () {
     document.getElementById('view').scrollTop = 0;
   };
   App.render = function () { renderView(); };
+  // A file dropped outside a drop target would load into the window and replace the whole UI.
+  window.addEventListener('dragover', (e) => e.preventDefault());
+  window.addEventListener('drop', (e) => e.preventDefault());
 
   function paintStatus() {
     const S = App.state, d = S.data;

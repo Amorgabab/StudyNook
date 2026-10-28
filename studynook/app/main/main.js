@@ -13,7 +13,7 @@
    ============================================================ */
 'use strict';
 
-const { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell, nativeImage, nativeTheme, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell, dialog, nativeImage, nativeTheme, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -161,7 +161,7 @@ function ensureBackups() {
 /* Everything the extracted modules (ipc.js, watch.js, snapshot.js) need.
    Live objects (store, session, guardian, server) are added in whenReady. */
 const ctx = {
-  app, ipcMain, shell, nativeTheme, DATA_DIR, SOUNDS_DIR, EXT_DIR,
+  app, ipcMain, shell, dialog, nativeTheme, DATA_DIR, SOUNDS_DIR, EXT_DIR,
   extConnected: false,     // is the Chrome extension talking to the bridge?
   gateCleared: false,      // iron session: window-close gate passed?
   T, notify, broadcast, pushSnapshot, addFeed, lifeLog, snapshotFor,

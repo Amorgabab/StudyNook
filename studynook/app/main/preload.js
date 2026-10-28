@@ -5,7 +5,7 @@
    ============================================================ */
 'use strict';
 
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 // Commands the UI may send → main process
 const INVOKE = new Set([
@@ -14,6 +14,7 @@ const INVOKE = new Set([
   'settings:set', 'profile:set', 'pet:rename', 'pet:pet',
   'tasks:add', 'tasks:toggle', 'tasks:remove', 'tasks:addSource', 'tasks:removeSource', 'open:url',
   'subjects:set', 'notes:add', 'notes:save', 'notes:remove',
+  'notes:attach', 'notes:attachPaths', 'notes:openAttachment', 'notes:removeAttachment',
   'data:backupNow', 'data:openBackups', 'data:openSounds', 'sound:get',
   'apps:add', 'apps:remove', 'apps:toggle', 'apps:addCatalog', 'apps:scan',
   'apps:previewAllow', 'apps:killNow',
@@ -40,5 +41,7 @@ contextBridge.exposeInMainWorld('nook', {
     const listener = (_e, data) => cb(data);
     ipcRenderer.on(channel, listener);
     return () => ipcRenderer.removeListener(channel, listener);
-  }
+  },
+  // Dropped files only expose their path through webUtils (Electron 32+). Used to attach PDFs by drag and drop.
+  pathForFile: (file) => { try { return webUtils.getPathForFile(file); } catch (e) { return ''; } }
 });
