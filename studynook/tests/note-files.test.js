@@ -64,6 +64,18 @@ suite('note files · path safety and cleanup', () => {
   });
 });
 
+suite('note files · pruning', () => {
+  test('keeps referenced PDFs, drops unreferenced files and folders of notes that are gone', () => {
+    const r1 = NoteFiles.addPdfs(root, 'p1', [pdf('k1.pdf'), pdf('k2.pdf')], 20);
+    NoteFiles.addPdfs(root, 'p2', [pdf('gone.pdf')], 20);
+    NoteFiles.pruneAttachments(root, [{ id: 'p1', attachments: [{ id: r1.added[0].id }] }]);
+    expect(fs.existsSync(NoteFiles.attachmentPath(root, 'p1', r1.added[0].id))).toBe(true);
+    expect(fs.existsSync(NoteFiles.attachmentPath(root, 'p1', r1.added[1].id))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'p2'))).toBe(false);
+    NoteFiles.pruneAttachments(path.join(tmp, 'no-such-folder'), []);   // missing folder is fine
+  });
+});
+
 suite('store · note shape', () => {
   test('direction defaults to auto and unknown values are refused', () => {
     const d = sanitizeData({ notes: [{ id: 'n1', title: 't', body: 'b' }, { id: 'n2', dir: 'sideways' }, { id: 'n3', dir: 'rtl' }, { id: 'n4', dir: 'ltr' }] });

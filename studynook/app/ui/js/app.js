@@ -103,6 +103,10 @@ window.App = (function () {
     document.getElementById('view').scrollTop = 0;
   };
   App.render = function () { renderView(); };
+  // Closing the window (X, Alt+F4, tray Quit) must not lose the last few hundred ms of note typing.
+  window.addEventListener('beforeunload', () => {
+    if (App.notePending) { nook.sendSync('notes:saveNow', App.notePending); App.notePending = null; }
+  });
   // A file dropped outside a drop target would load into the window and replace the whole UI.
   window.addEventListener('dragover', (e) => e.preventDefault());
   window.addEventListener('drop', (e) => e.preventDefault());

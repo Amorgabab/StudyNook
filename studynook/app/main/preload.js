@@ -25,6 +25,10 @@ const INVOKE = new Set([
   'reminder:allowOnce', 'reminder:killNow', 'reminder:dismiss'
 ]);
 
+// Synchronous calls, used only while the window is closing: an async save could still be in flight
+// when the process exits, so these block until main has written the data to disk.
+const SYNC = new Set(['notes:saveNow']);
+
 // Events the UI may listen to ← main process
 const ON = new Set([
   'snapshot', 'tick', 'session-event', 'reward', 'guard', 'reminder', 'ext-status', 'iron-gate',
@@ -42,6 +46,7 @@ contextBridge.exposeInMainWorld('nook', {
     ipcRenderer.on(channel, listener);
     return () => ipcRenderer.removeListener(channel, listener);
   },
+  sendSync: (channel, payload) => (SYNC.has(channel) ? ipcRenderer.sendSync(channel, payload) : null),
   // Dropped files only expose their path through webUtils (Electron 32+). Used to attach PDFs by drag and drop.
   pathForFile: (file) => { try { return webUtils.getPathForFile(file); } catch (e) { return ''; } }
 });

@@ -71,6 +71,8 @@
 
   'notes.search': 'Buscar en las notas', 'notes.none': 'Ninguna nota coincide', 'notes.noText': 'Aún sin texto', 'notes.words': '{n} palabras', 'notes.dir': 'Dirección del texto', 'notes.dir.auto': 'Auto', 'notes.dir.auto.tip': 'Sigue el idioma en el que escribes', 'notes.dir.ltr.tip': 'De izquierda a derecha', 'notes.dir.rtl.tip': 'De derecha a izquierda', 'notes.att.add': 'Adjuntar PDF', 'notes.att.drop': 'Suelta PDF para adjuntarlos a esta nota', 'notes.att.open': 'Abrir {name}', 'notes.att.remove': 'Quitar {name}', 'notes.att.remove.confirm': '¿Quitar este PDF de la nota?', 'notes.att.skipped': 'Algunos archivos no se adjuntaron', 'notes.att.missing': 'No se pudo abrir el PDF', 'notes.att.err.not-pdf': 'solo se pueden adjuntar archivos PDF', 'notes.att.err.too-big': 'se omiten los archivos de más de 50 MB', 'notes.att.err.limit': 'una nota admite hasta 20 PDF', 'notes.att.err.unreadable': 'no se pudo leer el archivo',
 
+  'notes.chars': '{n} / {max} caracteres', 'notes.full': 'Esta nota está llena', 'notes.full.d': '{n} caracteres no cupieron. Una nota admite hasta 50.000 caracteres: divídela en dos notas.',
+
   'notes.title': 'Notas', 'notes.sub': 'Notas de texto sencillo que se guardan en este equipo mientras escribes.', 'notes.new': 'Nueva nota',
   'notes.empty.t': 'Aún no hay notas', 'notes.empty.d': 'Usa las notas para fragmentos de clase, fórmulas y recordatorios.',
   'notes.untitled': 'Sin título', 'notes.placeholder': 'Empieza a escribir…', 'notes.field.title': 'Título de la nota', 'notes.field.body': 'Texto de la nota',

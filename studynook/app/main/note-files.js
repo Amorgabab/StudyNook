@@ -60,4 +60,21 @@ function removeNoteFiles(root, noteId) {
   try { fs.rmSync(path.join(root, noteId), { recursive: true, force: true }); } catch (e) { /* best effort */ }
 }
 
-module.exports = { MAX_BYTES, MAX_PER_NOTE, isSafeId, attachmentPath, addPdfs, removeAttachmentFile, removeNoteFiles };
+/** Delete every attachment file no note refers to (a whole folder when its note is gone).
+    Reset passes no notes, so the folder is emptied; an import keeps the PDFs of notes it brings back. */
+function pruneAttachments(root, notes) {
+  const keep = new Map();
+  for (const n of notes || []) if (n && isSafeId(n.id)) keep.set(n.id, new Set((n.attachments || []).map((a) => a && a.id)));
+  let dirs = [];
+  try { dirs = fs.readdirSync(root, { withFileTypes: true }); } catch (e) { return; }
+  for (const d of dirs) {
+    const full = path.join(root, d.name);
+    if (!d.isDirectory() || !keep.has(d.name)) { try { fs.rmSync(full, { recursive: true, force: true }); } catch (e) { /* best effort */ } continue; }
+    const ids = keep.get(d.name);
+    for (const f of fs.readdirSync(full)) {
+      if (!ids.has(f.replace(/\.pdf$/i, ''))) { try { fs.rmSync(path.join(full, f), { force: true }); } catch (e) { /* best effort */ } }
+    }
+  }
+}
+
+module.exports = { pruneAttachments, MAX_BYTES, MAX_PER_NOTE, isSafeId, attachmentPath, addPdfs, removeAttachmentFile, removeNoteFiles };

@@ -318,7 +318,7 @@ function registerIpc(ctx) {
     pushSnapshot();
     return n;
   });
-  H('notes:save', (p) => {
+  function saveNote(p) {
     store.mutate((d) => {
       const n = (d.notes || []).find((x) => x.id === p.id);
       if (!n) return;
@@ -328,6 +328,12 @@ function registerIpc(ctx) {
       n.updatedAt = Date.now();
     });
     return true;   // no snapshot push: called on every keystroke
+  }
+  H('notes:save', saveNote);
+  // The window is closing with typing not yet saved: save it and write data.json right now (the
+  // usual save is debounced and the quit may already be past its own final save).
+  ipcMain.on('notes:saveNow', (e, p) => {
+    try { saveNote(p || {}); store.saveNow(); e.returnValue = true; } catch (err) { e.returnValue = false; }
   });
   H('notes:remove', (p) => {
     store.mutate((d) => { d.notes = (d.notes || []).filter((x) => x.id !== p.id); });
@@ -421,6 +427,7 @@ function registerIpc(ctx) {
       const { defaultData, deepMerge, sanitizeData } = require('./store.js');
       store.data = sanitizeData(deepMerge(defaultData(), obj2));
       store.saveNow();
+      NoteFiles.pruneAttachments(ATTACH_DIR, store.data.notes);   // PDFs of notes the import replaced
       pushSnapshot();
       return true;
     } catch (e) { return false; }
@@ -430,6 +437,7 @@ function registerIpc(ctx) {
     const { defaultData } = require('./store.js');
     store.data = defaultData();
     store.saveNow();
+    NoteFiles.pruneAttachments(ATTACH_DIR, []);   // "reset all data" includes attached PDFs
     pushSnapshot();
     return true;
   });

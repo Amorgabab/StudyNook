@@ -7,6 +7,16 @@ extension has its own version number (see `studynook/extension/manifest.json`).
 The commit history before 1.5.1 is rough (bulk uploads and auto-generated titles). This file is
 the readable version of it.
 
+## 1.5.5
+
+- **Notes keep the last thing you typed.** Text typed less than half a second before closing
+  StudyNook (X, Alt+F4 or tray Quit) was lost. It is now saved to disk as the window closes.
+- **Reset all data now deletes attached PDFs too**, and importing data removes the PDFs of notes
+  the import replaced. They used to stay in the data folder.
+- **The 50,000-character note limit is visible.** Near the limit the word count becomes a
+  character count, and a paste that does not fit says how much was left out. Before, the end of a
+  longer note was cut off silently the next time StudyNook started.
+
 ## 1.5.4
 
 - **New Notes page.** A notes list on one side (newest first, with search) and a large editor on

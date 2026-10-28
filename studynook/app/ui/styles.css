@@ -357,6 +357,9 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16p
 .note-bar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-3); padding-bottom: var(--s-3); border-bottom: 1px solid var(--border); }
 .note-body { flex: 1; width: 100%; min-height: 320px; border: none; background: transparent; outline: none; resize: none; padding: var(--s-3) 0 var(--s-8); font-size: 15.5px; line-height: 1.75; color: var(--text); }
 .note-body::placeholder { color: var(--text-faint); }
+.note-full { color: var(--danger); font-weight: 600; }
+.note-meta { display: inline-flex; align-items: center; gap: var(--s-3); white-space: nowrap; }   /* count, saved state and delete wrap together */
+.note-title:focus-visible, .note-body:focus-visible { box-shadow: none; }   /* in the editor the caret is the focus cue; a ring around the page is noise */
 .att-list { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .att-list:empty { display: none; }
 .att-chip { display: inline-flex; align-items: center; max-width: 100%; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface-2); }

@@ -21,10 +21,11 @@ function rig() {
   const store = new Store(path.join(dir, 'data.json'));
   const session = new SessionEngine({ getSettings: () => store.data.settings.timer, onPhaseEnd: () => {}, onState: () => {} });
   const handlers = new Map();
+  const syncHandlers = new Map();
   const sent = [];
   const guardian = { pauseFor: () => true, _loop: () => {}, previewAllowlist: async () => [], killNow: async () => 0, allowOnce: () => true, pausedMinLeft: () => 0, isArmed: () => false, pendingReminder: null };
   const ctx = {
-    ipcMain: { handle: (ch, fn) => handlers.set(ch, fn) },
+    ipcMain: { handle: (ch, fn) => handlers.set(ch, fn), on: (ch, fn) => syncHandlers.set(ch, fn) },
     shell: { openPath: () => {}, openExternal: () => {} },
     store, session, guardian, server: { error: null },
     DATA_DIR: dir, SOUNDS_DIR: path.join(dir, 'sounds'), EXT_DIR: path.join(__dirname, '..', 'extension'),
@@ -37,13 +38,20 @@ function rig() {
   };
   registerIpc(ctx);
   const call = (ch, payload) => handlers.get(ch)({ sender: 'x' }, payload);   // Electron passes (event, payload)
-  return { ctx, handlers, call, sent, store, session };
+  // ipcRenderer.sendSync: the handler sets event.returnValue
+  const callSync = (ch, payload) => { const e = { sender: 'x', returnValue: undefined }; syncHandlers.get(ch)(e, payload); return e.returnValue; };
+  return { ctx, handlers, syncHandlers, call, callSync, sent, store, session };
 }
 
 suite('ipc · preload whitelist and handlers agree', () => {
   const { handlers } = rig();
   test('every whitelisted channel has a handler', () => {
     expect(setFrom('INVOKE').filter((ch) => !handlers.has(ch))).toEqual([]);
+  });
+  test('synchronous channels match their handlers both ways', () => {
+    const { syncHandlers } = rig();
+    expect(setFrom('SYNC').filter((ch) => !syncHandlers.has(ch))).toEqual([]);
+    expect([...syncHandlers.keys()].filter((ch) => !setFrom('SYNC').includes(ch))).toEqual([]);
   });
   test('every handler is whitelisted (otherwise the UI can never reach it)', () => {
     expect([...handlers.keys()].filter((ch) => !setFrom('INVOKE').includes(ch))).toEqual([]);
@@ -153,6 +161,30 @@ suite('ipc · notes and PDF attachments', () => {
     r.ctx.dialog = { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) };
     expect((await r.call('notes:attach', { id: n.id })).added).toBe(0);
     expect((await r.call('notes:attachPaths', { id: 'nope', paths: [mkPdf(r, 'x.pdf')] })).ok).toBe(false);
+  });
+  test('saving on window close writes data.json to disk at once, not after the usual delay', async () => {
+    const r = rig();
+    const n = await r.call('notes:add');
+    r.store.saveNow();
+    expect(r.callSync('notes:saveNow', { id: n.id, title: 'T', body: 'typed right before closing' })).toBe(true);
+    const onDisk = JSON.parse(fs2.readFileSync(path.join(r.ctx.DATA_DIR, 'data.json'), 'utf8'));
+    expect(onDisk.notes.find((x) => x.id === n.id).body).toBe('typed right before closing');
+  });
+  test('reset deletes every attached PDF; import keeps only the PDFs of notes it brings back', async () => {
+    const r = rig();
+    const a = await r.call('notes:add');
+    const b = await r.call('notes:add');
+    await r.call('notes:attachPaths', { id: a.id, paths: [mkPdf(r, 'keep.pdf')] });
+    await r.call('notes:attachPaths', { id: b.id, paths: [mkPdf(r, 'drop.pdf')] });
+    const root = path.join(r.ctx.DATA_DIR, 'attachments');
+    // import an export that only contains note a
+    const exported = JSON.parse(JSON.stringify(r.store.data));
+    exported.notes = exported.notes.filter((x) => x.id === a.id);
+    expect(await r.call('data:import', { json: JSON.stringify(exported) })).toBe(true);
+    expect(fs2.existsSync(path.join(root, a.id))).toBe(true);
+    expect(fs2.existsSync(path.join(root, b.id))).toBe(false);
+    expect(await r.call('data:reset')).toBe(true);
+    expect(fs2.readdirSync(root)).toEqual([]);
   });
   test('deleting a note deletes its PDFs from disk', async () => {
     const r = rig();

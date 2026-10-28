@@ -135,10 +135,19 @@ Views.notes = function (c) {
     return;
   }
   const n = sel;
-  const title = N.el('input', { class: 'note-title', placeholder: t('notes.untitled'), value: n.title || '', dir: n.dir || 'auto', 'aria-label': t('notes.field.title'), 'data-draft': 'notes:title:' + n.id });
-  const body = N.el('textarea', { class: 'note-body', placeholder: t('notes.placeholder'), dir: n.dir || 'auto', 'aria-label': t('notes.field.body'), 'data-draft': 'notes:body:' + n.id });
+  const MAX_BODY = 50000;   // must match notes:save in ipc.js and sanitizeData in store.js
+  const title = N.el('input', { class: 'note-title', maxlength: '120', placeholder: t('notes.untitled'), value: n.title || '', dir: n.dir || 'auto', 'aria-label': t('notes.field.title'), 'data-draft': 'notes:title:' + n.id });
+  const body = N.el('textarea', { class: 'note-body', maxlength: String(MAX_BODY), placeholder: t('notes.placeholder'), dir: n.dir || 'auto', 'aria-label': t('notes.field.body'), 'data-draft': 'notes:body:' + n.id });
   body.value = n.body || '';
-  const count = N.el('span', { class: 'caption', text: t('notes.words', { n: words(n.body) }) });
+  const count = N.el('span', { class: 'caption' });
+  // Word count; near the limit it turns into a character count so a long paste never gets cut silently.
+  const paintCount = () => {
+    const len = body.value.length;
+    count.textContent = len >= MAX_BODY * 0.9 ? t('notes.chars', { n: len.toLocaleString(), max: MAX_BODY.toLocaleString() }) : t('notes.words', { n: words(body.value) });
+    count.classList.toggle('note-full', len >= MAX_BODY);
+    if (len >= MAX_BODY) count.title = t('notes.full');
+    else count.removeAttribute('title');
+  };
   const saved = N.el('span', { class: 'caption', text: t('notes.saved', { when: N.timeAgo(n.updatedAt) }) });
   const activeItem = () => list.querySelector('.note-item[aria-current="true"]');
   let timer = null;
@@ -146,14 +155,26 @@ Views.notes = function (c) {
     clearTimeout(timer);
     saved.textContent = t('notes.saving');
     n.title = title.value; n.body = body.value; n.updatedAt = Date.now();   // keep the in-memory copy current across redraws
-    count.textContent = t('notes.words', { n: words(body.value) });
+    paintCount();
     const it = activeItem();
     if (it) {
       it.querySelector('.nt-title').textContent = title.value || t('notes.untitled');
       it.querySelector('.nt-snip').textContent = snippet(n) || t('notes.noText');
     }
-    timer = setTimeout(() => { nook.invoke('notes:save', { id: n.id, title: n.title, body: n.body, dir: n.dir }); saved.textContent = t('notes.saved', { when: t('fmt.justNow') }); }, 450);
+    App.notePending = { id: n.id, title: n.title, body: n.body, dir: n.dir };   // flushed on window close
+    timer = setTimeout(() => {
+      nook.invoke('notes:save', App.notePending);
+      App.notePending = null;
+      saved.textContent = t('notes.saved', { when: t('fmt.justNow') });
+    }, 450);
   };
+  paintCount();
+  // Text pasted past the limit is dropped by the browser: say so instead of losing it quietly.
+  body.addEventListener('paste', (e) => {
+    const room = MAX_BODY - (body.value.length - (body.selectionEnd - body.selectionStart));
+    const text = (e.clipboardData && e.clipboardData.getData('text')) || '';
+    if (text.length > room) App.toast(t('notes.full'), t('notes.full.d', { n: (text.length - room).toLocaleString() }), { kind: 'warning' });
+  });
   title.addEventListener('input', save);
   body.addEventListener('input', save);
   title.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); body.focus(); } });
@@ -193,7 +214,7 @@ Views.notes = function (c) {
       title,
       N.el('div', { class: 'note-bar' }, dirSeg,
         N.btn(t('notes.att.add'), { cls: 'btn-sm btn-ghost', icon: 'paperclip', onclick: attach }),
-        N.el('span', { class: 'grow' }), count, N.el('span', { class: 'faint' }, '·'), saved, del),
+        N.el('span', { class: 'grow' }), N.el('span', { class: 'note-meta' }, count, N.el('span', { class: 'faint' }, '·'), saved, del)),
       chips,
       body,
       N.el('div', { class: 'note-drop-hint', 'aria-hidden': 'true' }, N.icon('paperclip', 20), t('notes.att.drop'))));
