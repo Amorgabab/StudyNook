@@ -13,7 +13,7 @@
       'pop.pair.label': 'Pair with the desktop app. Enter the 6-letter code from StudyNook → Websites.', 'pop.pair': 'Pair',
       'pop.pair.ok': 'Paired', 'pop.pair.fail': 'Wrong code, or the app is not running', 'pop.foot': 'Lists and settings live in the StudyNook app.',
       'blk.title': 'This site is blocked during focus', 'blk.body': 'It will be available again when your focus session ends.',
-      'blk.left': 'Focus ends in {time}', 'blk.always': 'Blocking is set to always on', 'blk.back': 'Go back', 'blk.close': 'Close tab',
+      'blk.left': 'Focus ends in {time}', 'blk.always': 'Blocking is set to always on', 'blk.paused': 'Session paused · {time} left', 'blk.offline': 'StudyNook is closed · blocking stays on', 'blk.back': 'Go back', 'blk.close': 'Close tab',
       'blk.count': 'Blocked {n} times so far', 'blk.site': 'this site',
       quotes: ['Small steps every day add up.', 'Focus is a gift to your future self.', 'The internet will still be here after your session.', 'One page, one problem, one minute at a time.', 'Deep work first, everything else later.', 'Progress hides inside quiet minutes.']
     },
@@ -27,7 +27,7 @@
       'pop.pair.label': 'اربط الإضافة بتطبيق سطح المكتب. أدخل الرمز المكوّن من 6 أحرف من StudyNook ← المواقع.', 'pop.pair': 'ربط',
       'pop.pair.ok': 'تم الربط', 'pop.pair.fail': 'رمز خاطئ أو أن التطبيق لا يعمل', 'pop.foot': 'القوائم والإعدادات موجودة في تطبيق StudyNook.',
       'blk.title': 'هذا الموقع محظور أثناء التركيز', 'blk.body': 'سيعود متاحًا عند انتهاء جلسة التركيز.',
-      'blk.left': 'ينتهي التركيز بعد {time}', 'blk.always': 'الحظر مضبوط ليعمل دائمًا', 'blk.back': 'رجوع', 'blk.close': 'أغلق علامة التبويب',
+      'blk.left': 'ينتهي التركيز بعد {time}', 'blk.always': 'الحظر مضبوط ليعمل دائمًا', 'blk.paused': 'الجلسة متوقفة مؤقتًا · المتبقي {time}', 'blk.offline': 'StudyNook مغلق · يبقى الحظر قائمًا', 'blk.back': 'رجوع', 'blk.close': 'أغلق علامة التبويب',
       'blk.count': 'حُظر {n} مرة حتى الآن', 'blk.site': 'هذا الموقع',
       quotes: ['الخطوات الصغيرة كل يوم تتراكم.', 'التركيز هدية لنفسك في المستقبل.', 'سيبقى الإنترنت هنا بعد جلستك.', 'صفحة واحدة، مسألة واحدة، دقيقة واحدة في كل مرة.', 'العمل العميق أولًا، وكل شيء آخر لاحقًا.', 'التقدم يختبئ في الدقائق الهادئة.']
     },
@@ -41,7 +41,7 @@
       'pop.pair.label': 'Associez l’extension à l’application. Saisissez le code à 6 lettres affiché dans StudyNook → Sites web.', 'pop.pair': 'Associer',
       'pop.pair.ok': 'Associée', 'pop.pair.fail': 'Code incorrect, ou l’application n’est pas ouverte', 'pop.foot': 'Les listes et réglages se trouvent dans l’application StudyNook.',
       'blk.title': 'Ce site est bloqué pendant la concentration', 'blk.body': 'Il sera de nouveau accessible à la fin de votre session.',
-      'blk.left': 'Fin de la session dans {time}', 'blk.always': 'Le blocage est réglé sur « toujours »', 'blk.back': 'Revenir', 'blk.close': 'Fermer l’onglet',
+      'blk.left': 'Fin de la session dans {time}', 'blk.always': 'Le blocage est réglé sur « toujours »', 'blk.paused': 'Session en pause · {time} restantes', 'blk.offline': 'StudyNook est fermé · le blocage reste actif', 'blk.back': 'Revenir', 'blk.close': 'Fermer l’onglet',
       'blk.count': 'Bloqué {n} fois jusqu’ici', 'blk.site': 'ce site',
       quotes: ['Les petits pas de chaque jour finissent par compter.', 'La concentration est un cadeau pour votre futur vous.', 'Internet sera toujours là après votre session.', 'Une page, un problème, une minute à la fois.', 'Le travail profond d’abord, le reste ensuite.', 'Le progrès se cache dans les minutes calmes.']
     },
@@ -55,7 +55,7 @@
       'pop.pair.label': 'Vincula la extensión con la aplicación. Escribe el código de 6 letras de StudyNook → Sitios web.', 'pop.pair': 'Vincular',
       'pop.pair.ok': 'Vinculada', 'pop.pair.fail': 'Código incorrecto o la aplicación no está abierta', 'pop.foot': 'Las listas y los ajustes están en la aplicación StudyNook.',
       'blk.title': 'Este sitio está bloqueado durante la concentración', 'blk.body': 'Volverá a estar disponible cuando termine tu sesión.',
-      'blk.left': 'La sesión termina en {time}', 'blk.always': 'El bloqueo está configurado como siempre activo', 'blk.back': 'Volver', 'blk.close': 'Cerrar pestaña',
+      'blk.left': 'La sesión termina en {time}', 'blk.always': 'El bloqueo está configurado como siempre activo', 'blk.paused': 'Sesión en pausa · quedan {time}', 'blk.offline': 'StudyNook está cerrado · el bloqueo sigue activo', 'blk.back': 'Volver', 'blk.close': 'Cerrar pestaña',
       'blk.count': 'Bloqueado {n} veces hasta ahora', 'blk.site': 'este sitio',
       quotes: ['Los pequeños pasos de cada día suman.', 'Concentrarte es un regalo para tu yo del futuro.', 'Internet seguirá aquí después de tu sesión.', 'Una página, un problema, un minuto cada vez.', 'Primero el trabajo profundo, lo demás después.', 'El progreso se esconde en los minutos tranquilos.']
     }

@@ -58,10 +58,10 @@ function createWatch(ctx) {
      relaunches the app if it is closed or killed mid-session (see watchdog.js).
      Checked every ~10 s; cheap when one is already running. */
   let lastWatchdogCheck = 0;
-  function ensureWatchdog() {
+  function ensureWatchdog(force) {
     if (process.env.NOOK_SMOKE || !session || !session.isActive()) return;
     const now = Date.now();
-    if (now - lastWatchdogCheck < 10000) return;
+    if (!force && now - lastWatchdogCheck < 10000) return;
     lastWatchdogCheck = now;
     try {
       const started = Watchdog.ensure({

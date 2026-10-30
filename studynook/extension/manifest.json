@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "StudyNook Tab Guardian",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Cozy companion of the StudyNook desktop app: distracting tabs take a nap during focus sessions. Works standalone too, with its own mini timer.",
   "permissions": ["storage", "alarms", "declarativeNetRequest", "webNavigation", "tabs"],
   "host_permissions": ["http://*/*", "https://*/*"],

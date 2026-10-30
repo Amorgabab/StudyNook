@@ -51,6 +51,18 @@ suite('watchdog · decisions', () => {
     expect(wd.tick()).toBe('clean-exit');
     expect(t.relaunches).toBe(0);
   });
+  test('the crash-loop budget is generous enough to survive a burst of kills, and can be reset', () => {
+    expect(WD.MAX_RESTARTS >= 10).toBe(true);
+    const fs = require('fs'), os = require('os'), path = require('path');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nook-wdhist-'));
+    const file = path.join(dir, 'watchdog-history.json');
+    fs.writeFileSync(file, JSON.stringify([Date.now(), Date.now(), Date.now(), Date.now(), Date.now()]));
+    WD.resetHistory(dir);                       // a person started the app
+    expect(fs.existsSync(file)).toBe(false);
+    WD.resetHistory(dir);                       // nothing to delete is fine
+    WD.resetHistory(path.join(dir, 'missing'));
+  });
+
   test('crash loop: gives up after the budget, old attempts expire', () => {
     const { wd, t } = make({ relaunch: () => { return null; } });
     t.alive.clear();

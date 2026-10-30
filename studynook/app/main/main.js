@@ -20,6 +20,7 @@ const fs = require('fs');
 const { Store } = require('./store.js');
 const { clampToArea } = require('./bounds.js');
 const { writeFileAtomic } = require('./atomic.js');
+const Watchdog = require('./watchdog.js');
 const { SessionEngine } = require('./session.js');
 const Iron = require('../shared/iron.js');
 const { Guardian } = require('./guardian.js');
@@ -88,6 +89,7 @@ function salvageInterruptedSession(s, why) {
   store.mutate((d) => addFeed(d, { kind: 'warn', text: T(iron ? 'main.feed.interruptedIron' : 'main.feed.interrupted', { why: T(whyKey), min: mins(minutes) }) }));
 }
 
+let watchdogAsked = false;   // true while the current session has already triggered a watchdog check
 function recoverInterruptedSession() {
   const s = readSessionFile();
   if (!s) return;
@@ -174,6 +176,22 @@ const ctx = {
 ------------------------------------------------------------ */
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) { app.quit(); }
+
+/* The relaunch helper must already exist when an "End task" lands, including one seconds after the app
+   opens. The 2-second timer in watch.js used to start it, which left the first ~2 s unprotected: a kill
+   then was never relaunched. So start it here, as soon as the session file says one is active. */
+function startWatchdogEarly() {
+  try {
+    const s = readSessionFile();
+    if (!(s && s.active && Number(s.savedAt) > 0 && Date.now() - Number(s.savedAt) <= Watchdog.STALE_MS)) return;
+    const started = Watchdog.ensure({
+      execPath: process.execPath, scriptPath: path.join(__dirname, 'watchdog.js'), mainPid: process.pid,
+      dataDir: DATA_DIR, launch: [process.execPath].concat(app.isPackaged ? [] : [app.getAppPath()])
+    });
+    if (started) lifeLog('watchdog-started', { watching: process.pid, early: true });
+  } catch (e) { /* watch.js starts it a moment later anyway */ }
+}
+if (gotLock && !process.env.NOOK_SMOKE) startWatchdogEarly();
 app.on('second-instance', () => { if (win) { win.show(); win.focus(); } });
 
 app.whenReady().then(() => {
@@ -187,6 +205,8 @@ app.whenReady().then(() => {
   migrateOldData();
   store = new Store(path.join(DATA_DIR, 'data.json'));
   lifeLog('boot', { version: app.getVersion(), packaged: app.isPackaged, afterWatchdogRelaunch: process.argv.includes('--restarted-by-watchdog') });
+  // A person opened the app: earlier relaunches no longer count against the crash-loop budget.
+  if (!process.argv.includes('--restarted-by-watchdog')) Watchdog.resetHistory(DATA_DIR);
   progress.refreshStreak(store.data);
   ensureBackups();
   applyLoginItem();
@@ -206,7 +226,13 @@ app.whenReady().then(() => {
     getSettings: () => store.data.settings.timer,
     isIronLocked: () => Iron.isLocked(store.data.settings.timer.ironLockedUntil, Date.now()),
     onTick: (st) => broadcast('tick', st),
-    onState: () => pushSnapshot(),
+    onState: () => {
+      pushSnapshot();
+      // A session just started: bring the relaunch helper up at once instead of on the next 2 s tick.
+      const on = !!(session && session.isActive());
+      if (on && !watchdogAsked) { watchdogAsked = true; if (ctx.ensureWatchdog) ctx.ensureWatchdog(true); }
+      if (!on) watchdogAsked = false;
+    },
     onPhaseEnd: (info) => handlePhaseEnd(info),
     persist: (st) => {
       try {
@@ -242,6 +268,8 @@ app.whenReady().then(() => {
   Object.assign(ctx, { store, session, guardian, server });
   ctx.snapshots = createSnapshots(ctx);
   const watch = createWatch(ctx);
+  ctx.ensureWatchdog = watch.ensureWatchdog;
+  watch.ensureWatchdog(true);
   setInterval(watch.pollExtStatus, 10000);
 
   createMainWindow();

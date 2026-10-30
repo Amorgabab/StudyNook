@@ -21,20 +21,22 @@
     const bounces = (st.bounces || {})[dom] || 0;
     $('meta').textContent = bounces > 1 ? t('blk.count', { n: bounces }) : '';
 
-    let endsAt = 0;
-    if (st.connected && st.session && st.session.active && st.session.phase === 'focus') endsAt = Date.now() + st.session.remainingSec * 1000;
-    else if (!st.connected && st.timer && st.timer.running && st.timer.phase === 'focus') endsAt = st.timer.endsAt;
+    const two = (n) => String(n).padStart(2, '0');
+    // m:ss under an hour, h:mm:ss above (a 2-hour Iron session used to read "119:02")
+    const fmtLeft = (sec) => (sec >= 3600 ? Math.floor(sec / 3600) + ':' + two(Math.floor((sec % 3600) / 60)) + ':' + two(sec % 60) : two(Math.floor(sec / 60)) + ':' + two(sec % 60));
+    const label = NookBlockLabel.blockLabel(st);
     const timerEl = $('timer');
-    if (endsAt) {
-      const tick = () => {
-        const s = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
-        timerEl.innerHTML = ico('timer') + '<span></span>';
-        timerEl.lastChild.textContent = t('blk.left', { time: String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0') });
-      };
+    const setLine = (icon, text) => { timerEl.innerHTML = ico(icon) + '<span></span>'; timerEl.lastChild.textContent = text; };
+    if (label.kind === 'countdown') {
+      const endsAt = label.endsAt || Date.now() + label.remainingSec * 1000;
+      const tick = () => setLine('timer', t('blk.left', { time: fmtLeft(Math.max(0, Math.round((endsAt - Date.now()) / 1000))) }));
       tick(); setInterval(tick, 1000);
+    } else if (label.kind === 'paused') {
+      setLine('pause', t('blk.paused', { time: fmtLeft(Math.max(0, Math.round(label.remainingSec || 0))) }));
+    } else if (label.kind === 'offline') {
+      setLine('info', t('blk.offline'));
     } else {
-      timerEl.innerHTML = ico('infinity') + '<span></span>';
-      timerEl.lastChild.textContent = t('blk.always');
+      setLine('infinity', t('blk.always'));
     }
   });
 

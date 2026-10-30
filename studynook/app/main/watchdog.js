@@ -20,9 +20,12 @@
        – app gone, session active    → relaunch the app, log it, and
          keep watching the new PID. The relaunched app resumes the
          session from session.json.
-   • Crash-loop guard: at most 5 relaunches per 10 minutes (the history
+   • Crash-loop guard: at most 10 relaunches per 10 minutes (the history
      lives in a file so it survives watchdog restarts), then it gives
-     up and logs why — a broken install must not respawn forever.
+     up and logs why — a broken install must not respawn forever. When
+     a person starts the app themselves, main.js clears that history
+     (resetHistory): giving up once must never leave later kills with
+     no relaunch at all.
    • Ending a session properly (finish / End early / Iron gate) deletes
      session.json, which is exactly the "don't restart me" signal.
 
@@ -40,7 +43,7 @@ const { makeLogger } = require('./lifecycle.js');
 
 const POLL_MS = 2000;
 const STALE_MS = 12 * 60 * 60 * 1000;     // same cut-off main.js uses to ignore an old session.json
-const MAX_RESTARTS = 5;
+const MAX_RESTARTS = 10;
 const WINDOW_MS = 10 * 60 * 1000;
 const IDLE_POLLS = 3;                      // ~6 s of "alive but no session" before the watchdog retires
 
@@ -177,4 +180,10 @@ function run(argv) {
 
 if (require.main === module) run(process.argv.slice(2));
 
-module.exports = { Watchdog, ensure, isRunning, pidAlive, POLL_MS, STALE_MS, MAX_RESTARTS, WINDOW_MS, IDLE_POLLS };
+/** Forget earlier relaunches. Called when a person starts the app (not the watchdog), so a budget
+    used up by an earlier burst of kills does not stop the next relaunch from happening. */
+function resetHistory(dataDir) {
+  try { fs.unlinkSync(path.join(dataDir, 'watchdog-history.json')); } catch (e) { /* none yet */ }
+}
+
+module.exports = { Watchdog, ensure, isRunning, pidAlive, resetHistory, POLL_MS, STALE_MS, MAX_RESTARTS, WINDOW_MS, IDLE_POLLS };

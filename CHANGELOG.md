@@ -7,6 +7,21 @@ extension has its own version number (see `studynook/extension/manifest.json`).
 The commit history before 1.5.1 is rough (bulk uploads and auto-generated titles). This file is
 the readable version of it.
 
+## 1.5.6
+
+- **Force-closing StudyNook during a session is now relaunched every time.**
+  - A kill in the first ~2 seconds after the app opened was never relaunched, because the
+    relaunch helper only started on a 2-second timer. It now starts as the app boots.
+  - After the helper gave up once (5 relaunches in 10 minutes), later kills got no relaunch at all
+    for the next 10 minutes. That budget is now cleared whenever you open the app yourself, and
+    raised to 10 relaunches.
+- **The blocked page tells the truth.** It said "Blocking is set to always on" whenever it had no
+  countdown, which also covered a paused session and a closed StudyNook. It now says "Session
+  paused · 1:59:02 left", "StudyNook is closed · blocking stays on", or "always on" only when that
+  is really your setting. Times over an hour show as h:mm:ss.
+- Browser extension 1.4.2 (new block-page text). After updating, reload the extension once from
+  `chrome://extensions`.
+
 ## 1.5.5
 
 - **Notes keep the last thing you typed.** Text typed less than half a second before closing

@@ -39,7 +39,7 @@ module.exports = [
   // Browser extension: service worker, popup and blocked page
   {
     files: ['extension/**/*.js'],
-    languageOptions: { sourceType: 'script', globals: { ...globals.browser, ...globals.serviceworker, chrome: 'readonly', importScripts: 'readonly', module: 'readonly', NookIcons: 'readonly', NookExtI18n: 'writable', NookRules: 'writable' } },
+    languageOptions: { sourceType: 'script', globals: { ...globals.browser, ...globals.serviceworker, chrome: 'readonly', importScripts: 'readonly', module: 'readonly', NookIcons: 'readonly', NookExtI18n: 'writable', NookRules: 'writable', NookBlockLabel: 'readonly' } },
     rules: shared
   }
 ];
