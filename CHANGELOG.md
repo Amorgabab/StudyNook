@@ -7,6 +7,14 @@ extension has its own version number (see `studynook/extension/manifest.json`).
 The commit history before 1.5.1 is rough (bulk uploads and auto-generated titles). This file is
 the readable version of it.
 
+## 1.5.7
+
+- **Sites no longer stay blocked after you end a session and close StudyNook right away.** The browser
+  extension keeps blocking if StudyNook disappears mid-focus (so End task cannot switch blocking off).
+  It could not tell that from a clean quit, so ending a session and closing the app within a few
+  seconds left sites blocked until the session's original end time. StudyNook now waits (up to 8
+  seconds) for the extension's next check before it exits, and only in that situation.
+
 ## 1.5.6
 
 - **Force-closing StudyNook during a session is now relaunched every time.**

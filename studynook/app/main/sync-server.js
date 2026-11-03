@@ -46,6 +46,26 @@ class SyncServer {
     this.server = null;
     this.lastConnected = false;
     this.pairAttempts = new Map(); // ip → [timestamps]
+    this.lastBlocking = false;     // did the last /state answer say "blocking is on"?
+    this.lastStateAt = 0;
+    this._pollWaiters = new Set();
+  }
+
+  /** The extension keeps blocking after the app vanishes mid-focus (so End task cannot switch blocking off).
+      The price: if the app quits right after a clean end, before the extension's next poll, the extension
+      never hears the session ended and blocks on. True when the extension was last told "blocking on" but
+      it is off now, so quitting should wait for one more poll. */
+  staleBlockingForExt(blockingNow) {
+    return !blockingNow && this.lastBlocking && Date.now() - this.lastStateAt < 20000;
+  }
+  /** Resolves on the next /state poll, or after `ms`. */
+  waitForPoll(ms) {
+    return new Promise((resolve) => {
+      let t = null;
+      const done = () => { clearTimeout(t); this._pollWaiters.delete(done); resolve(); };
+      t = setTimeout(done, ms);
+      this._pollWaiters.add(done);
+    });
   }
 
   start() {
@@ -170,6 +190,10 @@ class SyncServer {
     if (url === '/state' && req.method === 'GET') {
       const d = store.data;
       const sess = this.hooks.session.publicState();
+      // same rule the extension applies: a focus phase that is ticking, or an Iron focus that merely exists
+      this.lastBlocking = !!(sess.active && sess.phase === 'focus' && (sess.running || sess.blockActive));
+      this.lastStateAt = Date.now();
+      for (const done of [...this._pollWaiters]) done();
       return this._json(res, 200, {
         ok: true,
         now: Date.now(),

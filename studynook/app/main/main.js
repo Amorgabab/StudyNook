@@ -282,9 +282,23 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => { lifeLog('window-all-closed'); app.quit(); });
-app.on('before-quit', () => {
+let quitHeld = false;
+app.on('before-quit', (e) => {
   lifeLog('before-quit', { sessionActive: !!(session && session.isActive()) });
-  try { guardian.stop(); server.stop(); store.saveNow(); } catch (e) {}
+  // Ended a session and quit within the extension's poll interval: it would keep blocking until the old
+  // end time (it cannot tell a clean quit from an End task). Stay alive until it polls once more.
+  try {
+    const st = session && session.publicState();
+    const blockingNow = !!(st && st.active && st.phase === 'focus' && (st.running || st.blockActive));
+    if (!quitHeld && server && server.staleBlockingForExt(blockingNow)) {
+      quitHeld = true;
+      e.preventDefault();
+      lifeLog('quit-held-for-extension');
+      server.waitForPoll(8000).then(() => { lifeLog('quit-released'); app.quit(); });
+      return;
+    }
+  } catch (err) { /* never block a quit on a bug here */ }
+  try { guardian.stop(); server.stop(); store.saveNow(); } catch (err) { /* quitting anyway */ }
 });
 process.on('uncaughtException', (e) => {
   console.error('[crash]', e);
