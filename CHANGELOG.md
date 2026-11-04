@@ -7,6 +7,12 @@ extension has its own version number (see `studynook/extension/manifest.json`).
 The commit history before 1.5.1 is rough (bulk uploads and auto-generated titles). This file is
 the readable version of it.
 
+## 1.5.8
+
+- **The mini timer now drags by the pill and opens StudyNook from the egg.** Before, you dragged
+  the egg and clicked anywhere else to open. Now you drag from anywhere on the pill except the egg,
+  and clicking the egg brings StudyNook back.
+
 ## 1.5.7
 
 - **Sites no longer stay blocked after you end a session and close StudyNook right away.** The browser

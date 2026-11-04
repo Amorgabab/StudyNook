@@ -28,9 +28,14 @@ suite('mini window · pill', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'app', 'ui', 'mini.html'), 'utf8');
   const BODY = /\s*\{([^}]*)\}/.source;
   const rule = (sel) => (new RegExp(sel + BODY).exec(html) || [])[1] || '';
-  test('the pill is not a drag region (Electron swallows clicks there), the icon is the handle', () => {
-    expect(/app-region\s*:\s*drag/.test(rule('#pill'))).toBe(false);
-    expect(/app-region\s*:\s*drag/.test(rule('#stage'))).toBe(true);
+  test('the pill is the drag handle, the egg is a no-drag click target (Electron swallows clicks in drag regions)', () => {
+    expect(/app-region\s*:\s*drag/.test(rule('#pill'))).toBe(true);
+    expect(/app-region\s*:\s*no-drag/.test(rule('#stage'))).toBe(true);
+  });
+  test('the egg, not the pill, opens StudyNook', () => {
+    const js = fs.readFileSync(path.join(__dirname, '..', 'app', 'ui', 'mini.js'), 'utf8');
+    expect(/stage\.addEventListener\('click'/.test(js)).toBe(true);
+    expect(/pill\.addEventListener\('click'/.test(js)).toBe(false);
   });
   test('its shadow fits inside the window margin, so no square is clipped around it', () => {
     const inset = Number(/inset:\s*(\d+)px/.exec(rule('#pill'))[1]);

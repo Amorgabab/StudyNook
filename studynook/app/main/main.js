@@ -384,7 +384,7 @@ function ensureMini() {
   }));
   miniWin.loadFile(UI('mini.html'));
   miniWin.once('ready-to-show', () => { clampMini(); miniWin.show(); });
-  // The pill can be dragged by its icon; never let it leave the screen.
+  // The pill can be dragged anywhere but the egg; never let it leave the screen.
   miniWin.on('will-move', (e, next) => {
     const fit = clampToArea(next, screen.getDisplayMatching(next).workArea);
     if (fit.x !== next.x || fit.y !== next.y) { e.preventDefault(); miniWin.setBounds(fit); }
