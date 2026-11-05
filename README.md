@@ -58,6 +58,8 @@ StudyNook is built for **Windows**.
 
 **Installer.** Download the latest `StudyNook-Setup-<version>.exe` from [Releases](https://github.com/Amorgabab/StudyNook/releases) and run it.
 
+The installer is not code-signed, so Windows SmartScreen may say "Windows protected your PC" or show "unknown publisher". Click **More info**, then **Run anyway**. You can read the source in this repository.
+
 **From source.** You need [Node.js](https://nodejs.org) (LTS).
 
 ```bash
@@ -93,6 +95,10 @@ Everything is stored as readable JSON in `studynook/data/` (or your user-data fo
 ## Good to know
 
 - Browsers never let an app stop you from removing or turning off an extension. StudyNook warns you if the extension stops responding during a focus, and in an Iron session it closes the browser. It cannot do more than that.
+- Force-closing StudyNook during a session is a speed bump, not a lock. It is relaunched, but ending every StudyNook process at once (including the hidden helper) defeats it. With no session running, nothing relaunches the app.
+- Iron mode protects a session that exists. It cannot start one for you, and it only holds while a session is running or paused.
+- If StudyNook is closed while a focus is running, the extension keeps blocking until the session would have ended. A paused Iron focus keeps sites blocked for up to 12 hours after the last sync.
+- Attached note PDFs are stored in the data folder but are not included in Export data or the automatic backups.
 - The app closes programs you choose with a forced close, so save your work before a focus session.
 - Website blocking works in Chrome-family browsers only (Chrome, Edge, Brave).
 
