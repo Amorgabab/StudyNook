@@ -126,6 +126,10 @@ Views.settings = function (c) {
 
   if (cur === 'about') {
     card.appendChild(row(t('set.a.version'), t('set.a.local'), N.el('span', { class: 'badge', text: 'v' + (S.appVersion || '') })));
+    card.appendChild(row(t('set.a.license'), t('set.a.license.desc'), N.el('span', { class: 'badge', text: 'MIT' })));
+    card.appendChild(row(t('set.a.release'), t('set.a.release.desc'),
+      N.el('button', { class: 'link-quiet', type: 'button', onclick: () => nook.invoke('app:openReleases') },
+        N.el('span', { text: t('set.a.release.link') }), N.icon('external-link', 14, 'icon-flip'))));
     card.appendChild(row(t('set.a.tour'), t('set.a.tour.desc'), N.btn(t('set.a.tour.btn'), { icon: 'play', onclick: () => App.startTour() })));
     card.appendChild(row(t('set.a.help'), t('set.a.help.desc'), N.btn(t('set.a.help.btn'), { icon: 'circle-question-mark', onclick: () => App.go('help') })));
   }

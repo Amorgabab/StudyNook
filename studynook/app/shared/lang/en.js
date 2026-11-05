@@ -226,6 +226,8 @@
   'set.d.reset.confirm.t': 'Reset all data?', 'set.d.reset.confirm.d': 'XP, companion, streaks, tasks, notes and lists return to their defaults. Your backups are kept.',
   'set.a.version': 'Version', 'set.a.local': 'Local-first: no account, no cloud, no telemetry.',
   'set.a.tour': 'Welcome tour', 'set.a.tour.desc': 'A one-minute overview of the app.', 'set.a.tour.btn': 'Replay tour',
+  'set.a.license': 'License', 'set.a.license.desc': 'Open source under the MIT License.',
+  'set.a.release': 'Latest release', 'set.a.release.desc': 'StudyNook never checks for updates by itself and does not contact any server. The link opens GitHub in your browser only when you click it.', 'set.a.release.link': 'See the latest release',
   'set.a.help': 'Help', 'set.a.help.desc': 'Guides for every feature and troubleshooting.', 'set.a.help.btn': 'Open Help',
 
   /* help */
@@ -238,12 +240,18 @@
   'iron.gate.stay': 'Keep focusing', 'iron.gate.end': 'End session',
 
   /* tour */
-  'tour.1.t': 'Welcome to StudyNook', 'tour.1.d': 'A focus timer that blocks distracting apps and websites while you study. This tour takes about a minute.',
-  'tour.2.t': 'Focus sessions', 'tour.2.d': 'Press Start focus on the Focus page. Pomodoro runs rounds with breaks; Free focus is one block of any length. The timer keeps running when the window is hidden.',
-  'tour.3.t': 'Your companion', 'tour.3.d': 'Your companion grows as your total focus time adds up. You can rename it in Settings.',
-  'tour.4.t': 'Block apps', 'tour.4.d': 'On the Apps page, list the programs that distract you. During focus StudyNook warns you, then closes them. System processes are never touched.',
-  'tour.5.t': 'Block websites', 'tour.5.d': 'On the Websites page, set your lists and pair the browser extension with the 6-letter code.',
-  'tour.6.t': 'Track progress', 'tour.6.d': 'The Progress page shows your history, streak and achievements. Help explains everything in detail.',
+  'tour.ph1': 'First session', 'tour.ph2': 'Block distractions', 'tour.ph3': 'Stay motivated', 'tour.ph4': 'Stay in control',
+  'tour.phase': 'Phase {n} of {total}: {name}',
+  'tour.1.t': 'Welcome to StudyNook', 'tour.1.d': 'A focus timer that blocks distracting apps and websites while you study. This tour takes about a minute, in 4 short phases. Skip it any time.',
+  'tour.2.t': 'Start a focus session', 'tour.2.d': 'Press Start focus. Pomodoro runs rounds with breaks; Free focus is one block of any length. The timer keeps running when the window is hidden.',
+  'tour.3.t': 'Block apps', 'tour.3.d': 'On the Apps page, list the programs that distract you. During focus StudyNook warns you, then closes them. System processes are never touched.',
+  'tour.4.t': 'Block websites', 'tour.4.d': 'On the Websites page, set your lists and pair the browser extension with this 6-letter code. Website blocking needs the extension.',
+  'tour.5.t': 'Your companion', 'tour.5.d': 'Your companion grows as your total focus time adds up. Click it to hear it purr. You can rename it in Settings.',
+  'tour.6.t': 'Your streak', 'tour.6.d': 'The flame counts your days of focus in a row. Focus every day to keep it growing.',
+  'tour.7.t': 'Track progress', 'tour.7.d': 'The Progress page shows your history, your level and your achievements. Help explains everything in detail.',
+  'tour.8.t': 'Tasks and notes', 'tour.8.d': 'Keep your tasks and plain-text notes here. Notes save as you type, and you can attach PDFs.',
+  'tour.9.t': 'Stay in control', 'tour.9.d': 'In Settings you can turn on an Iron session: a promise to yourself that makes ending a session early take a 60-second wait and a typed sentence. The floating mini timer is there too: drag it by the pill and click the round icon to open StudyNook.',
+  'tour.10.t': 'You are ready', 'tour.10.d': 'That is it. Replay this tour from Settings, under About, and open Help for guides to every feature. StudyNook keeps everything on this PC.',
   'tour.skip': 'Skip', 'tour.finish': 'Get started',
 
   /* small windows */

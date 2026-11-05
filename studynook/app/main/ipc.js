@@ -26,6 +26,7 @@ const dedupe = (arr) => arr.filter((x, i) => arr.indexOf(x) === i);
 const SOUND_IDS = new Set(['rain', 'waves', 'fire', 'cafe']);
 
 /* settings:set sections that carry a raw value instead of an object */
+const RELEASES_URL = 'https://github.com/Amorgabab/StudyNook/releases/latest';
 const RAW_SECTIONS = ['theme', 'miniWindow', 'bridgeAllowOrigins', 'language', 'startWithWindows', 'dailyGoalMin'];
 
 function registerIpc(ctx) {
@@ -206,6 +207,9 @@ function registerIpc(ctx) {
     pushSnapshot();
     return true;
   });
+  // The About page's "latest release" link. A fixed address, opened only when the user clicks:
+  // StudyNook itself never contacts GitHub (no update check).
+  H('app:openReleases', () => { shell.openExternal(RELEASES_URL); return true; });
   H('open:url', (p) => {
     const u = String(p.url || '');
     if (/^https?:\/\//i.test(u)) shell.openExternal(u);

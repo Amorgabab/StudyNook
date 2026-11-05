@@ -301,26 +301,92 @@ window.App = (function () {
   };
 
   /* ---------------- welcome tour ---------------- */
-  const TOUR = [['book-open', 'tour.1'], ['timer', 'tour.2'], ['cat', 'tour.3'], ['app-window', 'tour.4'], ['globe', 'tour.5'], ['chart-column', 'tour.6']];
+  /* Four phases, ten steps. A step names the page to show and the element to ring; if that element is
+     not on screen (for example Start while a session runs) the next selector is tried, then the card is
+     centred with no ring. Only the accent token colours the ring, so it fits every theme. */
+  const TOUR_PHASES = ['tour.ph1', 'tour.ph2', 'tour.ph3', 'tour.ph4'];
+  const TOUR = [
+    { ph: 0, key: 'tour.1', icon: 'book-open', view: 'home', target: null },
+    { ph: 0, key: 'tour.2', icon: 'timer', view: 'home', target: ['#home-start', '#ring-time'] },
+    { ph: 1, key: 'tour.3', icon: 'app-window', view: 'apps', target: ['.navbtn[data-view="apps"]'] },
+    { ph: 1, key: 'tour.4', icon: 'globe', view: 'sites', target: ['.pair-code', '.navbtn[data-view="sites"]'] },
+    { ph: 2, key: 'tour.5', icon: 'cat', view: 'home', target: ['.mochi-box'] },
+    { ph: 2, key: 'tour.6', icon: 'flame', view: 'home', target: ['#chip-streak'] },
+    { ph: 2, key: 'tour.7', icon: 'chart-column', view: 'garden', target: ['.navbtn[data-view="garden"]'] },
+    { ph: 3, key: 'tour.8', icon: 'notebook-pen', view: 'notes', target: ['.navbtn[data-view="notes"]'] },
+    { ph: 3, key: 'tour.9', icon: 'settings', view: 'settings', target: ['.navbtn[data-view="settings"]'] },
+    { ph: 3, key: 'tour.10', icon: 'circle-question-mark', view: 'home', target: null }
+  ];
   App.startTour = function () {
-    let i = 0;
     const root = document.getElementById('tour-root');
+    if (root.classList.contains('open')) return;
+    let i = 0, ring = null, card = null, timer = null;
     root.classList.add('open');
-    const end = () => { root.classList.remove('open'); root.innerHTML = ''; nook.invoke('onboarding:done'); };
-    const draw = () => {
-      root.innerHTML = '';
-      const [ico, key] = TOUR[i];
-      const last = i === TOUR.length - 1;
-      root.appendChild(N.el('div', { class: 'tour' },
-        N.el('div', { class: 'item-icon' }, N.icon(ico, 24)),
-        N.el('h3', { text: t(key + '.t') }),
-        N.el('p', { text: t(key + '.d') }),
-        N.el('div', { class: 'tour-dots' }, ...TOUR.map((_, k) => N.el('i', { class: k === i ? 'on' : '' }))),
-        N.el('div', { class: 'row', style: 'justify-content:center' },
-          N.btn(t('tour.skip'), { cls: 'btn-ghost', onclick: end }),
-          i > 0 ? N.btn(t('common.back'), { onclick: () => { i--; draw(); } }) : null,
-          N.btn(last ? t('tour.finish') : t('common.next'), { cls: 'btn-primary', onclick: () => { if (last) end(); else { i++; draw(); } } }))));
+    const find = (s) => {
+      for (const sel of s.target || []) {
+        const e = document.querySelector(sel);
+        if (e && e.getClientRects().length) return e;
+      }
+      return null;
     };
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    // Put the ring on the target and the card beside it. Called after every draw and twice a second,
+    // because a snapshot rebuilds the page under the ring.
+    const place = () => {
+      if (!ring || !card) return;
+      const target = find(TOUR[i]);
+      root.classList.toggle('spot', !!target);
+      card.classList.toggle('at', !!target);
+      if (!target) { ring.style.display = 'none'; card.style.left = card.style.top = ''; return; }
+      const r = target.getBoundingClientRect(), pad = 6, gap = 14, m = 12;
+      ring.style.display = 'block';
+      ring.style.left = (r.left - pad) + 'px'; ring.style.top = (r.top - pad) + 'px';
+      ring.style.width = (r.width + pad * 2) + 'px'; ring.style.height = (r.height + pad * 2) + 'px';
+      const cw = card.offsetWidth, ch = card.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
+      let left = clamp(r.left + r.width / 2 - cw / 2, m, vw - cw - m);
+      let top = r.bottom + pad + gap;
+      if (top + ch > vh - m) top = r.top - pad - gap - ch;
+      if (top < m) {   // no room above or below: put it beside the target
+        top = clamp(r.top + r.height / 2 - ch / 2, m, vh - ch - m);
+        left = r.right + pad + gap + cw <= vw - m ? r.right + pad + gap : Math.max(m, r.left - pad - gap - cw);
+      }
+      card.style.left = Math.round(left) + 'px'; card.style.top = Math.round(top) + 'px';
+    };
+    const end = () => {
+      clearInterval(timer);
+      window.removeEventListener('resize', place);
+      document.removeEventListener('keydown', onKey, true);
+      root.classList.remove('open', 'spot'); root.innerHTML = '';
+      nook.invoke('onboarding:done');
+    };
+    const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); end(); } };
+    const draw = () => {
+      const s = TOUR[i], last = i === TOUR.length - 1;
+      if (App.view !== s.view) App.go(s.view);
+      const inPhase = TOUR.filter((x) => x.ph === s.ph);
+      const next = N.btn(last ? t('tour.finish') : t('common.next'), { cls: 'btn-primary', onclick: () => { if (last) end(); else { i++; draw(); } } });
+      root.innerHTML = '';
+      ring = N.el('div', { class: 'tour-ring', 'aria-hidden': 'true' });
+      card = N.el('div', { class: 'tour' },
+        N.el('div', { class: 'overline', text: t('tour.phase', { n: NookI18n.num(s.ph + 1), total: NookI18n.num(TOUR_PHASES.length), name: t(TOUR_PHASES[s.ph]) }) }),
+        N.el('div', { class: 'item-icon' }, N.icon(s.icon, 24)),
+        N.el('h3', { text: t(s.key + '.t') }),
+        N.el('p', { text: t(s.key + '.d') }),
+        N.el('div', { class: 'tour-dots' }, ...inPhase.map((x) => N.el('i', { class: x === s ? 'on' : '' }))),
+        N.el('div', { class: 'row', style: 'justify-content:center' },
+          last ? null : N.btn(t('tour.skip'), { cls: 'btn-ghost', onclick: end }),
+          i > 0 ? N.btn(t('common.back'), { onclick: () => { i--; draw(); } }) : null,
+          next));
+      root.append(ring, card);
+      const target = find(s);
+      if (target) target.scrollIntoView({ block: 'nearest' });
+      place();
+      requestAnimationFrame(place);
+      next.focus();
+    };
+    window.addEventListener('resize', place);
+    document.addEventListener('keydown', onKey, true);
+    timer = setInterval(place, 500);
     draw();
   };
 

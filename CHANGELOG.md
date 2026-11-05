@@ -7,6 +7,17 @@ extension has its own version number (see `studynook/extension/manifest.json`).
 The commit history before 1.5.1 is rough (bulk uploads and auto-generated titles). This file is
 the readable version of it.
 
+## 1.5.10
+
+- **A clearer welcome tour.** Four short phases (first session, block distractions, stay motivated,
+  stay in control) in ten steps. Each step dims the screen and rings the real button or page it is
+  talking about (Start, Apps, Websites and the pairing code, your companion, your streak). Press
+  Esc or Skip at any time; replay it from Settings, under About. The ring uses the app's accent
+  colour, pulses twice, then stays still, and does not animate if your system asks for reduced motion.
+- **About page:** it now says StudyNook is open source (MIT) and has a "See the latest release"
+  link. StudyNook never checks for updates by itself and does not contact any server; the link opens
+  GitHub in your browser only when you click it.
+
 ## 1.5.9
 
 - **StudyNook is now open source under the MIT License.** You can use, copy, modify and share it,

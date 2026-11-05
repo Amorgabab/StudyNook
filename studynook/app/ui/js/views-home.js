@@ -51,7 +51,9 @@ Views.home = function (c) {
       row.appendChild(N.stepper(App.freeMin, 1, 600, (v) => { App.freeMin = v; App.render(); }, 5, t('home.duration')));
       actions.appendChild(row);
     }
-    actions.appendChild(N.btn(t('home.start'), { cls: 'btn-primary btn-lg btn-block', icon: 'play', iconSize: 18, onclick: startSession }));
+    const startBtn = N.btn(t('home.start'), { cls: 'btn-primary btn-lg btn-block', icon: 'play', iconSize: 18, onclick: startSession });
+    startBtn.id = 'home-start';   // the welcome tour rings this button
+    actions.appendChild(startBtn);
     const sel = N.el('select', { class: 'input', id: 'home-task', 'aria-label': t('home.task') });
     sel.appendChild(N.el('option', { value: '', text: t('home.task.none') }));
     for (const tk of d.tasks.filter((x) => !x.done)) sel.appendChild(N.el('option', { value: tk.id, text: (tk.subject ? tk.subject + ' · ' : '') + tk.text, selected: App.lastTaskId === tk.id }));
