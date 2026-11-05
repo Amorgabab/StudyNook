@@ -1,6 +1,6 @@
 # Third-party notices
 
-StudyNook is distributed under the [StudyNook Personal Use License](LICENSE). It includes the
+StudyNook is distributed under the [MIT License](LICENSE). It includes the
 third-party components below, which keep their own licenses. Their notices are reproduced here
 as those licenses require. The installer carries a copy of this file in its `resources` folder.
 

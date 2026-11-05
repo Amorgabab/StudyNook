@@ -7,6 +7,12 @@ extension has its own version number (see `studynook/extension/manifest.json`).
 The commit history before 1.5.1 is rough (bulk uploads and auto-generated titles). This file is
 the readable version of it.
 
+## 1.5.9
+
+- **StudyNook is now open source under the MIT License.** You can use, copy, modify and share it,
+  including commercially, as long as you keep the copyright notice (Copyright (c) 2026 Amorgabab)
+  and the license text. The app itself did not change; the installer now carries the MIT license.
+
 ## 1.5.8
 
 - **The mini timer now drags by the pill and opens StudyNook from the egg.** Before, you dragged

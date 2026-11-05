@@ -1,5 +1,5 @@
 name: Idea or request
-description: Suggest a feature or a change, or ask for permission the license does not give.
+description: Suggest a feature or a change.
 labels: [enhancement]
 body:
   - type: textarea

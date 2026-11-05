@@ -1,7 +1,7 @@
 {
   "name": "studynook",
   "productName": "StudyNook",
-  "version": "1.5.8",
+  "version": "1.5.9",
   "description": "Study focus app with app and website blocking, Pomodoro timer, tasks, notes, stats and a study pet.",
   "main": "app/main/main.js",
   "scripts": {
@@ -12,7 +12,7 @@
     "dist": "electron-builder --win --x64"
   },
   "author": "StudyNook",
-  "license": "SEE LICENSE IN ../LICENSE",
+  "license": "MIT",
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "electron": "^45.0.0",

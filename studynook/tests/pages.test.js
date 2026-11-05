@@ -67,18 +67,21 @@ suite('pages · GitHub Pages site', () => {
 });
 
 suite('pages · license', () => {
-  test('LICENSE exists, forbids redistribution and allows personal use', () => {
+  test('LICENSE is the MIT license and keeps the owner as copyright holder', () => {
     const lic = read('LICENSE');
-    expect(/NOT open-source/i.test(lic)).toBe(true);
-    expect(/redistribute/i.test(lic)).toBe(true);
-    expect(/personal use/i.test(lic)).toBe(true);
+    expect(/^MIT License/.test(lic)).toBe(true);
+    expect(/Copyright \(c\) 2026 Amorgabab/.test(lic)).toBe(true);
+    expect(/copyright notice and this permission notice shall be included/i.test(lic)).toBe(true);
     expect(/Inter typeface/.test(lic) && /Lucide/.test(lic)).toBe(true);   // third-party notices stay
   });
-  test('package.json points at the license file instead of claiming MIT', () => {
-    const lic = JSON.parse(read('studynook/package.json')).license;
-    expect(lic).toBe('SEE LICENSE IN ../LICENSE');
+  test('package.json declares MIT', () => {
+    expect(JSON.parse(read('studynook/package.json')).license).toBe('MIT');
   });
-  test('README and site do not claim an open-source license', () => {
-    expect(/\bMIT License\b|Open source license/i.test(read('README.md').replace(/Electron \(MIT\)/, ''))).toBe(false);
+  test('README, site and notices no longer say the project is closed', () => {
+    const closed = /not open[- ]source|personal use license|no redistribution/i;
+    expect(closed.test(read('README.md'))).toBe(false);
+    expect(closed.test(read('docs/index.html'))).toBe(false);
+    expect(closed.test(read('THIRD-PARTY-NOTICES.md'))).toBe(false);
+    expect(/MIT License/.test(read('README.md'))).toBe(true);
   });
 });

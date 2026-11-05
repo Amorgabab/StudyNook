@@ -132,6 +132,6 @@ Contributor notes for working in the code, including the rules that are easy to 
 
 ## License
 
-StudyNook is **not open source**. You may download it, run it for your own use and read the code, but you may not share, publish or redistribute it, or distribute modified versions. See [LICENSE](LICENSE) for the exact terms. To ask for permission to do something it does not allow, [open an issue](https://github.com/Amorgabab/StudyNook/issues).
+StudyNook is open source under the [MIT License](LICENSE). You may use, copy, modify and share it, including commercially, as long as you keep the copyright notice (Copyright (c) 2026 Amorgabab) and the license text in every copy. Pull requests and issues are welcome.
 
-Third-party components keep their own licenses: the Inter typeface (SIL OFL 1.1), Lucide icons (ISC) and Electron (MIT).
+Third-party components keep their own licenses: the Inter typeface (SIL OFL 1.1), Lucide icons (ISC) and Electron (MIT). See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

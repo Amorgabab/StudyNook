@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Layout
 
-The Electron app lives in `studynook/`. The repo root holds the README, `CHANGELOG.md` (the readable history; the early git history is rough), `THIRD-PARTY-NOTICES.md`, the LICENSE (a personal-use, no-redistribution license, not MIT), `.github/` (CI plus issue and PR templates), and `docs/`, the GitHub Pages website (`docs/index.html` plus `docs/assets/` screenshots; engineering notes live in `studynook/docs/`). Run all npm commands from `studynook/`. `tests/pages.test.js` checks that the README, the site and the license stay consistent; if the UI changes a lot, retake the screenshots in `docs/assets/`.
+The Electron app lives in `studynook/`. The repo root holds the README, `CHANGELOG.md` (the readable history; the early git history is rough), `THIRD-PARTY-NOTICES.md`, the LICENSE (MIT, copyright held by Amorgabab; keep that notice), `.github/` (CI plus issue and PR templates), and `docs/`, the GitHub Pages website (`docs/index.html` plus `docs/assets/` screenshots; engineering notes live in `studynook/docs/`). Run all npm commands from `studynook/`. `tests/pages.test.js` checks that the README, the site and the license stay consistent; if the UI changes a lot, retake the screenshots in `docs/assets/`.
 
 ## Commands (run from `studynook/`)
 
