@@ -7,6 +7,16 @@ extension has its own version number (see `studynook/extension/manifest.json`).
 The commit history before 1.5.1 is rough (bulk uploads and auto-generated titles). This file is
 the readable version of it.
 
+## 1.5.11
+
+- **Allowlist mode is much safer.** It used to close every running program that was not on your
+  Allowed list except about 60 named Windows programs, including background helpers and tray apps
+  (on one test PC that was 131 programs, among them Windows Security and driver helpers). It now
+  closes only programs that have a visible window, so background and tray programs are left alone
+  (on the same PC, 4 programs). If Windows cannot tell, StudyNook leaves the program open. Store
+  apps that draw their window through another process may not be closed in this mode. Blocklist
+  mode is unchanged. The NVIDIA overlay is added to the programs StudyNook never closes.
+
 ## 1.5.10
 
 - **A clearer welcome tour.** Four short phases (first session, block distractions, stay motivated,

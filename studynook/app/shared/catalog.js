@@ -49,7 +49,7 @@
       'msdtc', 'spoolsv', 'memory compression', 'securityhealthservice',
       'securityhealthsystray', 'msmpeng', 'niservice', 'conhost', 'cmd', 'powershell',
       'windowsterminal', 'code', 'nvvsvc', 'nvcontainer', 'nvdisplay.container',
-      'nvtray', 'igfxem', 'igfxtray', 'igfxpers', 'amdlogmon', 'atieclxx', 'atiesrxx',
+      'nvtray', 'nvidia overlay', 'igfxem', 'igfxtray', 'igfxpers', 'amdlogmon', 'atieclxx', 'atiesrxx',
       'synaptics', 'synapticstouchpad', 'etdctrl', 'etdcctrl', 'rtkngui',
       'rtkaudioservice', 'aestsrv64', 'wacom', 'tabtips', 'tabtip', 'gamebar',
       'gamebarftserver', 'widgets', 'onedrive', 'logioptionsplus', 'lghub',

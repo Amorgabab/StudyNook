@@ -53,15 +53,42 @@ function parsePs(out) {
   return rows;
 }
 
-async function listProcesses(platform) {
+/** Parse the PID-per-line output of listWindowedPids. Anything that is not a plain number is ignored. */
+function parsePidLines(out) {
+  const pids = new Set();
+  for (const line of String(out || '').split(/\r?\n/)) {
+    if (/^\s*\d+\s*$/.test(line)) pids.add(parseInt(line, 10));
+  }
+  return pids;
+}
+
+/* Windows only: the PIDs of programs that have a visible top-level window. .NET's MainWindowHandle is
+   the first visible, unowned window of the process, so tray-only and background programs (sync
+   clients, updaters, drivers, helpers) are not in this set. Returns null when it cannot be told
+   (PowerShell missing or failed), and callers then leave the program alone. */
+async function listWindowedPids() {
+  const out = await run('powershell', ['-NoProfile', '-NonInteractive', '-Command', '(Get-Process | Where-Object { $_.MainWindowHandle -ne 0 }).Id']);
+  const pids = parsePidLines(out);
+  return pids.size ? pids : null;
+}
+
+/** opts.windows (Windows only): also mark each row `hasWindow` true/false; left undefined if unknown. */
+async function listProcesses(platform, opts) {
   platform = platform || process.platform;
   let raw = [];
+  let windowed = null;
   if (platform === 'win32') {
-    raw = parseTasklistCsv(await run('tasklist', ['/fo', 'csv', '/nh']));
+    const [csv, w] = await Promise.all([run('tasklist', ['/fo', 'csv', '/nh']), opts && opts.windows ? listWindowedPids() : null]);
+    raw = parseTasklistCsv(csv);
+    windowed = w;
   } else {
     raw = parsePs(await run('ps', ['-axo', 'pid=,comm=']));
   }
-  return raw.map((r) => ({ pid: r.pid, name: r.name, norm: catalog.normalizeProcName(r.name) })).filter((r) => r.norm);
+  return raw.map((r) => {
+    const row = { pid: r.pid, name: r.name, norm: catalog.normalizeProcName(r.name) };
+    if (windowed) row.hasWindow = windowed.has(r.pid);
+    return row;
+  }).filter((r) => r.norm);
 }
 
 /* One process list for everyone. Listing spawns `tasklist` (~400 ms on Windows), and the
@@ -83,6 +110,7 @@ function makeShared(fetchList, now) {
   };
 }
 const listProcessesShared = makeShared(() => listProcesses());
+const listProcessesWindowedShared = makeShared(() => listProcesses(undefined, { windows: true }));   // allowlist mode
 
 /* SECURITY FIX: the old wrapper collapsed errors into '' and this function
    returned `out !== '' || true` — a literal always-true expression that could
@@ -108,4 +136,4 @@ async function killProcess(pid, platform) {
   return r.err === null;            // kill prints nothing on success — exit status is the truth
 }
 
-module.exports = { listProcesses, listProcessesShared, makeShared, killProcess, parseTasklistCsv, parsePs };
+module.exports = { listProcesses, listProcessesShared, listProcessesWindowedShared, listWindowedPids, makeShared, killProcess, parseTasklistCsv, parsePs, parsePidLines };

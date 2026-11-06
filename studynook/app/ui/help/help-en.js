@@ -69,7 +69,7 @@
         { h: 'Blocklist or allowlist' },
         { table: { head: ['Mode', 'What gets closed'], rows: [
           ['Blocklist', 'Only the apps on your **Blocked** list.'],
-          ['Allowlist', 'Every app that is **not** on your **Allowed** list. Use **Preview** to see what would close before you rely on it.']
+          ['Allowlist', 'Every app with a visible window that is **not** on your **Allowed** list. Background and tray programs are left alone. Use **Preview** to see what would close before you rely on it.']
         ] } },
         { h: 'What happens when a blocked app opens' },
         { ul: [

@@ -90,3 +90,41 @@ suite('planner · allow mode safety', () => {
     expect(t.length).toBe(2);
   });
 });
+
+suite('planner · allow mode only closes programs with a visible window (Windows)', () => {
+  const WIN = (pid, name, hasWindow) => Object.assign(PROC(pid, name), hasWindow === undefined ? {} : { hasWindow });
+  const allow = [{ label: 'Code', procs: ['code'], enabled: true }];
+  const OPT = (over) => OPTS(Object.assign({ mode: 'allow', allow, requireWindow: true }, over || {}));
+  test('a program with a window is closed, a background or tray program is left alone', () => {
+    const procs = [WIN(1, 'Discord.exe', true), WIN(2, 'Dropbox.exe', false), WIN(3, 'SomeUpdater.exe', false)];
+    expect(planner.chooseTargets(procs, OPT()).map((t) => t.norm)).toEqual(['discord']);
+  });
+  test('when the window state is unknown, nothing is closed (fail safe)', () => {
+    const procs = [WIN(1, 'Discord.exe'), WIN(2, 'Steam.exe')];
+    expect(planner.chooseTargets(procs, OPT()).length).toBe(0);
+  });
+  test('allowed programs and the never-kill list are still protected', () => {
+    const procs = [WIN(1, 'Code.exe', true), WIN(2, 'explorer.exe', true), WIN(3, 'svchost.exe', true)];
+    expect(planner.chooseTargets(procs, OPT()).length).toBe(0);
+  });
+  test('block mode does not need windows: a blocked tray program is still closed', () => {
+    const procs = [WIN(1, 'Discord.exe', false)];
+    const t = planner.chooseTargets(procs, OPTS({ mode: 'block', requireWindow: true, block: [{ label: 'Discord', procs: ['discord'], enabled: true }] }));
+    expect(t.length).toBe(1);
+  });
+  test('without requireWindow (other systems) allow mode behaves as before', () => {
+    const procs = [WIN(1, 'Discord.exe'), WIN(2, 'notepad.exe')];
+    expect(planner.chooseTargets(procs, OPTS({ mode: 'allow', allow })).length).toBe(2);
+  });
+});
+
+suite('processes · windowed PID parsing', () => {
+  const { parsePidLines } = require('../app/main/processes.js');
+  test('keeps plain numbers, ignores noise', () => {
+    expect([...parsePidLines('123\r\n456\n\nabc\n  789  \n1x2\n')].sort((a, b) => a - b)).toEqual([123, 456, 789]);
+  });
+  test('empty or missing output gives an empty set', () => {
+    expect(parsePidLines('').size).toBe(0);
+    expect(parsePidLines(undefined).size).toBe(0);
+  });
+});

@@ -16,7 +16,7 @@ function guard(apps, over) {
     store,
     session: { isFocusing: () => true, isIronFocus: () => false, ironActive: () => false, recordKill: () => {} },
     onEvent: () => {},
-    listProcesses: async () => { calls.list++; return [{ pid: 7, name: 'Discord.exe', norm: 'discord' }, { pid: 8, name: 'Code.exe', norm: 'code' }]; },
+    listProcesses: async () => { calls.list++; return [{ pid: 7, name: 'Discord.exe', norm: 'discord', hasWindow: true }, { pid: 8, name: 'Code.exe', norm: 'code', hasWindow: true }]; },
     killProcess: async (pid) => { calls.kill.push(pid); return true; }
   });
   return { g, calls };
@@ -50,6 +50,12 @@ suite('guard · scans only when something can match', () => {
     const { g, calls } = guard({ allow: [entry(['code'])] }, { mode: 'allow' });
     await g.scan();
     expect(calls.kill).toEqual([7]);
+  });
+  test('an enabled allowlist leaves a program with no visible window alone', async () => {
+    const { g, calls } = guard({ allow: [entry(['code'])] }, { mode: 'allow' });
+    g.hooks.listProcesses = async () => { calls.list++; return [{ pid: 7, name: 'Discord.exe', norm: 'discord', hasWindow: false }, { pid: 8, name: 'Code.exe', norm: 'code', hasWindow: true }]; };
+    await g.scan();
+    expect(calls.kill).toEqual([]);
   });
   test('adding the first entry starts scanning again', async () => {
     const { g, calls } = guard({ block: [] });

@@ -67,7 +67,7 @@ class Guardian {
   }
 
   /* list/kill go through hooks when provided (tests), real OS otherwise */
-  _list() { return this.hooks.listProcesses ? this.hooks.listProcesses() : processes.listProcessesShared(); }          // decide: may reuse a ≤1.5 s old list
+  _list(windows) { return this.hooks.listProcesses ? this.hooks.listProcesses() : (windows ? processes.listProcessesWindowedShared() : processes.listProcessesShared()); }   // decide: may reuse a ≤1.5 s old list; `windows` also marks which programs have a visible window
   _listFresh() { return this.hooks.listProcesses ? this.hooks.listProcesses() : processes.listProcesses(); }          // about to kill: always fresh
   _kill(pid) { return this.hooks.killProcess ? this.hooks.killProcess(pid) : processes.killProcess(pid); }
 
@@ -162,11 +162,12 @@ class Guardian {
 
   /** Preview what allow-mode would close right now (for the safety modal). */
   async previewAllowlist() {
-    const procs = await this._list();
+    const win = process.platform === 'win32';   // allow mode only closes programs with a visible window
+    const procs = await this._list(win);
     const d = this.hooks.store.data;
     const targets = planner.chooseTargets(procs, {
       mode: 'allow', block: [], allow: d.apps.allow, allowOnce: d.apps.allowOnce,
-      platform: process.platform, selfPid: process.pid
+      platform: process.platform, selfPid: process.pid, requireWindow: win
     });
     return planner.groupTargets(targets);
   }
@@ -191,14 +192,16 @@ class Guardian {
       const g = this.effCfg();   // iron-hardened view — UI shows the same thing
       if (!this._hasWork(g)) { this.warned.clear(); if (this.pendingReminder) { this.hooks.hideReminder && this.hooks.hideReminder(); this.pendingReminder = null; } return; }
       const d = this.hooks.store.data;
-      const procs = await this._list();
+      const win = g.mode === 'allow' && process.platform === 'win32';   // allow mode only closes programs with a visible window
+      const procs = await this._list(win);
       const targets = planner.chooseTargets(procs, {
         mode: g.mode,
         block: d.apps.block,
         allow: d.apps.allow,
         allowOnce: d.apps.allowOnce,
         platform: process.platform,
-        selfPid: process.pid
+        selfPid: process.pid,
+        requireWindow: win
       });
       const groups = planner.groupTargets(targets);
       // Drop warnings for apps that are no longer running

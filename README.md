@@ -27,7 +27,7 @@ Most blockers only cover one thing, and they are easy to switch off in a weak mo
 | | |
 |---|---|
 | **Focus timer** | Pomodoro rounds with breaks, or one free-focus block of any length (up to 10 hours). Keeps running from the tray, with an optional always-on-top mini timer. |
-| **App guard** | Closes the programs you list while you focus. Blocklist or allowlist mode, with a warning countdown, instant close, or reminder-only. System processes are never touched. |
+| **App guard** | Closes the programs you list while you focus. Blocklist or allowlist mode, with a warning countdown, instant close, or reminder-only. System processes are never touched, and in allowlist mode only programs with a visible window are closed (background and tray programs are left alone). |
 | **Website blocking** | A Chrome, Edge or Brave extension blocks distracting sites, including single paths such as `youtube.com/shorts`. If StudyNook is closed mid-session the extension keeps blocking until the session would have ended. |
 | **Iron sessions** | A promise to yourself: no unpausing the blockers, lists can only grow, ending early needs a 60-second cool-down and a typed sentence, and the switch stays locked for days you choose. If the extension disappears, the browser is closed after about 90 seconds. |
 | **Crash recovery** | If the app is closed or killed during a session, a small background helper reopens it and the session continues where it left off. |

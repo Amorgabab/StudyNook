@@ -67,7 +67,7 @@
         { h: 'Lista de bloqueo o de permitidas' },
         { table: { head: ['Modo', 'Qué se cierra'], rows: [
           ['Lista de bloqueo', 'Solo las apps de tu lista **Bloqueadas**.'],
-          ['Lista de permitidas', 'Todas las apps que **no** están en tu lista **Permitidas**. Usa **Vista previa** para ver qué se cerraría antes de confiar en este modo.']
+          ['Lista de permitidas', 'Todas las apps con una ventana visible que **no** están en tu lista **Permitidas**. Los programas en segundo plano o en la bandeja se dejan en paz. Usa **Vista previa** para ver qué se cerraría antes de confiar en este modo.']
         ] } },
         { h: 'Qué pasa cuando se abre una app bloqueada' },
         { ul: [

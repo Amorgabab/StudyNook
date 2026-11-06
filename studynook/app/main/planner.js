@@ -21,6 +21,7 @@ const catalog = require('../shared/catalog.js');
  *   allowOnce: { [norm]: untilTimestampMs }           (temporary "leave it alone")
  *   platform:  'win32' | 'darwin' | 'linux'
  *   selfPid:   number  (our own PID — never touch)
+ *   requireWindow: boolean  (allow mode: only close processes with hasWindow === true)
  * @returns {Array<{pid, name, norm, label, reason}>}
  */
 function chooseTargets(procs, opts) {
@@ -63,6 +64,10 @@ function chooseTargets(procs, opts) {
     if (p.pid === opts.selfPid) continue;                 // us
     if (isNeverKill(p.norm)) continue;                   // OS safety
     if (allowedOnce(p.norm)) continue;                   // "leave it for 5 min"
+    /* Allow mode on Windows only closes programs you can see (a visible window). Background and
+       tray programs are not "distractions you opened", and the names we never kill are only a
+       short list. If we could not tell (hasWindow missing), leave the program alone. */
+    if (opts.mode !== 'block' && opts.requireWindow && p.hasWindow !== true) continue;
     if (seen.has(p.pid)) continue;
     let hit = null;
     if (opts.mode === 'block') {

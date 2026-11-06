@@ -67,7 +67,7 @@
         { h: 'Liste de blocage ou d’autorisation' },
         { table: { head: ['Mode', 'Ce qui est fermé'], rows: [
           ['Liste de blocage', 'Uniquement les applis de votre liste **Bloquées**.'],
-          ['Liste d’autorisation', 'Toutes les applis qui ne sont **pas** dans votre liste **Autorisées**. Utilisez **Aperçu** pour voir ce qui serait fermé avant de vous y fier.']
+          ['Liste d’autorisation', 'Toutes les applis ayant une fenêtre visible qui ne sont **pas** dans votre liste **Autorisées**. Les programmes en arrière-plan ou dans la zone de notification sont laissés tranquilles. Utilisez **Aperçu** pour voir ce qui serait fermé avant de vous y fier.']
         ] } },
         { h: 'Quand une appli bloquée s’ouvre' },
         { ul: [
