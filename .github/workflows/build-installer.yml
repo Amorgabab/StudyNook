@@ -1,0 +1,59 @@
+name: Build installer
+
+# Builds StudyNook-Setup-<version>.exe from the repository on a GitHub-hosted Windows runner, so the
+# installer can be traced to a commit. Run it by hand (Actions > Build installer > Run workflow) or by
+# pushing a version tag such as v1.5.11. It only uploads the installer as a workflow artifact; it does
+# not publish a release (the repo owner does that) and it does not sign anything yet.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: studynook
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: studynook/package-lock.json
+      # Full install (no --ignore-scripts): electron-builder needs the Electron binary.
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm test
+      - name: Tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ("${{ github.ref_name }}" -ne "v$version") { throw "Tag ${{ github.ref_name }} does not match package.json version $version" }
+      - run: npm run dist
+      - name: Check the installer and write its checksum
+        id: installer
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $exe = "dist-installer/StudyNook-Setup-$version.exe"
+          if (-not (Test-Path $exe)) { throw "$exe was not built" }
+          $info = (Get-Item dist-installer/win-unpacked/StudyNook.exe).VersionInfo
+          if ($info.ProductName -ne 'StudyNook' -or $info.FileVersion -ne $version) { throw "Unexpected exe metadata: $($info.ProductName) $($info.FileVersion)" }
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  StudyNook-Setup-$version.exe" | Out-File -Encoding ascii "dist-installer/StudyNook-Setup-$version.exe.sha256"
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "sha256: $hash"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StudyNook-Setup-${{ steps.installer.outputs.version }}
+          path: |
+            studynook/dist-installer/StudyNook-Setup-${{ steps.installer.outputs.version }}.exe
+            studynook/dist-installer/StudyNook-Setup-${{ steps.installer.outputs.version }}.exe.sha256
+          if-no-files-found: error
+          retention-days: 30
