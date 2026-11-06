@@ -1,7 +1,7 @@
 {
   "name": "studynook",
   "productName": "StudyNook",
-  "version": "1.5.11",
+  "version": "1.5.12",
   "description": "Study focus app with app and website blocking, Pomodoro timer, tasks, notes, stats and a study pet.",
   "main": "app/main/main.js",
   "scripts": {
@@ -42,6 +42,10 @@
       {
         "from": "assets/icon.ico",
         "to": "icon.ico"
+      },
+      {
+        "from": "assets/sounds",
+        "to": "sounds"
       },
       {
         "from": "../THIRD-PARTY-NOTICES.md",

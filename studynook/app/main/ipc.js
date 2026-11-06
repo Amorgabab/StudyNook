@@ -30,7 +30,7 @@ const RELEASES_URL = 'https://github.com/Amorgabab/StudyNook/releases/latest';
 const RAW_SECTIONS = ['theme', 'miniWindow', 'bridgeAllowOrigins', 'language', 'startWithWindows', 'dailyGoalMin'];
 
 function registerIpc(ctx) {
-  const { ipcMain, shell, store, session, guardian, T, broadcast, pushSnapshot, addFeed, grantXp, sendRewardEvents, grantAchievements, writeBackup, applyLoginItem, buildTrayMenu, DATA_DIR, SOUNDS_DIR, EXT_DIR } = ctx;
+  const { ipcMain, shell, store, session, guardian, T, broadcast, pushSnapshot, addFeed, grantXp, sendRewardEvents, grantAchievements, writeBackup, applyLoginItem, buildTrayMenu, DATA_DIR, SOUNDS_DIR, BUNDLED_SOUNDS_DIR, EXT_DIR } = ctx;
   let lastAmbientAward = 0;
   const ATTACH_DIR = path.join(DATA_DIR, 'attachments');
   const H = (ch, fn) => ipcMain.handle(ch, async (e, payload) => {
@@ -390,10 +390,14 @@ function registerIpc(ctx) {
   H('sound:get', (p) => {
     const id = String(p.id || '');
     if (!SOUND_IDS.has(id)) return { ok: false };
-    for (const ext of ['mp3', 'ogg', 'wav', 'm4a']) {
-      const f = path.join(SOUNDS_DIR, id + '.' + ext);
-      if (fs.existsSync(f)) {
-        try { return { ok: true, base64: fs.readFileSync(f).toString('base64') }; } catch (e) { return { ok: false }; }
+    // The user's own files first, then the recordings that ship with the app.
+    for (const dir of [SOUNDS_DIR, BUNDLED_SOUNDS_DIR]) {
+      if (!dir) continue;
+      for (const ext of ['mp3', 'ogg', 'wav', 'm4a']) {
+        const f = path.join(dir, id + '.' + ext);
+        if (fs.existsSync(f)) {
+          try { return { ok: true, base64: fs.readFileSync(f).toString('base64') }; } catch (e) { return { ok: false }; }
+        }
       }
     }
     return { ok: false };

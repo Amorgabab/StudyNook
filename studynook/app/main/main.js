@@ -38,6 +38,9 @@ const APP_ROOT = path.join(__dirname, '..', '..');          // project folder
 // Packaged (installed) apps keep data in the user's AppData room; dev keeps it in the project folder.
 const DATA_DIR = app.isPackaged ? app.getPath('userData') : path.join(APP_ROOT, 'data');
 const SOUNDS_DIR = app.isPackaged ? path.join(app.getPath('userData'), 'sounds') : path.join(APP_ROOT, 'assets', 'sounds');
+// The recordings that ship with the installer (copied by electron-builder's extraResources). Files the user
+// puts in SOUNDS_DIR win over these; in dev SOUNDS_DIR is already assets/sounds.
+const BUNDLED_SOUNDS_DIR = app.isPackaged ? path.join(process.resourcesPath, 'sounds') : null;
 const EXT_DIR = app.isPackaged ? path.join(process.resourcesPath, 'extension') : path.join(APP_ROOT, 'extension');
 const UI = (f) => path.join(__dirname, '..', 'ui', f);
 const ASSET = (f) => path.join(APP_ROOT, 'assets', f);
@@ -163,7 +166,7 @@ function ensureBackups() {
 /* Everything the extracted modules (ipc.js, watch.js, snapshot.js) need.
    Live objects (store, session, guardian, server) are added in whenReady. */
 const ctx = {
-  app, ipcMain, shell, dialog, nativeTheme, DATA_DIR, SOUNDS_DIR, EXT_DIR,
+  app, ipcMain, shell, dialog, nativeTheme, DATA_DIR, SOUNDS_DIR, BUNDLED_SOUNDS_DIR, EXT_DIR,
   extConnected: false,     // is the Chrome extension talking to the bridge?
   gateCleared: false,      // iron session: window-close gate passed?
   T, notify, broadcast, pushSnapshot, addFeed, lifeLog, snapshotFor,

@@ -7,6 +7,13 @@ extension has its own version number (see `studynook/extension/manifest.json`).
 The commit history before 1.5.1 is rough (bulk uploads and auto-generated titles). This file is
 the readable version of it.
 
+## 1.5.12
+
+- **Real ambience sounds for everyone.** The rain, waves, fire and cafe ambience used to be real
+  recordings only if you added the files yourself; everyone else heard a plain synthetic noise.
+  The installer now includes the four recordings. Files you put in the sounds folder (Settings,
+  Sound, Open sounds folder) still replace them.
+
 ## 1.5.11
 
 - **Allowlist mode is much safer.** It used to close every running program that was not on your
