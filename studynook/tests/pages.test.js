@@ -72,7 +72,10 @@ suite('pages · license', () => {
     expect(/^MIT License/.test(lic)).toBe(true);
     expect(/Copyright \(c\) 2026 Amorgabab/.test(lic)).toBe(true);
     expect(/copyright notice and this permission notice shall be included/i.test(lic)).toBe(true);
-    expect(/Inter typeface/.test(lic) && /Lucide/.test(lic)).toBe(true);   // third-party notices stay
+    // The file is kept as the unmodified MIT text so GitHub (and SignPath) recognise it; third-party
+    // credits live in THIRD-PARTY-NOTICES.md.
+    expect(/Inter/.test(read('THIRD-PARTY-NOTICES.md')) && /Lucide/.test(read('THIRD-PARTY-NOTICES.md'))).toBe(true);
+    expect(/Inter typeface|Lucide/.test(lic)).toBe(false);
   });
   test('package.json declares MIT', () => {
     expect(JSON.parse(read('studynook/package.json')).license).toBe('MIT');
