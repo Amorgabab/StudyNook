@@ -7,7 +7,7 @@ extension has its own version number (see `studynook/extension/manifest.json`).
 The commit history before 1.5.1 is rough (bulk uploads and auto-generated titles). This file is
 the readable version of it.
 
-## 1.5.15
+## 1.5.14
 
 - **An Iron break can no longer be paused.** Nothing is blocked during a break, so pausing one gave an
   endless, unblocked break while the Iron promise still looked like it was running. In an Iron
@@ -15,7 +15,7 @@ the readable version of it.
   explaining why, and the tray's Pause does nothing either. An Iron focus can still be paused, and
   breaks in normal sessions can still be paused and resumed.
 
-## 1.5.14
+## 1.5.13
 
 - **Iron now locks your blocked websites too.** The app lists were already locked during an Iron
   session, but you could still remove tiktok.com (or any site) from the blocked list, or add a site to
@@ -24,15 +24,13 @@ the readable version of it.
   one or change the allowed list. The remove buttons are hidden and a notice explains why. Outside Iron
   nothing changes: you can still edit your lists freely.
 
-## 1.5.13
+## 1.5.12
 
 - **Sleep no longer counts as focus time.** If the PC went to sleep (or hibernated) during a session,
   the timer used to carry on as if you were still studying: sleeping through a round ended it and
   credited the full minutes, XP and streak, and an Iron session could be ended that way without its
   wait and typed sentence. The timer now stops while the PC sleeps and carries on from the same
   place when it wakes. It is logged as `sleep-skipped` in `lifecycle.log`.
-
-## 1.5.12
 
 - **Real ambience sounds for everyone.** The rain, waves, fire and cafe ambience used to be real
   recordings only if you added the files yourself; everyone else heard a plain synthetic noise.
