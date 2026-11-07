@@ -42,6 +42,7 @@
   'home.round': 'الجولة {n} من {of}', 'home.idle.pomodoro': 'بومودورو · جولات من {min}', 'home.idle.free': 'تركيز حر · {min}',
   'home.duration': 'مدة الجلسة', 'home.start': 'ابدأ التركيز', 'home.task': 'المهمة', 'home.task.none': 'بدون مهمة محددة',
   'home.planned': 'الوقت المخطط: {min}', 'home.planned.use': 'استخدمه كمدة', 'home.planned.using': 'يُستخدم الوقت المخطط',
+  'home.iron.breakPause': 'لا يمكن إيقاف الاستراحة مؤقتًا أثناء جلسة Iron.',
   'home.pause': 'إيقاف مؤقت', 'home.resume': 'استئناف', 'home.end': 'إنهاء الجلسة', 'home.endEarly': 'إنهاء مبكر', 'home.skipBreak': 'تخطي الاستراحة',
   'home.end.confirm.t': 'إنهاء هذه الجلسة؟', 'home.end.confirm.focus': 'تُحتسب دقائق التركيز (ما لم يكن الوضع الصارم مفعّلًا)، لكنك تخسر مكافأة إكمال الجولة.',
   'home.end.confirm.break': 'تنتهي الاستراحة وتتوقف الجلسة.',

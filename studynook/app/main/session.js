@@ -133,6 +133,10 @@ class SessionEngine {
        timer's running state while an iron focus exists), and ending early
        still has to go through the gate. */
     if (!this.s || !this.s.running) return this.publicState();
+    /* ...but an Iron BREAK cannot be paused: nothing is blocked during a break, so a paused break
+       would be an endless, unblocked break with the promise still "running". Checked on the session
+       flag / self-lock (ironActive() is scoped to the focus phase). Resume is never refused. */
+    if (this.s.phase !== 'focus' && (this.s.iron || (this.hooks.isIronLocked && this.hooks.isIronLocked()))) return this.publicState();
     this.s.sessionFocusSec += this._focusedSecInPhase();
     this.s.pausedRemaining = this.remainingSec();
     this.s.running = false;

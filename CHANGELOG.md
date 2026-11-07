@@ -7,6 +7,14 @@ extension has its own version number (see `studynook/extension/manifest.json`).
 The commit history before 1.5.1 is rough (bulk uploads and auto-generated titles). This file is
 the readable version of it.
 
+## 1.5.15
+
+- **An Iron break can no longer be paused.** Nothing is blocked during a break, so pausing one gave an
+  endless, unblocked break while the Iron promise still looked like it was running. In an Iron
+  session (or while the Iron lock is on) the Pause button is now disabled during a break, with a note
+  explaining why, and the tray's Pause does nothing either. An Iron focus can still be paused, and
+  breaks in normal sessions can still be paused and resumed.
+
 ## 1.5.14
 
 - **Iron now locks your blocked websites too.** The app lists were already locked during an Iron

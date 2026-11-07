@@ -375,3 +375,57 @@ suite('session engine · sleep does not count as focus time', () => {
     eng.stop({ abandon: true });
   });
 });
+
+suite('session engine · an Iron break cannot be paused', () => {
+  const S = { workMin: 25, shortMin: 5, longMin: 15, rounds: 4, autoStartBreaks: true, autoStartFocus: false };
+  const make = (settings, extra) => {
+    const eng = new SessionEngine(Object.assign({ getSettings: () => settings, onTick: () => {}, onState: () => {}, onPhaseEnd: () => {} }, extra || {}));
+    return eng;
+  };
+  const toBreak = (eng) => { eng.start({ mode: 'pomodoro' }); eng.s.phase = 'short'; eng.s.phaseSec = 300; eng.s.running = true; eng.s.endsAt = Date.now() + 300 * 1000; };
+
+  test('in an Iron session the break keeps running when pause is pressed', () => {
+    const eng = make(Object.assign({}, S, { iron: true }));
+    toBreak(eng);
+    eng.pause();
+    expect(eng.s.running).toBe(true);
+    eng.stop({ abandon: true });
+  });
+  test('the multi-day self-lock counts too, even if the session flag is off', () => {
+    const eng = make(S, { isIronLocked: () => true });
+    toBreak(eng);
+    eng.s.iron = false;
+    eng.pause();
+    expect(eng.s.running).toBe(true);
+    eng.stop({ abandon: true });
+  });
+  test('without Iron a break can still be paused and resumed', () => {
+    const eng = make(S);
+    toBreak(eng);
+    eng.pause();
+    expect(eng.s.running).toBe(false);
+    eng.resume();
+    expect(eng.s.running).toBe(true);
+    eng.stop({ abandon: true });
+  });
+  test('an Iron FOCUS can still be paused (pausing only stops the clock)', () => {
+    const eng = make(Object.assign({}, S, { iron: true }));
+    eng.start({ mode: 'pomodoro' });
+    eng.pause();
+    expect(eng.s.running).toBe(false);
+    eng.stop({ abandon: true });
+  });
+  test('resume is never refused, so an already-paused break can be started again', () => {
+    const eng = make(Object.assign({}, S, { iron: true }));
+    toBreak(eng);
+    eng.s.running = false; eng.s.pausedRemaining = 200;   // a break paused before this rule existed
+    eng.resume();
+    expect(eng.s.running).toBe(true);
+    eng.stop({ abandon: true });
+  });
+  test('the Focus page disables the pause button for an Iron break', () => {
+    const v = require('fs').readFileSync(require('path').join(__dirname, '..', 'app', 'ui', 'js', 'views-home.js'), 'utf8');
+    expect(/ironBreak = ses\.running && ses\.phase !== 'focus'/.test(v)).toBe(true);
+    expect(/disabled: ironBreak/.test(v)).toBe(true);
+  });
+});
