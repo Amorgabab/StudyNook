@@ -370,6 +370,8 @@ Views.sites = function (c) {
   c.appendChild(st);
 
   /* --- lists --- */
+  const frozen = App.listsFrozen();   // Iron: sites can be added to the blocked list, never removed
+  if (frozen) { const fc = N.callout('warning', 'lock', t('sites.frozen')); fc.style.marginTop = 'var(--s-6)'; c.appendChild(fc); }
   const grid = N.el('div', { class: 'grid-2', style: 'margin-top:var(--s-6)' });
   grid.appendChild(domainList('block', t('sites.blocked'), t('sites.blocked.sub'), 'ban', s.block, 'youtube.com/shorts'));
   grid.appendChild(domainList('allow', t('sites.allowed'), t('sites.allowed.sub'), 'circle-check', s.allow, 'wikipedia.org'));
@@ -404,15 +406,17 @@ Views.sites = function (c) {
     const chips = N.el('div', { class: 'chips' });
     for (const dom of arr) {
       chips.appendChild(N.el('span', { class: 'chip', title: dom }, N.el('span', { text: dom }),
-        N.el('button', { type: 'button', 'aria-label': t('sites.remove', { site: dom }), onclick: () => setS({ [key]: arr.filter((x) => x !== dom) }) }, N.icon('x', 14))));
+        frozen ? null : N.el('button', { type: 'button', 'aria-label': t('sites.remove', { site: dom }), onclick: () => setS({ [key]: arr.filter((x) => x !== dom) }) }, N.icon('x', 14))));
     }
     if (!arr.length) chips.appendChild(N.el('span', { class: 'small', text: t('sites.empty') }));
     card.appendChild(chips);
     const inp = N.el('input', { class: 'input grow', placeholder: ph, 'aria-label': t('sites.add.label', { list: title }), title: key === 'block' ? t('sites.add.tip') : null, 'data-draft': 'sites:add:' + key });
     const addIt = () => { const v = NookRules.normalizeEntry(inp.value); if (!v) return; setS({ [key]: [...arr, v] }); inp.value = ''; };
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') addIt(); });
-    card.appendChild(N.el('div', { class: 'row', style: 'margin-top:var(--s-5)' }, inp, N.btn(t('common.add'), { cls: 'btn-primary', icon: 'plus', onclick: addIt })));
-    const seeds = (key === 'block' ? NookCatalog.SEED_BLOCK_SITES : NookCatalog.SEED_ALLOW_SITES).filter((x) => !arr.includes(x)).slice(0, 6);
+    const canAdd = !(frozen && key === 'allow');   // an extra allowed site would loosen the promise
+    inp.disabled = !canAdd;
+    card.appendChild(N.el('div', { class: 'row', style: 'margin-top:var(--s-5)' }, inp, N.btn(t('common.add'), { cls: 'btn-primary', icon: 'plus', disabled: !canAdd, title: canAdd ? null : t('sites.frozen.short'), onclick: addIt })));
+    const seeds = canAdd ? (key === 'block' ? NookCatalog.SEED_BLOCK_SITES : NookCatalog.SEED_ALLOW_SITES).filter((x) => !arr.includes(x)).slice(0, 6) : [];
     if (seeds.length) {
       card.appendChild(N.el('div', { class: 'overline', style: 'margin:var(--s-4) 0 var(--s-2)', text: t('sites.suggestions') }));
       card.appendChild(N.el('div', { class: 'chips' }, ...seeds.map((sd) => N.btn(sd, { cls: 'btn-sm btn-ghost', icon: 'plus', iconSize: 14, onclick: () => setS({ [key]: [...arr, sd] }) }))));

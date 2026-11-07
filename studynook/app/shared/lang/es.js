@@ -105,6 +105,7 @@
   'sites.toggle': 'Bloqueo de sitios',
   'sites.blocked': 'Sitios bloqueados', 'sites.blocked.sub': 'Se usa en modo lista de bloqueo. También funcionan rutas, por ejemplo youtube.com/shorts.',
   'sites.allowed': 'Sitios permitidos', 'sites.allowed.sub': 'Se usa en modo lista de permitidos. Todo lo demás se bloquea durante la concentración.',
+  'sites.frozen': 'El bloqueo Iron está activo: puedes bloquear más sitios, pero ninguno se puede quitar ni permitir hasta que termine el bloqueo.', 'sites.frozen.short': 'Bloqueado por Iron',
   'sites.empty': 'Esta lista está vacía.', 'sites.remove': 'Quitar {site}', 'sites.add.label': 'Añadir a «{list}»',
   'sites.add.tip': 'También funcionan rutas: youtube.com/shorts bloquea solo los Shorts.', 'sites.suggestions': 'Sugerencias',
   'sites.ext.title': 'Extensión del navegador', 'sites.ext.connected': 'Extensión conectada', 'sites.ext.notConnected': 'Extensión sin conectar',

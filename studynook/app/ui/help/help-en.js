@@ -48,6 +48,7 @@
           'The app guard closes blocked apps instantly and cannot be paused.',
           'Website blocking cannot be switched off.',
           'App lists can only grow: you can block more apps, but not remove, disable or allow any.',
+          'Website lists can only grow too: you can block more sites, but not remove any or allow more.',
           'Ending early requires a 60-second cool-down and typing a sentence exactly.',
           'If the browser extension disappears, StudyNook closes the browser after about 90 seconds.'
         ] },

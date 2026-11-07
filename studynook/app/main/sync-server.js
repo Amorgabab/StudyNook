@@ -27,6 +27,7 @@ const http = require('http');
 const crypto = require('crypto');
 const NookRules = require('../../extension/rules.js');
 const ExtWatch = require('../shared/extwatch.js');
+const Iron = require('../shared/iron.js');
 
 const PORT = 47470;
 const dedupe = (arr) => arr.filter((x, i) => arr.indexOf(x) === i);
@@ -55,6 +56,14 @@ class SyncServer {
       The price: if the app quits right after a clean end, before the extension's next poll, the extension
       never hears the session ended and blocks on. True when the extension was last told "blocking on" but
       it is off now, so quitting should wait for one more poll. */
+  /** Are the block lists frozen by an Iron focus or the multi-day self-lock right now? (same rule as ipc.js) */
+  _listsFrozen(d) {
+    const s = this.hooks.session;
+    const focus = !!(s && typeof s.isIronFocus === 'function' && s.isIronFocus());
+    const t = (d && d.settings && d.settings.timer) || {};
+    return Iron.listsFrozenState(focus, Iron.isLocked(t.ironLockedUntil, Date.now()));
+  }
+
   staleBlockingForExt(blockingNow) {
     return !blockingNow && this.lastBlocking && Date.now() - this.lastStateAt < 20000;
   }
@@ -224,6 +233,7 @@ class SyncServer {
     if (url === '/sites' && req.method === 'POST') {
       const body = await this._readBody(req);
       store.mutate((d) => {
+        const before = { block: d.sites.block.slice(), allow: d.sites.allow.slice() };
         const add = (list, v) => { const n = NookRules.normalizeEntry(v); if (n && !d.sites[list].includes(n)) d.sites[list].push(n); };
         const rm = (list, v) => { const n = NookRules.normalizeEntry(v); d.sites[list] = d.sites[list].filter((x) => x !== n); };
         if (body.addBlock) add('block', body.addBlock);
@@ -235,6 +245,8 @@ class SyncServer {
         if (body.mode === 'block' || body.mode === 'allow') d.sites.mode = body.mode;
         if (body.when === 'session' || body.when === 'always') d.sites.when = body.when;
         if (typeof body.enabled === 'boolean') d.sites.enabled = body.enabled;
+        // Iron list-freeze: the extension's popup cannot remove a blocked site or loosen the allowed list either
+        if (this._listsFrozen(d)) Object.assign(d.sites, Iron.freezeSites(before, d.sites));
       });
       return this._json(res, 200, { ok: true }, req);
     }

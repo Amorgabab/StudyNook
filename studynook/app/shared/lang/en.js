@@ -112,6 +112,7 @@
   'sites.toggle': 'Website blocking',
   'sites.blocked': 'Blocked sites', 'sites.blocked.sub': 'Used in blocklist mode. Paths work too, for example youtube.com/shorts.',
   'sites.allowed': 'Allowed sites', 'sites.allowed.sub': 'Used in allowlist mode. Everything else is blocked during focus.',
+  'sites.frozen': 'Iron lock is active: you can block more websites, but none can be removed or allowed until the lock ends.', 'sites.frozen.short': 'Locked by Iron',
   'sites.empty': 'This list is empty.', 'sites.remove': 'Remove {site}', 'sites.add.label': 'Add to {list}',
   'sites.add.tip': 'Paths work too: youtube.com/shorts blocks only Shorts.', 'sites.suggestions': 'Suggestions',
   'sites.ext.title': 'Browser extension', 'sites.ext.connected': 'Extension connected', 'sites.ext.notConnected': 'Extension not connected',

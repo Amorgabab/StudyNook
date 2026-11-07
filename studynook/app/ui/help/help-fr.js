@@ -46,6 +46,7 @@
           'La garde ferme les applis bloquées immédiatement et ne peut pas être mise en pause.',
           'Le blocage des sites ne peut pas être désactivé.',
           'Les listes d’applis ne peuvent que s’allonger : vous pouvez bloquer d’autres applis, mais pas en retirer, en désactiver ni en autoriser.',
+          'Les listes de sites ne peuvent aussi que s’allonger : vous pouvez bloquer d’autres sites, mais pas en retirer ni en autoriser.',
           'Arrêter plus tôt demande une attente de 60 secondes et la saisie exacte d’une phrase.',
           'Si l’extension disparaît, StudyNook ferme le navigateur après environ 90 secondes.'
         ] },

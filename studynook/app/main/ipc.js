@@ -281,6 +281,7 @@ function registerIpc(ctx) {
   /* ---- sites ---- */
   H('sites:set', (p) => {
     store.mutate((d) => {
+      const before = { block: d.sites.block.slice(), allow: d.sites.allow.slice() };
       const patch = (p && p.patch && typeof p.patch === 'object' && !Array.isArray(p.patch)) ? p.patch : {};
       /* SECURITY FIX: enums/booleans were assigned unvalidated — a buggy or
          hostile renderer could persist mode:'banana', which makes rule
@@ -299,6 +300,9 @@ function registerIpc(ctx) {
          store.enforceIron() re-asserts this on every other write too, so no
          path softens it. */
       Object.assign(d.sites, Iron.effectiveSites(d.sites, Iron.isLocked(d.settings.timer.ironLockedUntil, Date.now())));
+      /* Iron list-freeze (same rule as the app lists): while an Iron focus exists or the self-lock runs,
+         blocked sites can be added but never removed, and the allowed list cannot change. */
+      if (listsFrozenNow()) Object.assign(d.sites, Iron.freezeSites(before, d.sites));
     });
     pushSnapshot();
     return true;

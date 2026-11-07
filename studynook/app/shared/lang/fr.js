@@ -105,6 +105,7 @@
   'sites.toggle': 'Blocage des sites',
   'sites.blocked': 'Sites bloqués', 'sites.blocked.sub': 'Utilisée en mode liste de blocage. Les chemins fonctionnent aussi, par exemple youtube.com/shorts.',
   'sites.allowed': 'Sites autorisés', 'sites.allowed.sub': 'Utilisée en mode liste d’autorisation. Tout le reste est bloqué pendant la concentration.',
+  'sites.frozen': 'Le verrou Iron est actif : vous pouvez bloquer d’autres sites, mais aucun ne peut être retiré ni autorisé avant la fin du verrou.', 'sites.frozen.short': 'Verrouillé par Iron',
   'sites.empty': 'Cette liste est vide.', 'sites.remove': 'Retirer {site}', 'sites.add.label': 'Ajouter à « {list} »',
   'sites.add.tip': 'Les chemins fonctionnent aussi : youtube.com/shorts ne bloque que les Shorts.', 'sites.suggestions': 'Suggestions',
   'sites.ext.title': 'Extension de navigateur', 'sites.ext.connected': 'Extension connectée', 'sites.ext.notConnected': 'Extension non connectée',

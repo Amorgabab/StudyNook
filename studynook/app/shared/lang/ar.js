@@ -105,6 +105,7 @@
   'sites.toggle': 'حظر المواقع',
   'sites.blocked': 'المواقع المحظورة', 'sites.blocked.sub': 'تُستخدم في وضع قائمة الحظر. المسارات تعمل أيضًا، مثل youtube.com/shorts.',
   'sites.allowed': 'المواقع المسموح بها', 'sites.allowed.sub': 'تُستخدم في وضع قائمة السماح. يُحظر كل ما عداها أثناء التركيز.',
+  'sites.frozen': 'قفل Iron مفعّل: يمكنك حظر مواقع إضافية، لكن لا يمكن إزالة أي موقع أو السماح به حتى ينتهي القفل.', 'sites.frozen.short': 'مقفل بواسطة Iron',
   'sites.empty': 'هذه القائمة فارغة.', 'sites.remove': 'إزالة {site}', 'sites.add.label': 'إضافة إلى «{list}»',
   'sites.add.tip': 'المسارات تعمل أيضًا: youtube.com/shorts يحظر مقاطع Shorts فقط.', 'sites.suggestions': 'اقتراحات',
   'sites.ext.title': 'إضافة المتصفح', 'sites.ext.connected': 'الإضافة متصلة', 'sites.ext.notConnected': 'الإضافة غير متصلة',

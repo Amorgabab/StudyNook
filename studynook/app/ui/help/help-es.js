@@ -46,6 +46,7 @@
           'La guardia cierra las apps bloqueadas al instante y no se puede pausar.',
           'El bloqueo de sitios no se puede desactivar.',
           'Las listas de apps solo pueden crecer: puedes bloquear más apps, pero no quitar, desactivar ni permitir ninguna.',
+          'Las listas de sitios también solo pueden crecer: puedes bloquear más sitios, pero no quitar ni permitir ninguno.',
           'Terminar antes requiere esperar 60 segundos y escribir una frase exactamente.',
           'Si la extensión desaparece, StudyNook cierra el navegador tras unos 90 segundos.'
         ] },

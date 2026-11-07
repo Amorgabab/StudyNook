@@ -7,6 +7,15 @@ extension has its own version number (see `studynook/extension/manifest.json`).
 The commit history before 1.5.1 is rough (bulk uploads and auto-generated titles). This file is
 the readable version of it.
 
+## 1.5.14
+
+- **Iron now locks your blocked websites too.** The app lists were already locked during an Iron
+  session, but you could still remove tiktok.com (or any site) from the blocked list, or add a site to
+  the allowed list, from the Websites page or from the browser extension's popup. Now, while an Iron
+  focus runs or the Iron lock is on, you can still add sites to the blocked list, but you cannot remove
+  one or change the allowed list. The remove buttons are hidden and a notice explains why. Outside Iron
+  nothing changes: you can still edit your lists freely.
+
 ## 1.5.13
 
 - **Sleep no longer counts as focus time.** If the PC went to sleep (or hibernated) during a session,
