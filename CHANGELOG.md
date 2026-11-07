@@ -7,6 +7,14 @@ extension has its own version number (see `studynook/extension/manifest.json`).
 The commit history before 1.5.1 is rough (bulk uploads and auto-generated titles). This file is
 the readable version of it.
 
+## 1.5.13
+
+- **Sleep no longer counts as focus time.** If the PC went to sleep (or hibernated) during a session,
+  the timer used to carry on as if you were still studying: sleeping through a round ended it and
+  credited the full minutes, XP and streak, and an Iron session could be ended that way without its
+  wait and typed sentence. The timer now stops while the PC sleeps and carries on from the same
+  place when it wakes. It is logged as `sleep-skipped` in `lifecycle.log`.
+
 ## 1.5.12
 
 - **Real ambience sounds for everyone.** The rain, waves, fire and cafe ambience used to be real

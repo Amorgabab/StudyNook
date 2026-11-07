@@ -271,3 +271,107 @@ suite('session · kill recovery (End task / crash)', () => {
   });
 });
 
+
+suite('session engine · sleep does not count as focus time', () => {
+  const S = { workMin: 25, shortMin: 5, longMin: 15, rounds: 4, autoStartBreaks: true, autoStartFocus: false };
+  const HOUR = 60 * 60 * 1000;
+  function make(extra) {
+    const events = [], skipped = [];
+    const eng = new SessionEngine(Object.assign({
+      getSettings: () => S, onTick: () => {}, onState: () => {}, onPhaseEnd: (i) => events.push(i), onSleepSkipped: (s) => skipped.push(s)
+    }, extra || {}));
+    return { eng, events, skipped };
+  }
+  /** Pretend the machine slept for `ms`: the wall clock moved on (endsAt / phaseStartAt are now further
+      in the past) and the engine's own ticks stopped for that long. */
+  function sleep(eng, ms) {
+    eng.s.endsAt -= ms; eng.s.phaseStartAt -= ms; eng._lastTickAt -= ms;
+  }
+
+  test('a long sleep during a focus round leaves the same time on the clock and does not end the round', () => {
+    const { eng, events, skipped } = make();
+    eng.start({ mode: 'pomodoro' });
+    eng._tick();
+    const before = eng.remainingSec();
+    sleep(eng, 8 * HOUR);
+    eng._tick();
+    expect(Math.abs(eng.remainingSec() - before) <= 1).toBe(true);
+    expect(eng.isFocusing()).toBeTruthy();
+    expect(events.length).toBe(0);
+    expect(skipped.length).toBe(1);
+    expect(skipped[0] >= 8 * 3600 - 2).toBe(true);
+    eng.stop({ abandon: true });
+  });
+  test('sleep time is not credited as focused time', () => {
+    const { eng } = make();
+    eng.start({ mode: 'pomodoro' });
+    eng._tick();
+    sleep(eng, 3 * HOUR);
+    eng._tick();
+    expect(eng._focusedSecInPhase() < 5).toBe(true);
+    eng.stop({ abandon: true });
+  });
+  test('a short sleep of a minute is skipped too', () => {
+    const { eng } = make();
+    eng.start({ mode: 'pomodoro' });
+    eng._tick();
+    const before = eng.remainingSec();
+    sleep(eng, 60 * 1000);
+    eng._tick();
+    expect(Math.abs(eng.remainingSec() - before) <= 1).toBe(true);
+    eng.stop({ abandon: true });
+  });
+  test('normal half-second ticks and small hiccups are not mistaken for sleep', () => {
+    const { eng, skipped } = make();
+    eng.start({ mode: 'pomodoro' });
+    eng._tick();
+    sleep(eng, 3000);   // a 3 s stall is below the sleep threshold
+    eng._tick();
+    expect(skipped.length).toBe(0);
+    eng.stop({ abandon: true });
+  });
+  test('a paused session has nothing to skip and stays paused', () => {
+    const { eng, skipped } = make();
+    eng.start({ mode: 'pomodoro' });
+    eng.pause();
+    const before = eng.remainingSec();
+    eng._lastTickAt -= 5 * HOUR;
+    eng._tick();
+    expect(eng.remainingSec()).toBe(before);
+    expect(skipped.length).toBe(0);
+    expect(eng.isFocusing()).toBeFalsy();
+    eng.stop({ abandon: true });
+  });
+  test('a running break is frozen during sleep as well', () => {
+    const { eng } = make();
+    eng.start({ mode: 'pomodoro' });
+    eng.s.phase = 'short'; eng.s.phaseSec = 300; eng.s.running = true; eng.s.endsAt = Date.now() + 300 * 1000;
+    eng._tick();
+    sleep(eng, 2 * HOUR);
+    eng._tick();
+    expect(eng.remainingSec() >= 298).toBe(true);
+    eng.stop({ abandon: true });
+  });
+  test('an Iron focus cannot be ended by sleeping through it', () => {
+    const { eng, events } = make({ getSettings: () => Object.assign({}, S, { iron: true }) });
+    eng.start({ mode: 'pomodoro' });
+    expect(eng.isIron()).toBeTruthy();
+    eng._tick();
+    sleep(eng, 10 * HOUR);
+    eng._tick();
+    expect(eng.isFocusing()).toBeTruthy();
+    expect(events.length).toBe(0);
+    eng.stop({ abandon: true });
+  });
+  test('after waking, the round still ends on time (the clock keeps running normally)', () => {
+    const { eng, events } = make();
+    eng.start({ mode: 'pomodoro' });
+    eng._tick();
+    sleep(eng, 6 * HOUR);
+    eng._tick();
+    eng.s.endsAt = Date.now() - 1;   // now let the remaining time run out
+    eng._tick();
+    expect(events.length > 0).toBe(true);
+    eng.stop({ abandon: true });
+  });
+});

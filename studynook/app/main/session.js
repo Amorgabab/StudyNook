@@ -10,6 +10,9 @@
    ============================================================ */
 'use strict';
 
+const TICK_MS = 500;           // how often the engine checks the clock
+const SLEEP_GAP_MS = 20000;    // a silence this long between ticks means the PC slept: that time is not focus time
+
 class SessionEngine {
   /**
    * @param {object} hooks
@@ -17,6 +20,7 @@ class SessionEngine {
    *   onTick(state)                    every second
    *   onPhaseEnd(info)                 a phase finished / session stopped
    *   onState()                        push fresh snapshot to all windows
+   *   onSleepSkipped(seconds)          optional: the clock was moved forward after a sleep
    */
   constructor(hooks) {
     this.hooks = hooks;
@@ -324,12 +328,32 @@ class SessionEngine {
 
   _loop() {
     this._stopLoop();
-    this.timer = setInterval(() => this._tick(), 500);
+    this._lastTickAt = Date.now();
+    this.timer = setInterval(() => this._tick(), TICK_MS);
   }
   _stopLoop() { if (this.timer) { clearInterval(this.timer); this.timer = null; } }
 
+  /* Sleep / suspend / hibernate: the timer is wall-clock based, so without this a PC that slept
+     through a focus round would wake up with the round over and credited in full (and an Iron
+     session would end without its gate). Ticks fire every TICK_MS; a much longer gap means the
+     machine was asleep (or the process was frozen), so the running clock is moved forward by that
+     gap: the timer stops while the PC sleeps. Paused sessions have nothing to shift. */
+  _skipGap(gapMs) {
+    const s = this.s;
+    if (!s || !s.running || gapMs <= 0) return 0;
+    s.endsAt += gapMs;
+    s.phaseStartAt += gapMs;
+    this._persist();
+    this.hooks.onSleepSkipped && this.hooks.onSleepSkipped(Math.round(gapMs / 1000));
+    return gapMs;
+  }
+
   _tick() {
     if (!this.s) return;
+    const now = Date.now();
+    const gap = this._lastTickAt ? now - this._lastTickAt - TICK_MS : 0;
+    this._lastTickAt = now;
+    if (gap > SLEEP_GAP_MS) this._skipGap(gap);
     let rem = this.remainingSec();
     // wall-clock jump protection: if remaining exceeds the phase length
     // (clock moved backwards), resync from the last sane remainder

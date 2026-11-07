@@ -229,6 +229,7 @@ app.whenReady().then(() => {
     getSettings: () => store.data.settings.timer,
     isIronLocked: () => Iron.isLocked(store.data.settings.timer.ironLockedUntil, Date.now()),
     onTick: (st) => broadcast('tick', st),
+    onSleepSkipped: (sec) => lifeLog('sleep-skipped', { sec }),   // the PC slept: the timer did not count it
     onState: () => {
       pushSnapshot();
       // A session just started: bring the relaunch helper up at once instead of on the next 2 s tick.
