@@ -428,4 +428,9 @@ suite('session engine · an Iron break cannot be paused', () => {
     expect(/ironBreak = ses\.running && ses\.phase !== 'focus'/.test(v)).toBe(true);
     expect(/disabled: ironBreak/.test(v)).toBe(true);
   });
+  test('ending an Iron break goes through the Iron gate, not a plain confirm', () => {
+    const v = require('fs').readFileSync(require('path').join(__dirname, '..', 'app', 'ui', 'js', 'views-home.js'), 'utf8');
+    expect(/ironEnd = iron \|\| ironBreak/.test(v)).toBe(true);
+    expect(/row\.appendChild\(ironEnd/.test(v)).toBe(true);
+  });
 });

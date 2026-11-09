@@ -83,7 +83,9 @@ Views.home = function (c) {
       disabled: ironBreak,
       onclick: () => nook.invoke(ses.running ? 'session:pause' : 'session:resume')
     }));
-    row.appendChild(iron
+    // Ending an Iron session from a break needs the gate too, not just ending during focus.
+    const ironEnd = iron || ironBreak;
+    row.appendChild(ironEnd
       ? N.btn(t('home.endEarly'), { cls: 'btn-lg', icon: 'lock', iconSize: 18, onclick: () => App.ironGate(() => nook.invoke('session:stop', { abandon: true })) })
       : N.btn(t('home.end'), { cls: 'btn-lg', icon: 'square', iconSize: 16, onclick: () => App.confirm(t('home.end.confirm.t'), ses.phase === 'focus' ? t('home.end.confirm.focus') : t('home.end.confirm.break'), () => nook.invoke('session:stop', { abandon: ses.phase === 'focus' }), t('home.end')) }));
     actions.appendChild(row);

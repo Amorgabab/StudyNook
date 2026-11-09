@@ -14,6 +14,9 @@ the readable version of it.
   session (or while the Iron lock is on) the Pause button is now disabled during a break, with a note
   explaining why, and the tray's Pause does nothing either. An Iron focus can still be paused, and
   breaks in normal sessions can still be paused and resumed.
+- **Ending an Iron session from a break now needs the Iron gate.** Before, "End session" during a break
+  asked only for a plain confirmation; now it needs the same cool-down and typed sentence as ending
+  during a focus.
 
 ## 1.5.13
 
