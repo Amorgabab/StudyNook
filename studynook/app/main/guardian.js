@@ -80,7 +80,9 @@ class Guardian {
        iron, your own saved choices apply exactly as stored. */
     if (this._ironActive()) return true;
     if (Date.now() < this.pausedUntil) return false;
-    if (g.onlyDuringSessions) return this.hooks.session.isFocusing();
+    /* A paused focus round still counts: pausing the timer must not stop the blocking. */
+    const ses = this.hooks.session;
+    if (g.onlyDuringSessions) return typeof ses.isFocusPhase === 'function' ? ses.isFocusPhase() : ses.isFocusing();
     return true;
   }
 

@@ -7,6 +7,18 @@ extension has its own version number (see `studynook/extension/manifest.json`).
 The commit history before 1.5.1 is rough (bulk uploads and auto-generated titles). This file is
 the readable version of it.
 
+## 1.5.15
+
+- **Pausing a normal focus no longer stops the blocking.** Pausing only stops the clock now, in every
+  mode: the app guard and the browser extension keep blocking while a focus round is paused.
+- **No break can be paused.** The rule that was Iron-only now covers normal sessions too (the Pause
+  button is disabled during a break and the tray's Pause does nothing). Resuming is never refused.
+- **You can't unblock things in the middle of a focus round.** While a focus round exists (running or
+  paused), blocked sites and apps can be added but not removed or disabled, nothing can be added to an
+  allowed list, and blocking cannot be switched off or flipped to the other list mode, from the app and
+  from the extension popup. Between rounds (breaks, or no session) the lists are editable as before.
+  The tray's "let me breathe" and "allow for 5 minutes" are unchanged.
+
 ## 1.5.14
 
 - **An Iron break can no longer be paused.** Nothing is blocked during a break, so pausing one gave an

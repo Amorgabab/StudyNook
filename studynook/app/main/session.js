@@ -87,6 +87,9 @@ class SessionEngine {
       (`!!this.s && this.s.running`) made a paused session invisible to the
       gates — which is exactly why closing / unblocking worked while paused. */
   isRunning() { return !!this.s; }
+  /** A focus round exists (running OR paused), Iron or not. Blocking and the block-list freeze key off this:
+      pausing stops the clock, never the blocking. */
+  isFocusPhase() { return !!(this.s && this.s.phase === 'focus'); }
   /** Clock-true: the timer is actually ticking right now (not paused). Only
       for display-ish checks — never for iron enforcement gates. */
   isTicking() { return !!this.s && this.s.running; }
@@ -133,10 +136,9 @@ class SessionEngine {
        timer's running state while an iron focus exists), and ending early
        still has to go through the gate. */
     if (!this.s || !this.s.running) return this.publicState();
-    /* ...but an Iron BREAK cannot be paused: nothing is blocked during a break, so a paused break
-       would be an endless, unblocked break with the promise still "running". Checked on the session
-       flag / self-lock (ironActive() is scoped to the focus phase). Resume is never refused. */
-    if (this.s.phase !== 'focus' && (this.s.iron || (this.hooks.isIronLocked && this.hooks.isIronLocked()))) return this.publicState();
+    /* ...but a BREAK cannot be paused, Iron or not: nothing is blocked during a break, so a paused break
+       would be an endless, unblocked break. Resume is never refused. */
+    if (this.s.phase !== 'focus') return this.publicState();
     this.s.sessionFocusSec += this._focusedSecInPhase();
     this.s.pausedRemaining = this.remainingSec();
     this.s.running = false;
@@ -481,7 +483,7 @@ class SessionEngine {
       /* Iron promise travels to the extension too: while an iron FOCUS
          exists — RUNNING OR PAUSED — the browser keeps blocking. Pausing
          only stops the clock; it must never unlock the website guard. */
-      blockActive: !!(s.phase === 'focus' && this.ironActive()),
+      blockActive: s.phase === 'focus',
       phase: s.phase,                       // focus | short | long
       remainingSec: this.remainingSec(),
       totalSec: s.phaseSec,

@@ -33,6 +33,12 @@ suite('iron · website lists are frozen', () => {
     expect(r.mode).toBe('allow');
     expect(r.enabled).toBe(true);
   });
+  test('during a focus round blocking cannot be switched off and the mode cannot be flipped', () => {
+    const c = Object.assign({ enabled: true, mode: 'block' }, cur);
+    const r = Iron.freezeSites(c, { block: [], allow: [], enabled: false, mode: 'allow' }, true);
+    expect(r.enabled).toBe(true);
+    expect(r.mode).toBe('block');
+  });
   test('missing or odd input does not throw', () => {
     expect(Iron.freezeSites(undefined, undefined).block).toEqual([]);
     expect(Iron.freezeSites({ block: 'x' }, { block: null }).allow).toEqual([]);
@@ -47,6 +53,10 @@ suite('sync server · extension edits respect the Iron freeze', () => {
   test('frozen while the multi-day self-lock runs, even with no session', () => {
     expect(mk(false)._listsFrozen({ settings: { timer: { ironLockedUntil: Date.now() + 3600 * 1000 } } })).toBe(true);
   });
+  test('frozen during any focus round, Iron or not', () => {
+    const s = new SyncServer({ store: { data: {} }, session: { isFocusPhase: () => true, isIronFocus: () => false } });
+    expect(s._listsFrozen({ settings: { timer: {} } })).toBe(true);
+  });
   test('not frozen outside Iron', () => {
     expect(mk(false)._listsFrozen({ settings: { timer: {} } })).toBe(false);
     expect(mk(false)._listsFrozen({ settings: { timer: { ironLockedUntil: Date.now() - 1000 } } })).toBe(false);
@@ -58,8 +68,8 @@ suite('sync server · extension edits respect the Iron freeze', () => {
 
 suite('iron · every way to edit the website lists is guarded', () => {
   test('the app window and the extension bridge both apply freezeSites', () => {
-    expect(/listsFrozenNow\(\)\) Object\.assign\(d\.sites, Iron\.freezeSites\(before, d\.sites\)\)/.test(read('app/main/ipc.js'))).toBe(true);
-    expect(/_listsFrozen\(d\)\) Object\.assign\(d\.sites, Iron\.freezeSites\(before, d\.sites\)\)/.test(read('app/main/sync-server.js'))).toBe(true);
+    expect(/listsFrozenNow\(\)\) Object\.assign\(d\.sites, Iron\.freezeSites\(before, d\.sites, /.test(read('app/main/ipc.js'))).toBe(true);
+    expect(/_listsFrozen\(d\)\) Object\.assign\(d\.sites, Iron\.freezeSites\(before, d\.sites, /.test(read('app/main/sync-server.js'))).toBe(true);
   });
   test('the Websites page hides remove buttons and disables adding to the allowed list while frozen', () => {
     const v = read('app/ui/js/views-manage.js');

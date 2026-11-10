@@ -189,7 +189,7 @@ window.App = (function () {
   };
   App.listsFrozen = function () {
     const ses = App.state.session || {}, tm = App.state.data.settings.timer;
-    return Iron.listsFrozenState(!!(ses.active && ses.phase === 'focus' && ses.iron), Iron.isLocked(tm.ironLockedUntil, Date.now()));
+    return Iron.listsFrozenState(!!(ses.active && ses.phase === 'focus'), Iron.isLocked(tm.ironLockedUntil, Date.now()));
   };
   App.levelTitle = function (level) {
     const idx = Math.min(NookProgress.TITLES.length - 1, Math.floor((level - 1) / 3));

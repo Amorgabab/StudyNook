@@ -399,13 +399,27 @@ suite('session engine · an Iron break cannot be paused', () => {
     expect(eng.s.running).toBe(true);
     eng.stop({ abandon: true });
   });
-  test('without Iron a break can still be paused and resumed', () => {
+  test('without Iron a break cannot be paused either', () => {
     const eng = make(S);
     toBreak(eng);
     eng.pause();
-    expect(eng.s.running).toBe(false);
-    eng.resume();
     expect(eng.s.running).toBe(true);
+    eng.stop({ abandon: true });
+  });
+  test('a paused focus (no Iron) still reports blockActive and a focus phase', () => {
+    const eng = make(S);
+    eng.start({ mode: 'pomodoro' });
+    eng.pause();
+    expect(eng.s.running).toBe(false);
+    expect(eng.isFocusPhase()).toBe(true);
+    expect(eng.publicState().blockActive).toBe(true);
+    eng.stop({ abandon: true });
+  });
+  test('during a break nothing is held: blockActive is false and no focus phase exists', () => {
+    const eng = make(S);
+    toBreak(eng);
+    expect(eng.isFocusPhase()).toBe(false);
+    expect(eng.publicState().blockActive).toBe(false);
     eng.stop({ abandon: true });
   });
   test('an Iron FOCUS can still be paused (pausing only stops the clock)', () => {
@@ -423,10 +437,11 @@ suite('session engine · an Iron break cannot be paused', () => {
     expect(eng.s.running).toBe(true);
     eng.stop({ abandon: true });
   });
-  test('the Focus page disables the pause button for an Iron break', () => {
+  test('the Focus page disables the pause button for any break', () => {
     const v = require('fs').readFileSync(require('path').join(__dirname, '..', 'app', 'ui', 'js', 'views-home.js'), 'utf8');
     expect(/ironBreak = ses\.running && ses\.phase !== 'focus'/.test(v)).toBe(true);
-    expect(/disabled: ironBreak/.test(v)).toBe(true);
+    expect(/breakNow = ses\.running && ses\.phase !== 'focus'/.test(v)).toBe(true);
+    expect(/disabled: breakNow/.test(v)).toBe(true);
   });
   test('ending an Iron break goes through the Iron gate, not a plain confirm', () => {
     const v = require('fs').readFileSync(require('path').join(__dirname, '..', 'app', 'ui', 'js', 'views-home.js'), 'utf8');

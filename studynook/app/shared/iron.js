@@ -165,12 +165,19 @@
       frozen you may add sites to the blocked list, but nothing already on it can be removed, and the
       allowed list cannot change at all (an extra allowed site would loosen the promise). Pure: takes
       what is stored and what someone wants stored, returns what may be stored. */
-  function freezeSites(current, wanted) {
+  function freezeSites(current, wanted, focusRound) {
     const arr = (a) => (Array.isArray(a) ? a : []);
     const cur = current || {}, want = wanted || {};
     const block = arr(cur.block).slice();
     for (const x of arr(want.block)) if (!block.includes(x)) block.push(x);
-    return Object.assign({}, want, { block, allow: arr(cur.allow).slice() });
+    const out = Object.assign({}, want, { block, allow: arr(cur.allow).slice() });
+    /* During a focus round the two switches that would loosen blocking are frozen as well: blocking
+       cannot be turned off and the list mode (block vs allow) cannot be flipped. */
+    if (focusRound) {
+      if (cur.enabled !== false) out.enabled = true;
+      if (cur.mode === 'block' || cur.mode === 'allow') out.mode = cur.mode;
+    }
+    return out;
   }
   function objTimer(d) {
     const s = (d && d.settings) || {};

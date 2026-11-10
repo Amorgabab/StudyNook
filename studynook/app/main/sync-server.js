@@ -59,7 +59,7 @@ class SyncServer {
   /** Are the block lists frozen by an Iron focus or the multi-day self-lock right now? (same rule as ipc.js) */
   _listsFrozen(d) {
     const s = this.hooks.session;
-    const focus = !!(s && typeof s.isIronFocus === 'function' && s.isIronFocus());
+    const focus = !!(s && ((typeof s.isFocusPhase === 'function' && s.isFocusPhase()) || (typeof s.isIronFocus === 'function' && s.isIronFocus())));
     const t = (d && d.settings && d.settings.timer) || {};
     return Iron.listsFrozenState(focus, Iron.isLocked(t.ironLockedUntil, Date.now()));
   }
@@ -233,7 +233,7 @@ class SyncServer {
     if (url === '/sites' && req.method === 'POST') {
       const body = await this._readBody(req);
       store.mutate((d) => {
-        const before = { block: d.sites.block.slice(), allow: d.sites.allow.slice() };
+        const before = { block: d.sites.block.slice(), allow: d.sites.allow.slice(), enabled: d.sites.enabled, mode: d.sites.mode };
         const add = (list, v) => { const n = NookRules.normalizeEntry(v); if (n && !d.sites[list].includes(n)) d.sites[list].push(n); };
         const rm = (list, v) => { const n = NookRules.normalizeEntry(v); d.sites[list] = d.sites[list].filter((x) => x !== n); };
         if (body.addBlock) add('block', body.addBlock);
@@ -246,7 +246,7 @@ class SyncServer {
         if (body.when === 'session' || body.when === 'always') d.sites.when = body.when;
         if (typeof body.enabled === 'boolean') d.sites.enabled = body.enabled;
         // Iron list-freeze: the extension's popup cannot remove a blocked site or loosen the allowed list either
-        if (this._listsFrozen(d)) Object.assign(d.sites, Iron.freezeSites(before, d.sites));
+        if (this._listsFrozen(d)) Object.assign(d.sites, Iron.freezeSites(before, d.sites, !!(this.hooks.session && typeof this.hooks.session.isFocusPhase === 'function' && this.hooks.session.isFocusPhase())));
       });
       return this._json(res, 200, { ok: true }, req);
     }

@@ -71,6 +71,7 @@ function registerIpc(ctx) {
         if (!p.values.iron && Iron.isLocked(d.settings.timer.ironLockedUntil, Date.now())) return;   // nope.
       }
       const sec = d.settings[p.section];
+      const guardBefore = p.section === 'guardian' ? { enabled: (d.settings.guardian || {}).enabled, mode: (d.settings.guardian || {}).mode } : null;
       /* SECURITY FIX: settings:set used to Object.assign renderer values with
          no type/range checks, so a buggy or hostile renderer could persist
          e.g. guardian.scanSec = 0.000001 (verified: it survived save() and
@@ -130,6 +131,12 @@ function registerIpc(ctx) {
          (store.enforceIron re-asserts this on every write anyway; filtering
          here keeps the returned/stored value honest). The list MODE
          (blocklist/allowlist) and `when` (during focus / always) stay free will. */
+      /* Any focus round (Iron or not): the app guard cannot be switched off or flipped to the other
+         list mode until the round is over; otherwise it is a one-click way to free a blocked app. */
+      if (guardBefore && session.isFocusPhase()) {
+        if (guardBefore.enabled) d.settings.guardian.enabled = true;
+        if (guardBefore.mode) d.settings.guardian.mode = guardBefore.mode;
+      }
       if (Iron.resolveIron(d.settings.timer.iron, d.settings.timer.ironLockedUntil, Date.now())) {
         if (p.section === 'guardian') Object.assign(d.settings.guardian, Iron.effectiveGuard(d.settings.guardian, true));
         if (p.section === 'timer') Object.assign(d.settings.timer, Iron.effectiveTimer(d.settings.timer, true));
@@ -223,7 +230,7 @@ function registerIpc(ctx) {
      or exempted mid-promise. Both the UI buttons and these IPC handlers check
      the same authority (shared/iron.js listsFrozenState), so what's greyed
      out is exactly what the backend refuses anyway. */
-  const listsFrozenNow = () => Iron.listsFrozenState(session.isIronFocus(), Iron.isLocked(store.data.settings.timer.ironLockedUntil, Date.now()));
+  const listsFrozenNow = () => Iron.listsFrozenState(session.isFocusPhase(),Iron.isLocked(store.data.settings.timer.ironLockedUntil, Date.now()));
   H('apps:add', (p) => {
     if (listsFrozenNow() && p.list === 'allow') { pushSnapshot(); return null; }   // new exemption refused mid-promise
     const list = p.list === 'allow' ? 'allow' : 'block';
@@ -281,7 +288,7 @@ function registerIpc(ctx) {
   /* ---- sites ---- */
   H('sites:set', (p) => {
     store.mutate((d) => {
-      const before = { block: d.sites.block.slice(), allow: d.sites.allow.slice() };
+      const before = { block: d.sites.block.slice(), allow: d.sites.allow.slice(), enabled: d.sites.enabled, mode: d.sites.mode };
       const patch = (p && p.patch && typeof p.patch === 'object' && !Array.isArray(p.patch)) ? p.patch : {};
       /* SECURITY FIX: enums/booleans were assigned unvalidated — a buggy or
          hostile renderer could persist mode:'banana', which makes rule
@@ -302,7 +309,7 @@ function registerIpc(ctx) {
       Object.assign(d.sites, Iron.effectiveSites(d.sites, Iron.isLocked(d.settings.timer.ironLockedUntil, Date.now())));
       /* Iron list-freeze (same rule as the app lists): while an Iron focus exists or the self-lock runs,
          blocked sites can be added but never removed, and the allowed list cannot change. */
-      if (listsFrozenNow()) Object.assign(d.sites, Iron.freezeSites(before, d.sites));
+      if (listsFrozenNow()) Object.assign(d.sites, Iron.freezeSites(before, d.sites, session.isFocusPhase()));
     });
     pushSnapshot();
     return true;

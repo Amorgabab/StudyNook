@@ -76,11 +76,12 @@ Views.home = function (c) {
     const iron = App.ironFocusOn();
     // An Iron break cannot be paused (nothing is blocked in a break, so it would never have to end).
     const ironBreak = ses.running && ses.phase !== 'focus' && (!!ses.iron || NookIron.isLocked(d.settings.timer.ironLockedUntil, Date.now()));
+    const breakNow = ses.running && ses.phase !== 'focus';   // no break can be paused, Iron or not
     const row = N.el('div', { class: 'row' });
     row.appendChild(N.btn(ses.running ? t('home.pause') : t('home.resume'), {
       cls: 'btn-primary btn-lg', icon: ses.running ? 'pause' : 'play', iconSize: 18,
-      title: ironBreak ? t('home.iron.breakPause') : iron ? t('home.iron.pauseTip') : null,
-      disabled: ironBreak,
+      title: ironBreak ? t('home.iron.breakPause') : breakNow ? t('home.breakPause') : iron ? t('home.iron.pauseTip') : null,
+      disabled: breakNow,
       onclick: () => nook.invoke(ses.running ? 'session:pause' : 'session:resume')
     }));
     // Ending an Iron session from a break needs the gate too, not just ending during focus.
