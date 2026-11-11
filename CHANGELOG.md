@@ -7,6 +7,16 @@ extension has its own version number (see `studynook/extension/manifest.json`).
 The commit history before 1.5.1 is rough (bulk uploads and auto-generated titles). This file is
 the readable version of it.
 
+## 1.5.16
+
+- **Fixed: a normal focus session could close your browser.** In 1.5.15, if the browser extension went
+  quiet for 45 seconds during a normal (non-Iron) focus and Chrome or Edge had been open for 90
+  seconds, StudyNook closed the browser. That rule is meant for Iron sessions only, and it is
+  Iron-only again. The "extension went quiet" warning no longer says "Iron session: your browser will
+  close" in a normal session either. If you installed 1.5.15, update to this version.
+- **Lock notices no longer say "Iron" when Iron is off.** During a normal focus round the Apps and
+  Websites pages now say "Locked during focus" instead of "Iron lock is active".
+
 ## 1.5.15
 
 - **Pausing a normal focus no longer stops the blocking.** Pausing only stops the clock now, in every

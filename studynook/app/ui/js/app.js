@@ -39,7 +39,7 @@ window.App = (function () {
     nook.on('iron-gate', () => App.ironGate(() => nook.invoke('win:close')));
     nook.on('close-blocked', () => App.toast(t('toast.closeBlocked.t'), t('toast.closeBlocked.d'), { kind: 'warning' }));
     nook.on('data-blocked', () => App.toast(t('toast.dataBlocked.t'), t('toast.dataBlocked.d'), { kind: 'warning' }));
-    nook.on('list-frozen', () => App.toast(t('toast.listFrozen.t'), t('toast.listFrozen.d'), { kind: 'warning' }));
+    nook.on('list-frozen', () => { const fz = App.frozenSuffix(); App.toast(t('toast.listFrozen.t' + fz), t('toast.listFrozen.d' + fz), { kind: 'warning' }); });
     nook.on('toast', (p) => { if (p && p.title) App.toast(String(p.title), p.msg ? String(p.msg) : '', { ms: 12000, kind: 'warning' }); });
     const snap = await nook.invoke('get-snapshot');
     App.state = snap;
@@ -190,6 +190,13 @@ window.App = (function () {
   App.listsFrozen = function () {
     const ses = App.state.session || {}, tm = App.state.data.settings.timer;
     return Iron.listsFrozenState(!!(ses.active && ses.phase === 'focus'), Iron.isLocked(tm.ironLockedUntil, Date.now()));
+  };
+  /* Which words explain the lock: '' = Iron's own (an Iron focus or the self-lock), '.focus' = the neutral
+     "locked during focus" ones for a normal focus round. Appended to the *.frozen i18n keys. */
+  App.frozenSuffix = function () {
+    const ses = App.state.session || {}, tm = App.state.data.settings.timer;
+    const byIron = Iron.isLocked(tm.ironLockedUntil, Date.now()) || !!(ses.active && ses.phase === 'focus' && ses.iron);
+    return byIron ? '' : '.focus';
   };
   App.levelTitle = function (level) {
     const idx = Math.min(NookProgress.TITLES.length - 1, Math.floor((level - 1) / 3));

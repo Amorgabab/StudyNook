@@ -480,9 +480,9 @@ class SessionEngine {
     return {
       active: true,
       running: s.running,
-      /* Iron promise travels to the extension too: while an iron FOCUS
-         exists — RUNNING OR PAUSED — the browser keeps blocking. Pausing
-         only stops the clock; it must never unlock the website guard. */
+      /* "A focus round exists" — RUNNING OR PAUSED, Iron or not — travels to the extension: pausing only
+         stops the clock, it must never unlock the website guard. This is NOT an Iron flag (`iron` below is):
+         Iron-only actions, like closing a browser whose extension went quiet, ask ironActive(). */
       blockActive: s.phase === 'focus',
       phase: s.phase,                       // focus | short | long
       remainingSec: this.remainingSec(),

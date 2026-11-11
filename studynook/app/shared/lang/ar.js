@@ -90,7 +90,12 @@
   'apps.preview': 'معاينة', 'apps.preview.title': 'ما الذي سيغلقه وضع قائمة السماح الآن', 'apps.preview.none': 'لن يُغلق أي شيء الآن.', 'apps.preview.procs': '{n} عمليات',
   'apps.tab.blocked': 'المحظورة', 'apps.tab.allowed': 'المسموح بها', 'apps.tab.library': 'المكتبة', 'apps.tab.running': 'قيد التشغيل',
   'apps.frozen': 'قفل Iron مفعّل: يمكنك حظر المزيد من التطبيقات، لكن لا يمكن إزالة شيء أو تعطيله أو السماح به حتى ينتهي القفل.',
-  'apps.frozen.short': 'مقفل أثناء تركيز Iron',
+  // the same lock notices for a normal (non-Iron) focus round
+  'apps.frozen.focus': 'مقفل أثناء التركيز: يمكنك حظر المزيد من التطبيقات، لكن لا يمكن إزالة شيء أو تعطيله أو السماح به حتى تنتهي جولة التركيز هذه.',
+  'apps.frozen.short.focus': 'مقفل أثناء التركيز',
+  'sites.frozen.focus': 'مقفل أثناء التركيز: يمكنك حظر مواقع إضافية، لكن لا يمكن إزالة أي موقع أو السماح به حتى تنتهي جولة التركيز هذه.', 'sites.frozen.short.focus': 'مقفل أثناء التركيز',
+  'toast.listFrozen.t.focus': 'القوائم مقفلة أثناء التركيز', 'toast.listFrozen.d.focus': 'يمكنك حظر المزيد من التطبيقات، لكن لا يمكن إزالة شيء أو تعطيله أو السماح به حتى تنتهي جولة التركيز هذه.',
+  'apps.frozen.short':'مقفل أثناء تركيز Iron',
   'apps.empty.block.t': 'لا توجد تطبيقات محظورة', 'apps.empty.allow.t': 'لا توجد تطبيقات مسموح بها', 'apps.empty.d': 'أضف تطبيقات من تبويب المكتبة أو قيد التشغيل، أو بالاسم أدناه.',
   'apps.entry.toggle': 'تفعيل {app}', 'apps.entry.remove': 'إزالة {app}',
   'apps.add.name': 'اسم التطبيق', 'apps.add.procs': 'أسماء العمليات، مفصولة بفواصل', 'apps.add.procs.tip': 'تجد الأسماء الدقيقة في تبويب قيد التشغيل.',

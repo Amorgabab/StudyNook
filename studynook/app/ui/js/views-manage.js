@@ -274,9 +274,10 @@ Views.apps = function (c) {
   }
   lists.appendChild(tabs);
   const frozen = App.listsFrozen();
+  const fz = App.frozenSuffix();   // Iron wording, or the neutral "locked during focus" one
 
   if (tab === 'block' || tab === 'allow') {
-    if (frozen) lists.appendChild(N.callout('warning', 'lock', t('apps.frozen')));
+    if (frozen) lists.appendChild(N.callout('warning', 'lock', t('apps.frozen' + fz)));
     const entries = d.apps[tab];
     if (!entries.length) lists.appendChild(N.empty(tab === 'block' ? 'ban' : 'circle-check', t('apps.empty.' + tab + '.t'), t('apps.empty.d')));
     const list = N.el('div', { class: 'list' });
@@ -284,7 +285,7 @@ Views.apps = function (c) {
       list.appendChild(N.el('div', { class: 'item' },
         N.el('span', { class: 'item-icon' }, N.icon(APP_ICON[e.catalogId] || 'app-window', 18)),
         N.el('div', { class: 'grow' }, N.el('div', { class: 'item-title', text: e.label }), N.el('div', { class: 'row wrap', style: 'margin-top:4px;gap:4px' }, ...e.procs.map((p) => N.el('span', { class: 'mono', text: p })))),
-        N.toggle(e.enabled !== false, () => nook.invoke('apps:toggle', { list: tab, id: e.id }), { label: t('apps.entry.toggle', { app: e.label }), disabled: frozen, title: frozen ? t('apps.frozen.short') : null }),
+        N.toggle(e.enabled !== false, () => nook.invoke('apps:toggle', { list: tab, id: e.id }), { label: t('apps.entry.toggle', { app: e.label }), disabled: frozen, title: frozen ? t('apps.frozen.short' + fz) : null }),
         frozen ? null : N.iconBtn('trash', t('apps.entry.remove', { app: e.label }), () => nook.invoke('apps:remove', { list: tab, id: e.id }), 'danger')));
     }
     lists.appendChild(list);
@@ -292,7 +293,7 @@ Views.apps = function (c) {
     const procs = N.el('input', { class: 'input', placeholder: t('apps.add.procs'), title: t('apps.add.procs.tip'), 'aria-label': t('apps.add.procs'), 'data-draft': 'apps:procs:' + tab });
     const canAdd = !(frozen && tab === 'allow');
     lists.appendChild(N.el('div', { class: 'add-row' }, lbl, procs,
-      N.btn(t('common.add'), { cls: 'btn-primary', icon: 'plus', disabled: !canAdd, title: canAdd ? null : t('apps.frozen.short'),
+      N.btn(t('common.add'), { cls: 'btn-primary', icon: 'plus', disabled: !canAdd, title: canAdd ? null : t('apps.frozen.short' + fz),
         onclick: () => { if (lbl.value.trim() && procs.value.trim()) { nook.invoke('apps:add', { list: tab, label: lbl.value, procs: procs.value.split(',').map((s) => s.trim()).filter(Boolean) }); lbl.value = ''; procs.value = ''; } } })));
   }
 
@@ -309,7 +310,7 @@ Views.apps = function (c) {
           : inAllow ? N.el('span', { class: 'badge success', text: t('apps.lib.allowed') })
             : N.el('span', { class: 'row', style: 'gap:4px' },
               N.btn(t('apps.lib.block'), { cls: 'btn-sm', onclick: () => nook.invoke('apps:addCatalog', { id: item.id, list: 'block' }) }),
-              N.btn(t('apps.lib.allow'), { cls: 'btn-sm btn-ghost', disabled: frozen, title: frozen ? t('apps.frozen.short') : null, onclick: () => nook.invoke('apps:addCatalog', { id: item.id, list: 'allow' }) }))));
+              N.btn(t('apps.lib.allow'), { cls: 'btn-sm btn-ghost', disabled: frozen, title: frozen ? t('apps.frozen.short' + fz) : null, onclick: () => nook.invoke('apps:addCatalog', { id: item.id, list: 'allow' }) }))));
     }
     lists.appendChild(grid);
   }
@@ -370,8 +371,9 @@ Views.sites = function (c) {
   c.appendChild(st);
 
   /* --- lists --- */
-  const frozen = App.listsFrozen();   // Iron: sites can be added to the blocked list, never removed
-  if (frozen) { const fc = N.callout('warning', 'lock', t('sites.frozen')); fc.style.marginTop = 'var(--s-6)'; c.appendChild(fc); }
+  const frozen = App.listsFrozen();   // a focus round or the Iron lock: sites can be added to the blocked list, never removed
+  const fz = App.frozenSuffix();
+  if (frozen) { const fc = N.callout('warning', 'lock', t('sites.frozen' + fz)); fc.style.marginTop = 'var(--s-6)'; c.appendChild(fc); }
   const grid = N.el('div', { class: 'grid-2', style: 'margin-top:var(--s-6)' });
   grid.appendChild(domainList('block', t('sites.blocked'), t('sites.blocked.sub'), 'ban', s.block, 'youtube.com/shorts'));
   grid.appendChild(domainList('allow', t('sites.allowed'), t('sites.allowed.sub'), 'circle-check', s.allow, 'wikipedia.org'));
@@ -415,7 +417,7 @@ Views.sites = function (c) {
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') addIt(); });
     const canAdd = !(frozen && key === 'allow');   // an extra allowed site would loosen the promise
     inp.disabled = !canAdd;
-    card.appendChild(N.el('div', { class: 'row', style: 'margin-top:var(--s-5)' }, inp, N.btn(t('common.add'), { cls: 'btn-primary', icon: 'plus', disabled: !canAdd, title: canAdd ? null : t('sites.frozen.short'), onclick: addIt })));
+    card.appendChild(N.el('div', { class: 'row', style: 'margin-top:var(--s-5)' }, inp, N.btn(t('common.add'), { cls: 'btn-primary', icon: 'plus', disabled: !canAdd, title: canAdd ? null : t('sites.frozen.short' + fz), onclick: addIt })));
     const seeds = canAdd ? (key === 'block' ? NookCatalog.SEED_BLOCK_SITES : NookCatalog.SEED_ALLOW_SITES).filter((x) => !arr.includes(x)).slice(0, 6) : [];
     if (seeds.length) {
       card.appendChild(N.el('div', { class: 'overline', style: 'margin:var(--s-4) 0 var(--s-2)', text: t('sites.suggestions') }));

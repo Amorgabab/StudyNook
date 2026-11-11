@@ -90,7 +90,12 @@
   'apps.preview': 'Aperçu', 'apps.preview.title': 'Ce que le mode liste d’autorisation fermerait maintenant', 'apps.preview.none': 'Rien ne serait fermé pour l’instant.', 'apps.preview.procs': '{n} processus',
   'apps.tab.blocked': 'Bloquées', 'apps.tab.allowed': 'Autorisées', 'apps.tab.library': 'Bibliothèque', 'apps.tab.running': 'En cours',
   'apps.frozen': 'Le verrou Iron est actif : vous pouvez bloquer d’autres applis, mais rien ne peut être retiré, désactivé ni autorisé avant la fin du verrou.',
-  'apps.frozen.short': 'Verrouillé pendant la concentration Iron',
+  // the same lock notices for a normal (non-Iron) focus round
+  'apps.frozen.focus': 'Verrouillé pendant la concentration : vous pouvez bloquer d’autres applis, mais rien ne peut être retiré, désactivé ni autorisé avant la fin de cette période de concentration.',
+  'apps.frozen.short.focus': 'Verrouillé pendant la concentration',
+  'sites.frozen.focus': 'Verrouillé pendant la concentration : vous pouvez bloquer d’autres sites, mais aucun ne peut être retiré ni autorisé avant la fin de cette période de concentration.', 'sites.frozen.short.focus': 'Verrouillé pendant la concentration',
+  'toast.listFrozen.t.focus': 'Listes verrouillées pendant la concentration', 'toast.listFrozen.d.focus': 'Vous pouvez bloquer d’autres applis, mais rien ne peut être retiré, désactivé ni autorisé avant la fin de cette période de concentration.',
+  'apps.frozen.short':'Verrouillé pendant la concentration Iron',
   'apps.empty.block.t': 'Aucune appli bloquée', 'apps.empty.allow.t': 'Aucune appli autorisée', 'apps.empty.d': 'Ajoutez des applis depuis les onglets Bibliothèque ou En cours, ou par leur nom ci-dessous.',
   'apps.entry.toggle': 'Activer {app}', 'apps.entry.remove': 'Retirer {app}',
   'apps.add.name': 'Nom de l’appli', 'apps.add.procs': 'Noms des processus, séparés par des virgules', 'apps.add.procs.tip': 'Trouvez les noms exacts dans l’onglet En cours.',

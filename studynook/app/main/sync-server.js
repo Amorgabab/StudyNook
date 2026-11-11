@@ -199,7 +199,7 @@ class SyncServer {
     if (url === '/state' && req.method === 'GET') {
       const d = store.data;
       const sess = this.hooks.session.publicState();
-      // same rule the extension applies: a focus phase that is ticking, or an Iron focus that merely exists
+      // same rule the extension applies: a focus round that exists, ticking or paused (blockActive)
       this.lastBlocking = !!(sess.active && sess.phase === 'focus' && (sess.running || sess.blockActive));
       this.lastStateAt = Date.now();
       for (const done of [...this._pollWaiters]) done();

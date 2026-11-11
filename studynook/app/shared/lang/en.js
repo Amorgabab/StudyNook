@@ -96,7 +96,12 @@
   'apps.preview': 'Preview', 'apps.preview.title': 'What allowlist mode would close now', 'apps.preview.none': 'Nothing would be closed right now.', 'apps.preview.procs': '{n} processes',
   'apps.tab.blocked': 'Blocked', 'apps.tab.allowed': 'Allowed', 'apps.tab.library': 'Library', 'apps.tab.running': 'Running now',
   'apps.frozen': 'Iron lock is active: you can add apps to block, but nothing can be removed, disabled or allowed until the lock ends.',
-  'apps.frozen.short': 'Locked during Iron focus',
+  // the same lock notices for a normal (non-Iron) focus round
+  'apps.frozen.focus': 'Locked during focus: you can add apps to block, but nothing can be removed, disabled or allowed until this focus round ends.',
+  'apps.frozen.short.focus': 'Locked during focus',
+  'sites.frozen.focus': 'Locked during focus: you can block more websites, but none can be removed or allowed until this focus round ends.', 'sites.frozen.short.focus': 'Locked during focus',
+  'toast.listFrozen.t.focus': 'Lists are locked during focus', 'toast.listFrozen.d.focus': 'You can add more blockers, but nothing can be removed, disabled or allowed until this focus round ends.',
+  'apps.frozen.short':'Locked during Iron focus',
   'apps.empty.block.t': 'No blocked apps', 'apps.empty.allow.t': 'No allowed apps', 'apps.empty.d': 'Add apps from the Library or Running now tabs, or by name below.',
   'apps.entry.toggle': 'Enable {app}', 'apps.entry.remove': 'Remove {app}',
   'apps.add.name': 'App name', 'apps.add.procs': 'Process names, separated by commas', 'apps.add.procs.tip': 'Find the exact names on the Running now tab.',

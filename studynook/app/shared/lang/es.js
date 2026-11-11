@@ -90,7 +90,12 @@
   'apps.preview': 'Vista previa', 'apps.preview.title': 'Qué cerraría ahora el modo lista de permitidas', 'apps.preview.none': 'Ahora mismo no se cerraría nada.', 'apps.preview.procs': '{n} procesos',
   'apps.tab.blocked': 'Bloqueadas', 'apps.tab.allowed': 'Permitidas', 'apps.tab.library': 'Biblioteca', 'apps.tab.running': 'En ejecución',
   'apps.frozen': 'El bloqueo Iron está activo: puedes bloquear más apps, pero no puedes quitar, desactivar ni permitir nada hasta que termine el bloqueo.',
-  'apps.frozen.short': 'Bloqueado durante la concentración Iron',
+  // the same lock notices for a normal (non-Iron) focus round
+  'apps.frozen.focus': 'Bloqueado durante la concentración: puedes bloquear más apps, pero no puedes quitar, desactivar ni permitir nada hasta que termine esta ronda de concentración.',
+  'apps.frozen.short.focus': 'Bloqueado durante la concentración',
+  'sites.frozen.focus': 'Bloqueado durante la concentración: puedes bloquear más sitios, pero ninguno se puede quitar ni permitir hasta que termine esta ronda de concentración.', 'sites.frozen.short.focus': 'Bloqueado durante la concentración',
+  'toast.listFrozen.t.focus': 'Listas bloqueadas durante la concentración', 'toast.listFrozen.d.focus': 'Puedes bloquear más apps, pero no puedes quitar, desactivar ni permitir nada hasta que termine esta ronda de concentración.',
+  'apps.frozen.short':'Bloqueado durante la concentración Iron',
   'apps.empty.block.t': 'No hay apps bloqueadas', 'apps.empty.allow.t': 'No hay apps permitidas', 'apps.empty.d': 'Añade apps desde las pestañas Biblioteca o En ejecución, o por su nombre abajo.',
   'apps.entry.toggle': 'Activar {app}', 'apps.entry.remove': 'Quitar {app}',
   'apps.add.name': 'Nombre de la app', 'apps.add.procs': 'Nombres de proceso, separados por comas', 'apps.add.procs.tip': 'Consulta los nombres exactos en la pestaña En ejecución.',

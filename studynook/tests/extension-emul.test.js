@@ -267,7 +267,7 @@ suite('extension emulation · desktop app killed mid-focus (Task Manager)', () =
     await fireSlow(c);
     expect(tabUrl(c, 1)).toBe('https://www.tiktok.com/foryou');
   });
-  test('paused IRON focus (blockActive) keeps blocking after the app dies; plain paused does not', async () => {
+  test('a paused focus flagged blockActive keeps blocking after the app dies; one without the flag does not', async () => {
     const iron = Object.assign({}, FOCUS_SESSION, { running: false, blockActive: true });
     const c = setup({ sites: SITES(), session: iron, lastSync: Date.now(), tabs: ['https://www.tiktok.com/foryou'] });
     await fireSlow(c);

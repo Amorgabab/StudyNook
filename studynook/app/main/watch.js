@@ -37,11 +37,14 @@ function createWatch(ctx) {
       const d = store.data, st = session.publicState(), now = Date.now();
       const proc = ExtWatch.browserProcess(d.ext.browser);
       const silent = now - (d.ext.lastSeen || 0) > ExtWatch.SILENT_MS;
-      if (!(st.active && st.phase === 'focus' && st.blockActive && d.sites.enabled && proc && silent)) { browserSeenSince = null; return; }
+      /* Iron only: ask the engine. `blockActive` is true for EVERY focus round (pausing keeps blocking in
+         normal sessions too), so it must never decide this; 1.5.15 used it and closed browsers in normal focus. */
+      const ironFocus = !!(st.active && st.phase === 'focus' && session.ironActive());
+      if (!(ironFocus && d.sites.enabled && proc && silent)) { browserSeenSince = null; return; }
       const running = (await processes.listProcessesShared()).some((p) => p.norm === proc);
       if (!running) { browserSeenSince = null; return; }
       if (!browserSeenSince) browserSeenSince = now;
-      if (!ExtWatch.shouldCloseBrowser({ ironFocus: true, sitesEnabled: d.sites.enabled, lastSeen: d.ext.lastSeen, now, browser: d.ext.browser, runningSince: browserSeenSince })) return;
+      if (!ExtWatch.shouldCloseBrowser({ ironFocus, sitesEnabled: d.sites.enabled, lastSeen: d.ext.lastSeen, now, browser: d.ext.browser, runningSince: browserSeenSince })) return;
       const closed = await guardian.killNow(proc);
       browserSeenSince = null;
       lifeLog('iron-closed-browser', { proc, closed });
@@ -87,7 +90,7 @@ function createWatch(ctx) {
     extGoneWarned = true;
     let hint = T('main.n.extGone.hint');
     try { hint = T('ext.status.' + ExtFinder.detect({ extDir: EXT_DIR }).status + '.d'); } catch (e) {}   // say exactly what state the browser is in
-    const ironNote = st.blockActive && d.ext.browser ? ' ' + T('main.n.extGone.iron') : '';
+    const ironNote = session.ironActive() && d.ext.browser ? ' ' + T('main.n.extGone.iron') : '';   // only Iron closes the browser
     const msg = T('main.n.extGone.d', { hint }) + ironNote;
     notify(T('main.n.extGone.t'), msg, 'blocker');
     broadcast('toast', { title: T('main.n.extGone.t'), msg });
