@@ -247,6 +247,8 @@ class SyncServer {
         if (typeof body.enabled === 'boolean') d.sites.enabled = body.enabled;
         // Iron list-freeze: the extension's popup cannot remove a blocked site or loosen the allowed list either
         if (this._listsFrozen(d)) Object.assign(d.sites, Iron.freezeSites(before, d.sites, !!(this.hooks.session && typeof this.hooks.session.isFocusPhase === 'function' && this.hooks.session.isFocusPhase())));
+        // outside a focus round a blocked site still can't be removed except right after a 2h+ finished session
+        else if (!Iron.canRemove(d.listsUnlockUntil, Date.now(), false)) Object.assign(d.sites, Iron.keepBlocked(before, d.sites));
       });
       return this._json(res, 200, { ok: true }, req);
     }

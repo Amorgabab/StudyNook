@@ -35,13 +35,12 @@ Views.settings = function (c) {
   const text = (val, max, onSet, label) => { const i = N.el('input', { class: 'input', value: val || '', maxlength: String(max), style: 'width:220px', 'aria-label': label, 'data-draft': 'set:text:' + label }); i.addEventListener('change', () => onSet(i.value.trim())); return i; };
 
   if (cur === 'general') {
-    const lang = N.el('select', { class: 'input', 'aria-label': t('set.lang') });
-    for (const [v, lbl] of [['en', 'English'], ['ar', 'العربية'], ['fr', 'Français'], ['es', 'Español']]) lang.appendChild(N.el('option', { value: v, text: lbl, selected: NookPrefs.normLang(s.language) === v }));
-    lang.addEventListener('change', () => set('language', lang.value));
+    const lang = N.select([['en', 'English'], ['ar', 'العربية'], ['fr', 'Français'], ['es', 'Español']], NookPrefs.normLang(s.language), (v) => set('language', v), { label: t('set.lang') });
     card.appendChild(row(t('set.lang'), t('set.lang.desc'), lang));
     card.appendChild(row(t('set.startup'), S.packaged ? t('set.startup.desc') : t('set.startup.dev'),
       N.toggle(!!s.startWithWindows, (v) => set('startWithWindows', v), { label: t('set.startup'), disabled: !S.packaged })));
     card.appendChild(row(t('set.tray'), t('set.tray.desc'), N.toggle(!!s.closeToTray, (v) => set('closeToTray', v), { label: t('set.tray') })));
+    card.appendChild(row(t('set.confirmTask'), t('set.confirmTask.desc'), N.toggle(s.confirmTaskDone !== false, (v) => nook.invoke('settings:set', { section: 'confirmTaskDone', values: v }), { label: t('set.confirmTask') })));
     card.appendChild(row(t('set.name'), t('set.name.desc'), text(d.profile.name, 40, (v) => nook.invoke('profile:set', { name: v }), t('set.name'))));
     card.appendChild(row(t('set.pet'), t('set.pet.desc'), text(d.pet.name, 20, (v) => nook.invoke('pet:rename', { name: v }), t('set.pet'))));
     card.appendChild(row(t('set.goal'), t('set.goal.desc'), num(s.dailyGoalMin || 0, 0, 720, (v) => set('dailyGoalMin', v), t('unit.min'), 15, t('set.goal'))));
@@ -92,7 +91,7 @@ Views.settings = function (c) {
     card.appendChild(row(t('set.b.grace'), t('set.b.grace.desc'), num(g.graceSec, 5, 300, (v) => setG({ graceSec: v }), t('unit.sec'), 5, t('set.b.grace'))));
     card.appendChild(row(t('set.b.scan'), t('set.b.scan.desc'), num(g.scanSec, 1, 30, (v) => setG({ scanSec: v }), t('unit.sec'), 1, t('set.b.scan'))));
     card.appendChild(row(t('set.b.sites'), t('set.b.sites.desc'), N.seg([['session', t('set.b.during'), 'timer'], ['always', t('set.b.always'), 'infinity']], d.sites.when, (v) => nook.invoke('sites:set', { patch: { when: v } }), { label: t('set.b.sites') })));
-    card.appendChild(row(t('set.b.pause'), S.guardian.pausedMinLeft > 0 ? t('set.b.pause.active', { n: S.guardian.pausedMinLeft }) : t('set.b.pause.desc'),
+    if (!App.pauseHidden()) card.appendChild(row(t('set.b.pause'), S.guardian.pausedMinLeft > 0 ? t('set.b.pause.active', { n: S.guardian.pausedMinLeft }) : t('set.b.pause.desc'),
       N.el('span', { class: 'row' }, ...[5, 15, 60].map((m) => N.btn(t('set.b.pause.min', { n: m }), { cls: 'btn-sm', onclick: () => nook.invoke('guardian:pause', { min: m }) })))));
   }
 
@@ -107,10 +106,6 @@ Views.settings = function (c) {
     const snd = s.sound;
     card.appendChild(row(t('set.s.ui'), t('set.s.ui.desc'), N.toggle(!!snd.ui, (v) => { set('sound', { ui: v }); Audio2.setEnabled({ ui: v, chimes: snd.chimes }); }, { label: t('set.s.ui') })));
     card.appendChild(row(t('set.s.chimes'), t('set.s.chimes.desc'), N.toggle(!!snd.chimes, (v) => { set('sound', { chimes: v }); Audio2.setEnabled({ ui: snd.ui, chimes: v }); }, { label: t('set.s.chimes') })));
-    const vol = N.el('input', { type: 'range', min: 0, max: 100, value: Math.round(snd.volume * 100), style: 'width:200px', 'aria-label': t('set.s.volume') });
-    vol.addEventListener('input', () => Audio2.setVolume(vol.value / 100));
-    vol.addEventListener('change', () => set('sound', { volume: vol.value / 100 }));
-    card.appendChild(row(t('set.s.volume'), null, vol));
     card.appendChild(row(t('set.s.files'), t('set.s.files.desc'), N.btn(t('set.s.files.open'), { icon: 'folder-open', title: S.soundsPath, onclick: () => nook.invoke('data:openSounds') })));
   }
 

@@ -29,6 +29,7 @@ function defaultData() {
       theme: 'system',     // system | light | dark | auto (dark 19:00–07:00)
       language: 'en',      // en | ar | fr | es
       startWithWindows: false,
+      confirmTaskDone: true,     // ask "Are you sure?" before completing (and deleting) a task
       closeToTray: false,  // false: the X quits when nothing needs to keep running
       dailyGoalMin: 120,   // 0 = no daily goal
       notify: { focusEnd: true, breakEnd: true, blocker: true },
@@ -52,6 +53,7 @@ function defaultData() {
     counters: { kills: 0, pets: 0, ambientMin: 0, sessionsTotal: 0, abandons: 0, tasksDone: 0 },
     achievements: {},      // id -> ISO date
     onboarded: false,
+    listsUnlockUntil: 0,   // removing blocked apps/sites is allowed until this time (after a 2h+ finished session)
     feed: []               // last 40 activity lines for the home view
   };
 }
@@ -129,6 +131,7 @@ function sanitizeData(d) {
   s.theme = Prefs.THEMES.includes(s.theme) ? s.theme : 'system';
   s.language = Prefs.normLang(s.language);
   s.startWithWindows = s.startWithWindows === true;
+  s.confirmTaskDone = s.confirmTaskDone !== false;
   s.closeToTray = s.closeToTray === true;
   s.dailyGoalMin = num(s.dailyGoalMin, 120, 0, 720);
   const nt = obj(s.notify); s.notify = nt;
@@ -156,7 +159,10 @@ function sanitizeData(d) {
   d.tasks = arr(d.tasks).filter((t) => t && typeof t === 'object').map((t) => Object.assign({}, t, {
     id: str(t.id, 't' + Math.random().toString(36).slice(2), 40), text: str(t.text, '', 200),
     subject: str(t.subject, '', 40), est: num(t.est, 1, 1, 99), min: num(t.min, 0, 0, 6000),
+    kind: t.kind === 'free' || t.kind === 'pomodoro' ? t.kind : (Number(t.min) > 0 ? 'free' : 'pomodoro'),
     done: !!t.done, pomosDone: num(t.pomosDone, 0, 0, 1e6),
+    // XP for a task is given once: a task already done (or rewarded) never earns it again
+    xpGiven: !!t.xpGiven || !!t.done,
     date: TaskDays.normDate(t.date) || null, // optional planned day (kept for legacy data; the schedule UI is gone)
     at: normAt(t.at),                          // optional start time 'HH:MM' — garbage becomes null
     sources: arr(t.sources).filter((x) => x && typeof x.url === 'string').map((x) => ({ url: sanitizeSourceUrl(x.url), addedAt: num(x.addedAt, 0, 0, 8.64e15) })).filter((x) => x.url)
@@ -213,6 +219,11 @@ function sanitizeData(d) {
   d.ext.token = str(d.ext.token, '', 64); d.ext.code = str(d.ext.code, '', 6);
   d.ext.browser = d.ext.browser === 'edge' || d.ext.browser === 'chrome' ? d.ext.browser : '';
   d.onboarded = !!d.onboarded;
+  {
+    const u = num(d.listsUnlockUntil, 0, 0, 8.64e15);
+    // never trust a far-future unlock from a hand-edited file: at most one window from now
+    d.listsUnlockUntil = u > Date.now() ? Math.min(u, Date.now() + Iron.UNLOCK_MIN * 60000) : 0;
+  }
   return d;
 }
 

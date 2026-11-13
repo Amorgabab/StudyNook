@@ -54,15 +54,14 @@ Views.home = function (c) {
     const startBtn = N.btn(t('home.start'), { cls: 'btn-primary btn-lg btn-block', icon: 'play', iconSize: 18, onclick: startSession });
     startBtn.id = 'home-start';   // the welcome tour rings this button
     actions.appendChild(startBtn);
-    const sel = N.el('select', { class: 'input', id: 'home-task', 'aria-label': t('home.task') });
-    sel.appendChild(N.el('option', { value: '', text: t('home.task.none') }));
-    for (const tk of d.tasks.filter((x) => !x.done)) sel.appendChild(N.el('option', { value: tk.id, text: (tk.subject ? tk.subject + ' · ' : '') + tk.text, selected: App.lastTaskId === tk.id }));
-    sel.addEventListener('change', () => {
-      App.lastTaskId = sel.value || null;
+    // custom select: the button keeps id home-task and a native-like .value (startSession reads it)
+    const taskOpts = [['', t('home.task.none')], ...d.tasks.filter((x) => !x.done).map((tk) => [tk.id, (tk.subject ? tk.subject + ' · ' : '') + tk.text])];
+    const sel = N.select(taskOpts, App.lastTaskId || '', (v) => {
+      App.lastTaskId = v || null;
       const tk = d.tasks.find((x) => x.id === App.lastTaskId);
       if (tk && tk.min > 0 && App.freeMode) App.freeMin = tk.min;
       App.render();
-    });
+    }, { id: 'home-task', label: t('home.task') });
     actions.appendChild(N.el('label', { class: 'task-pick' }, N.el('span', { class: 'field-label', text: t('home.task') }), sel));
     const selTask = d.tasks.find((x) => x.id === App.lastTaskId);
     if (selTask && selTask.min > 0) {
@@ -123,24 +122,31 @@ Views.home = function (c) {
       N.el('div', { class: 'companion-name', text: d.pet.name }),
       N.el('div', { class: 'row small' }, N.icon(App.STAGE_ICONS[stage.id], 14), N.el('span', { text: App.stageName(stage.id) })),
       N.el('div', { class: 'progress success' }, N.el('span', { style: 'width:' + Math.round(pct * 100) + '%' })),
-      N.el('div', { class: 'caption', style: 'margin-top:6px', text: next ? t('home.companion.next', { time: NookI18n.minutes(next.min - d.pet.totalFocusMin), stage: App.stageName(next.id) }) : t('home.companion.max') }),
-      N.el('div', { class: 'small', style: 'margin-top:8px', text: App.moodLine() }))));
+      N.el('div', { class: 'caption', style: 'margin-top:6px', text: next ? t('home.companion.next', { time: NookI18n.minutes(next.min - d.pet.totalFocusMin), stage: App.stageName(next.id) }) : t('home.companion.max') }))));
 
   c.appendChild(N.el('div', { class: 'focus-grid' }, timer, N.el('div', { class: 'focus-side' }, todayCard, comp)));
 
   /* ---------- ambience ---------- */
-  const amb = N.card(t('home.ambience'), 'volume-2');
+  const playing = !!App.ambience;
+  const amb = N.card(t('home.ambience'), 'volume-2', N.toggle(playing, (v) => App.toggleAmbience(v), { label: t('home.ambience.toggle') }));
   const AMB = [['rain', 'cloud-rain'], ['fire', 'flame'], ['waves', 'waves-horizontal'], ['cafe', 'coffee']];
   const ambRow = N.el('div', { class: 'amb-row', role: 'group', 'aria-label': t('home.ambience') });
   for (const [id, ico] of AMB) {
     ambRow.appendChild(N.el('button', { class: 'amb-btn', type: 'button', 'aria-pressed': App.ambience === id ? 'true' : 'false', onclick: () => App.setAmbience(id) }, N.icon(ico, 16), N.el('span', { text: t('amb.' + id) })));
   }
-  ambRow.appendChild(N.el('button', { class: 'amb-btn', type: 'button', 'aria-pressed': !App.ambience ? 'true' : 'false', onclick: () => App.setAmbience('off') }, N.icon('volume-x', 16), N.el('span', { text: t('amb.off') })));
   amb.appendChild(ambRow);
-  const vol = N.el('input', { type: 'range', min: 0, max: 100, value: Math.round(d.settings.sound.volume * 100), 'aria-label': t('home.volume') });
+  const vol = N.el('input', { type: 'range', min: 0, max: 100, value: Math.round(d.settings.sound.volume * 100), 'aria-label': t('home.volume'), tabindex: playing ? null : '-1' });
   vol.addEventListener('input', () => Audio2.setVolume(vol.value / 100));
   vol.addEventListener('change', () => nook.invoke('settings:set', { section: 'sound', values: { volume: vol.value / 100 } }));
-  amb.appendChild(N.el('div', { class: 'vol-row' }, N.icon('volume-2', 16), N.el('span', { class: 'small', text: t('home.volume') }), vol));
+  // The volume row is always in the page and only grows open while a sound plays, so nothing jumps.
+  const reveal = N.el('div', { class: 'vol-reveal' }, N.el('div', { class: 'vol-reveal-in' },
+    N.el('div', { class: 'vol-row' }, N.icon('volume-2', 16), N.el('span', { class: 'small', text: t('home.volume') }), vol)));
+  const animate = App._ambAnim; App._ambAnim = false;
+  if (animate) {   // start from the previous state, then open/close on the next frames
+    if (!playing) reveal.classList.add('open');
+    requestAnimationFrame(() => requestAnimationFrame(() => reveal.classList.toggle('open', playing)));
+  } else if (playing) reveal.classList.add('open');
+  amb.appendChild(reveal);
 
   /* ---------- activity ---------- */
   const act = N.card(t('home.activity'), 'clock');

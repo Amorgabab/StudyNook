@@ -34,8 +34,6 @@
 
   /* phases & companion */
   'phase.focus': 'Focus', 'phase.short': 'Short break', 'phase.long': 'Long break', 'phase.paused': '{phase} · paused',
-  'mood.idle': '{name} is waiting for your next session.', 'mood.focus': '{name} is focusing with you.', 'mood.break': '{name} is resting. You should too.',
-  'mood.celebrate': '{name} is proud of you.', 'mood.sad': '{name} is ready when you are.',
 
   /* focus page */
   'home.title': 'Focus', 'home.timer': 'Focus timer',
@@ -58,7 +56,7 @@
   'home.stat.focused': 'Focused', 'home.stat.sessions': 'Sessions', 'home.stat.closed': 'Apps closed', 'home.stat.streak': 'Day streak',
   'home.companion': 'Companion', 'home.companion.pet': 'Pet {name}', 'home.companion.next': '{time} more focus to reach {stage}', 'home.companion.max': 'Fully grown',
   'home.ambience': 'Ambience', 'home.volume': 'Volume',
-  'amb.rain': 'Rain', 'amb.fire': 'Fireplace', 'amb.waves': 'Waves', 'amb.cafe': 'Café', 'amb.off': 'Off',
+  'amb.rain': 'Rain', 'amb.fire': 'Fireplace', 'amb.waves': 'Waves', 'amb.cafe': 'Café',
   'home.activity': 'Recent activity', 'home.activity.empty.t': 'No activity yet', 'home.activity.empty.d': 'Your sessions, finished tasks and rewards will appear here.',
   'home.activity.xp': '+{n} XP',
 
@@ -66,12 +64,13 @@
   'tasks.title': 'Tasks', 'tasks.sub': 'Plan what to study, then pick a task when you start the timer.',
   'tasks.new': 'New task', 'tasks.placeholder': 'For example: Chemistry chapter 4 notes',
   'tasks.field.task': 'Task', 'tasks.field.subject': 'Subject', 'tasks.field.planned': 'Planned time', 'tasks.field.estimate': 'Estimate',
+  'lists.removeLocked': 'Removing unlocks for 30 minutes after you finish a 2-hour session.', 'lists.unlocked': 'Removal unlocked · {time} left', 'tasks.kind': 'Task type', 'tasks.kind.free': 'Free time', 'tasks.kind.pomodoro': 'Pomodoro', 'tasks.confirm.t': 'Mark as done?', 'tasks.confirm.d': 'This gives +5 XP and deletes the task.', 'tasks.confirm.never': 'Don’t ask again', 'tasks.confirm.yes': 'Done', 'set.confirmTask': 'Ask before completing a task', 'set.confirmTask.desc': 'Show a confirmation before a task is marked as done, since that deletes it.', 'home.ambience.toggle': 'Play ambience', 'main.feed.unlocked': '2-hour session finished: you can remove blocked apps and sites for the next 30 minutes.',
   'tasks.subject.none': 'No subject', 'tasks.pomodoro.one': '{n} Pomodoro', 'tasks.pomodoro.many': '{n} Pomodoros',
   'tasks.add': 'Add task', 'tasks.addFailed.t': 'The task could not be added', 'tasks.addFailed.d': 'Check the name and try again.',
   'tasks.filter': 'Show', 'tasks.filter.open': 'Open · {n}', 'tasks.filter.done': 'Done · {n}',
   'tasks.empty.open.t': 'No open tasks', 'tasks.empty.open.d': 'Add a task above, or start a free focus session.',
   'tasks.empty.done.t': 'Nothing completed yet', 'tasks.empty.done.d': 'Finished tasks are listed here.',
-  'tasks.complete': 'Mark as done (+5 XP)', 'tasks.reopen': 'Mark as not done',
+  'tasks.complete': 'Mark as done (+5 XP, removes the task)', 'tasks.reopen': 'Mark as not done',
   'tasks.meta.planned.tip': 'Planned time for this task', 'tasks.meta.pomos': '{done} of {est} Pomodoros', 'tasks.meta.pomos.tip': 'Completed Pomodoros out of your estimate',
   'tasks.source.add': 'Add source', 'tasks.source.tip': 'Attach lecture videos, papers or textbook pages', 'tasks.source.placeholder': 'Paste a link to study material',
   'tasks.source.open': 'Open in browser', 'tasks.source.remove': 'Remove link',
@@ -143,7 +142,7 @@
   /* progress */
   'progress.title': 'Progress', 'progress.sub': 'Your focus history, levels and achievements.',
   'progress.level': 'Level', 'progress.level.sub': '{into} of {need} XP to the next level · {total} XP in total',
-  'progress.streak': 'Streak', 'progress.days': '{n} days', 'progress.streak.sub': 'Best: {best} days. Focus on any day to keep it going.',
+  'progress.streak': 'Streak', 'progress.days': '{n} days', 'progress.streak.sub': 'Best: {best} days.',
   'progress.total': 'Total focus', 'progress.total.sub': '{s} sessions · {tk} tasks · {k} apps closed',
   'progress.week': 'Last 7 days', 'progress.map': 'Last 13 weeks', 'progress.map.sub': 'Each square is a day. Darker means more focus time.',
   'progress.map.less': 'Less', 'progress.map.more': 'More',
@@ -222,7 +221,7 @@
   'set.n.breakEnd': 'Break finished', 'set.n.breakEnd.desc': 'When a break is over.',
   'set.n.blocker': 'Blocker warnings', 'set.n.blocker.desc': 'When the browser extension stops responding during focus.',
   'set.s.ui': 'Interface sounds', 'set.s.ui.desc': 'Soft clicks when you press buttons.', 'set.s.chimes': 'Chimes', 'set.s.chimes.desc': 'A chime when a round or break ends.',
-  'set.s.volume': 'Ambience volume', 'set.s.files': 'Ambience files', 'set.s.files.desc': 'Add rain, fire, waves or cafe audio files to replace the built-in sounds.',
+  'set.s.files': 'Ambience files', 'set.s.files.desc': 'Add rain, fire, waves or cafe audio files to replace the built-in sounds.',
   'set.s.files.open': 'Open sounds folder',
   'set.d.backup': 'Backups', 'set.d.backup.desc': 'A backup is made automatically every day; the last 7 are kept.',
   'set.d.backup.now': 'Back up now', 'set.d.backup.folder': 'Open folder', 'set.d.backup.done': 'Backup saved',
@@ -255,7 +254,7 @@
   'tour.3.t': 'Block apps', 'tour.3.d': 'On the Apps page, list the programs that distract you. During focus StudyNook warns you, then closes them. System processes are never touched.',
   'tour.4.t': 'Block websites', 'tour.4.d': 'On the Websites page, set your lists and pair the browser extension with this 6-letter code. Website blocking needs the extension.',
   'tour.5.t': 'Your companion', 'tour.5.d': 'Your companion grows as your total focus time adds up. Click it to hear it purr. You can rename it in Settings.',
-  'tour.6.t': 'Your streak', 'tour.6.d': 'The flame counts your days of focus in a row. Focus every day to keep it growing.',
+  'tour.6.t': 'Your streak', 'tour.6.d': 'The flame counts your days of focus in a row.',
   'tour.7.t': 'Track progress', 'tour.7.d': 'The Progress page shows your history, your level and your achievements. Help explains everything in detail.',
   'tour.8.t': 'Tasks and notes', 'tour.8.d': 'Keep your tasks and plain-text notes here. Notes save as you type, and you can attach PDFs.',
   'tour.9.t': 'Stay in control', 'tour.9.d': 'In Settings you can turn on an Iron session: a promise to yourself that makes ending a session early take a 60-second wait and a typed sentence. The floating mini timer is there too: drag it by the pill and click the round icon to open StudyNook.',

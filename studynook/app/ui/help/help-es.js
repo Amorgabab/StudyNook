@@ -32,6 +32,8 @@
           ['Pomodoro', 'Rondas de concentración (25 min por defecto) separadas por descansos cortos, con un descanso largo tras cierto número de rondas. Cambia las duraciones en **Ajustes → Temporizador**.'],
           ['Concentración libre', 'Un solo bloque continuo. Elige de 15 a 90 minutos con los botones o escribe cualquier duración de hasta 600 minutos.']
         ] } },
+        { h: 'Ambiente' },
+        { p: 'En la página Concentración, usa el interruptor de la tarjeta **Ambiente** para iniciar o detener el sonido. Reproduce el último sonido elegido (lluvia al principio). Elegir un sonido también lo activa. El control de volumen aparece mientras suena.' },
         { h: 'Pausar y terminar' },
         { ul: [
           '**Pausa** detiene el reloj. El bloqueo de apps y sitios sigue activo.',
@@ -65,6 +67,8 @@
           '**En ejecución**: muestra todos los programas abiertos para que puedas bloquearlos o permitirlos.',
           '**Por nombre**: escribe un nombre y los nombres de proceso (búscalos en **En ejecución**).'
         ] },
+        { h: 'Quitar apps y sitios bloqueados' },
+        { p: 'Añadir siempre está permitido. Quitar o desactivar una app bloqueada, o quitar un sitio bloqueado, está bloqueado. Se desbloquea durante 30 minutos tras terminar una sesión de concentración completa de 2 horas (todas las rondas, sin terminar antes). Sigue bloqueado durante una ronda de concentración y mientras dura el bloqueo Iron.' },
         { h: 'Lista de bloqueo o de permitidas' },
         { table: { head: ['Modo', 'Qué se cierra'], rows: [
           ['Lista de bloqueo', 'Solo las apps de tu lista **Bloqueadas**.'],
@@ -113,11 +117,11 @@
         { h: 'Tareas' },
         { ul: [
           '**Asignatura**: elige entre las asignaturas de **Ajustes → General**.',
-          '**Tiempo previsto**: cuánto crees que te llevará. En concentración libre, elegir la tarea fija la duración de la sesión.',
-          '**Estimación**: cuántos Pomodoros calculas. Las rondas completadas se cuentan respecto a ella.',
+          '**Tiempo libre**: indica los minutos que calculas (5–600). En concentración libre, elegir la tarea fija la duración de la sesión.',
+          '**Pomodoro**: indica cuántas rondas calculas (1–8). Las rondas completadas se cuentan respecto a ello.',
           '**Fuentes**: adjunta enlaces a vídeos de clase, artículos o páginas del libro y ábrelos con un clic.'
         ] },
-        { p: 'Elige una tarea en la lista **Tarea** de la página Concentración antes de empezar y la sesión contará para ella. Completar una tarea da 5 XP.' },
+        { p: 'Elige una tarea en la lista **Tarea** de la página Concentración antes de empezar y la sesión contará para ella. Al marcar una tarea se pide confirmación (puedes marcar **No volver a preguntar** y reactivar la pregunta en **Ajustes → General**). Completar una tarea da 5 XP una sola vez y elimina la tarea.' },
         { h: 'Notas' },
         { p: 'Las notas son de texto sencillo y se guardan solas mientras escribes. Se almacenan con el resto de tus datos en este equipo.' },
         { ul: [
@@ -156,7 +160,7 @@
           ['Temporizador', 'Duración de rondas y descansos, rondas antes de un descanso largo, inicio automático, modo estricto, sesión Iron y duración del bloqueo.'],
           ['Bloqueo', 'Cuándo funciona la guardia, lista de bloqueo o de permitidas, qué pasa al abrirse una app bloqueada, tiempo de aviso, frecuencia de comprobación, cuándo funciona el bloqueo de sitios, pausa de emergencia.'],
           ['Notificaciones', 'Concentración terminada, descanso terminado, avisos del bloqueador.'],
-          ['Sonido', 'Sonidos de la interfaz, campanillas, volumen del ambiente, archivos de ambiente propios.'],
+          ['Sonido', 'Sonidos de la interfaz, campanillas, archivos de ambiente propios.'],
           ['Datos y privacidad', 'Copias de seguridad, exportar, importar, carpeta de datos, restablecer.'],
           ['Acerca de', 'Versión, recorrido de bienvenida, ayuda.']
         ] } },

@@ -27,7 +27,7 @@ const SOUND_IDS = new Set(['rain', 'waves', 'fire', 'cafe']);
 
 /* settings:set sections that carry a raw value instead of an object */
 const RELEASES_URL = 'https://github.com/Amorgabab/StudyNook/releases/latest';
-const RAW_SECTIONS = ['theme', 'miniWindow', 'bridgeAllowOrigins', 'language', 'startWithWindows', 'dailyGoalMin'];
+const RAW_SECTIONS = ['theme', 'miniWindow', 'bridgeAllowOrigins', 'language', 'startWithWindows', 'dailyGoalMin', 'confirmTaskDone'];
 
 function registerIpc(ctx) {
   const { ipcMain, shell, store, session, guardian, T, broadcast, pushSnapshot, addFeed, grantXp, sendRewardEvents, grantAchievements, writeBackup, applyLoginItem, buildTrayMenu, DATA_DIR, SOUNDS_DIR, BUNDLED_SOUNDS_DIR, EXT_DIR } = ctx;
@@ -115,7 +115,7 @@ function registerIpc(ctx) {
           } else if (k === 'theme') v = Prefs.THEMES.includes(v) ? v : 'system';
           else if (k === 'language') v = Prefs.normLang(v);
           else if (k === 'dailyGoalMin') v = num(v, 120, 0, 720);
-          else if (k === 'miniWindow' || k === 'bridgeAllowOrigins' || k === 'startWithWindows' || k === 'closeToTray') v = !!v;
+          else if (k === 'miniWindow' || k === 'bridgeAllowOrigins' || k === 'startWithWindows' || k === 'closeToTray' || k === 'confirmTaskDone') v = !!v;
           clean[k] = v;
         }
         if (RAW_SECTIONS.includes(p.section)) {
@@ -164,7 +164,15 @@ function registerIpc(ctx) {
   /* ---- tasks ---- */
   H('tasks:add', (p) => {
     const payload = (p && typeof p === 'object') ? p : {};
-    const t = { id: 't' + Date.now() + Math.floor(Math.random() * 999), text: String(payload.text || '').trim().slice(0, 200), subject: String(payload.subject || '').trim().slice(0, 40), est: Math.max(1, parseInt(payload.est, 10) || 1), min: Math.max(0, parseInt(payload.min, 10) || 0), done: false, pomosDone: 0, date: null, createdAt: Date.now(), completedAt: null };
+    /* One kind of time per task: free time (minutes) or Pomodoros (a count); the other field is unused. */
+    const kind = payload.kind === 'free' ? 'free' : 'pomodoro';
+    const t = {
+      id: 't' + Date.now() + Math.floor(Math.random() * 999), text: String(payload.text || '').trim().slice(0, 200), subject: String(payload.subject || '').trim().slice(0, 40),
+      kind,
+      est: kind === 'pomodoro' ? Math.max(1, Math.min(8, parseInt(payload.est, 10) || 1)) : 1,
+      min: kind === 'free' ? Math.max(5, Math.min(600, parseInt(payload.min, 10) || 25)) : 0,
+      done: false, pomosDone: 0, date: null, createdAt: Date.now(), completedAt: null, xpGiven: false
+    };
     if (!t.text) return null;
     store.mutate((d) => { d.tasks.unshift(t); });
     pushSnapshot();
@@ -176,15 +184,15 @@ function registerIpc(ctx) {
       if (!t) return null;
       t.done = !t.done;
       t.completedAt = t.done ? Date.now() : null;
-      if (t.done) {
-        d.counters.tasksDone = (d.counters.tasksDone || 0) + 1;
-        const day = progress.dayStr();
-        (d.daily[day] = d.daily[day] || { min: 0, sessions: 0, kills: 0, tasks: 0 }).tasks += 1;
-        return t;
+      /* XP and the counters are given ONCE per task: un-doing and re-doing a task used to farm +5 XP. */
+      if (t.done && !t.xpGiven) {
+        t.xpGiven = true;
+        countTaskDone(d);
+        return Object.assign({ rewarded: true }, t);
       }
       return t;
     });
-    if (done && done.done) {
+    if (done && done.rewarded) {
       const evs = store.mutate((d) => grantXp(d, 5));
       sendRewardEvents(evs);
       grantAchievements({});
@@ -193,6 +201,30 @@ function registerIpc(ctx) {
     pushSnapshot();
     return true;
   });
+  /* Completing a task (after the "Are you sure?" prompt) rewards it once and deletes it. */
+  H('tasks:complete', (p) => {
+    const res = store.mutate((d) => {
+      const t = d.tasks.find((x) => x.id === p.id);
+      if (!t) return null;
+      const reward = !t.xpGiven;
+      if (reward) countTaskDone(d);
+      d.tasks = d.tasks.filter((x) => x.id !== t.id);
+      return { text: t.text, reward };
+    });
+    if (!res) return { ok: false };
+    if (res.reward) {
+      sendRewardEvents(store.mutate((d) => grantXp(d, 5)));
+      grantAchievements({});
+      store.mutate((d) => addFeed(d, { kind: 'good', xp: 5, text: T('main.feed.taskDone', { task: res.text }) }));
+    }
+    pushSnapshot();
+    return { ok: true, xp: res.reward ? 5 : 0 };
+  });
+  function countTaskDone(d) {
+    d.counters.tasksDone = (d.counters.tasksDone || 0) + 1;
+    const day = progress.dayStr();
+    (d.daily[day] = d.daily[day] || { min: 0, sessions: 0, kills: 0, tasks: 0 }).tasks += 1;
+  }
   H('tasks:remove', (p) => { store.mutate((d) => { d.tasks = d.tasks.filter((t) => t.id !== p.id); }); pushSnapshot(); return true; });
   H('tasks:addSource', (p) => {
     const u = NookLinks.normalize(p.url);
@@ -255,14 +287,22 @@ function registerIpc(ctx) {
     pushSnapshot();
     return entry;
   });
+  /* Removing or disabling a BLOCKED app is allowed only in the window after a 2h+ finished session
+     (Iron.canRemove). The allow list keeps its own rules. */
+  const blockRemovalLocked = () => !Iron.canRemove(store.data.listsUnlockUntil, Date.now(), listsFrozenNow());
   H('apps:remove', (p) => {
     if (listsFrozenNow()) { broadcast('list-frozen', {}); return false; }   // removals are part of the promise
+    if (p.list !== 'allow' && blockRemovalLocked()) { broadcast('list-frozen', {}); return false; }
     store.mutate((d) => { const l = p.list === 'allow' ? 'allow' : 'block'; d.apps[l] = d.apps[l].filter((e) => e.id !== p.id); });
     pushSnapshot();
     return true;
   });
   H('apps:toggle', (p) => {
     if (listsFrozenNow()) { broadcast('list-frozen', {}); return false; }   // disabling is part of the promise
+    if (p.list !== 'allow') {
+      const e = store.data.apps.block.find((x) => x.id === p.id);
+      if (e && e.enabled !== false && blockRemovalLocked()) { broadcast('list-frozen', {}); return false; }   // turning ON is always fine
+    }
     store.mutate((d) => { const l = p.list === 'allow' ? 'allow' : 'block'; const e = d.apps[l].find((e) => e.id === p.id); if (e) e.enabled = !e.enabled; });
     pushSnapshot();
     return true;
@@ -310,6 +350,7 @@ function registerIpc(ctx) {
       /* Iron list-freeze (same rule as the app lists): while an Iron focus exists or the self-lock runs,
          blocked sites can be added but never removed, and the allowed list cannot change. */
       if (listsFrozenNow()) Object.assign(d.sites, Iron.freezeSites(before, d.sites, session.isFocusPhase()));
+      else if (!Iron.canRemove(d.listsUnlockUntil, Date.now(), false)) Object.assign(d.sites, Iron.keepBlocked(before, d.sites));
     });
     pushSnapshot();
     return true;

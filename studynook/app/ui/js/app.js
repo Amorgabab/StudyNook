@@ -101,6 +101,9 @@ window.App = (function () {
     });
     renderView();
     document.getElementById('view').scrollTop = 0;
+    // One-shot page fade+rise on navigation only (renderView rebuilds on every snapshot and must not replay it).
+    const pg = document.querySelector('#view .page');
+    if (pg) { pg.classList.add('page-enter'); pg.addEventListener('animationend', () => pg.classList.remove('page-enter'), { once: true }); }
   };
   App.render = function () { renderView(); };
   // Closing the window (X, Alt+F4, tray Quit) must not lose the last few hundred ms of note typing.
@@ -149,6 +152,7 @@ window.App = (function () {
     const focusSel = active && active.dataset && active.dataset.draft ? '[data-draft="' + CSS.escape(active.dataset.draft) + '"]' : active && active.id ? '#' + CSS.escape(active.id) : null;
     const caret = active && typeof active.selectionStart === 'number' ? active.selectionStart : null;
     const v = document.getElementById('view');
+    N.closeSelects();   // an open dropdown belongs to the page that is about to be replaced
     const scroll = v.scrollTop;
     // Anything typed but not sent yet (new task, note text, a source link…) survives the rebuild.
     const drafts = {};
@@ -212,14 +216,44 @@ window.App = (function () {
     if (!s || !s.active || !s.running) return 'idle';
     return s.phase === 'focus' ? 'focus' : 'break';
   };
-  App.moodLine = function () { return t('mood.' + App.mood(), { name: App.state.data.pet.name }); };
+
+  /* ---------------- removal window (blocked apps and sites) ---------------- */
+  App.canRemove = function () {
+    return Iron.canRemove(App.state.data.listsUnlockUntil || 0, Date.now(), App.listsFrozen());
+  };
+  /** True while the Iron promise or an Iron focus is on: the 5-minute pause must not be offered. */
+  App.pauseHidden = function () {
+    const tm = App.state.data.settings.timer;
+    return App.ironFocusOn() || Iron.isLocked(tm.ironLockedUntil, Date.now());
+  };
+  function unlockText() {
+    const left = Math.max(0, Math.ceil(((App.state.data.listsUnlockUntil || 0) - Date.now()) / 1000));
+    return t('lists.unlocked', { time: Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') });
+  }
+  /** Small info callout while removal is unlocked (null otherwise). Its text is refreshed every second. */
+  App.unlockCallout = function () {
+    if (!App.canRemove()) return null;
+    const c = N.callout('info', 'info', unlockText());
+    c.id = 'unlock-callout';
+    return c;
+  };
+  setInterval(() => {
+    const el = document.getElementById('unlock-callout');
+    if (!el || !App.state.data) return;
+    if ((App.state.data.listsUnlockUntil || 0) <= Date.now()) { renderView(); return; }
+    const span = el.querySelector('span');
+    if (span) span.textContent = unlockText();
+  }, 1000);
 
   /* ---------------- ambience ---------------- */
+  App.ambienceLast = 'rain';
   App.setAmbience = function (id) {
-    App.ambience = id === 'off' ? null : id;
-    if (App.ambience) Audio2.startAmbience(App.ambience); else Audio2.stopAmbience();
+    App._ambAnim = true;   // one-shot: let the volume row animate instead of appearing
+    if (id === 'off') { App.ambience = null; Audio2.stopAmbience(); }
+    else { App.ambience = id; App.ambienceLast = id; Audio2.startAmbience(id); }
     renderView();
   };
+  App.toggleAmbience = function (on) { App.setAmbience(on ? App.ambienceLast : 'off'); };
 
   /* ---------------- events from the engine ---------------- */
   function onSessionEvent(ev) {

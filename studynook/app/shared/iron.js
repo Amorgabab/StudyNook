@@ -179,10 +179,28 @@
     }
     return out;
   }
+  /* ---------- removing blocked items: only right after a long finished session ----------
+     Blocked apps and sites can be ADDED any time, but removing (or disabling) one is allowed only during
+     the UNLOCK_MIN minutes after a session of at least UNLOCK_SESSION_MIN focused minutes ran to its end,
+     and never while the lists are frozen (a focus round or the Iron promise). */
+  const UNLOCK_SESSION_MIN = 120;
+  const UNLOCK_MIN = 30;
+  function canRemove(unlockUntil, now, frozen) {
+    return !frozen && Number(unlockUntil) > (now || Date.now());
+  }
+  /** Sites write guard when removal is locked: every blocked entry that existed stays (new ones are welcome). */
+  function keepBlocked(before, after) {
+    const arr = (a) => (Array.isArray(a) ? a : []);
+    const block = arr(after && after.block).slice();
+    for (const x of arr(before && before.block)) if (!block.includes(x)) block.push(x);
+    return Object.assign({}, after, { block });
+  }
+
   function objTimer(d) {
     const s = (d && d.settings) || {};
     if (!s.timer || typeof s.timer !== 'object' || Array.isArray(s.timer)) s.timer = {};
     return s.timer;
   }
-  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, normalizeFields, effectiveGuard, effectiveSites, effectiveTimer, listsFrozen, listsFrozenState, filterFrozenList, freezeSites };
+  return { SENTENCE, COOLDOWN_SEC, LOCK_DAYS_DEFAULT, normalize, matches, lockDays, makeLock, isLocked, remainingHms, resolveIron, applyIron, normalizeFields, effectiveGuard, effectiveSites, effectiveTimer, listsFrozen, listsFrozenState, filterFrozenList, freezeSites,
+    UNLOCK_SESSION_MIN, UNLOCK_MIN, canRemove, keepBlocked };
 });

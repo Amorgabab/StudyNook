@@ -20,7 +20,8 @@ Views.garden = function (c) {
 
   /* ---------- summary ---------- */
   const level = N.card(t('progress.level'), 'award');
-  level.appendChild(N.el('div', { class: 'big-num', text: t('chip.level', { n: NookI18n.num(lp.level) }) + ' · ' + App.levelTitle(lp.level) }));
+  const levelText = t('chip.level', { n: NookI18n.num(lp.level) }) + ' · ' + App.levelTitle(lp.level);
+  level.appendChild(N.el('div', { class: 'big-num', text: levelText, title: levelText }));
   level.appendChild(N.el('div', { class: 'progress', style: 'margin:var(--s-3) 0 var(--s-2)' }, N.el('span', { style: 'width:' + Math.round(lp.pct * 100) + '%' })));
   level.appendChild(N.el('div', { class: 'caption', text: t('progress.level.sub', { into: NookI18n.num(lp.into), need: NookI18n.num(lp.need), total: NookI18n.num(d.xp) }) }));
 
@@ -70,7 +71,6 @@ Views.garden = function (c) {
   /* ---------- companion journey ---------- */
   const journey = N.card(t('progress.journey', { name: d.pet.name }), 'cat');
   journey.style.marginTop = 'var(--s-6)';
-  journey.appendChild(N.el('p', { class: 'card-sub', text: t('stage.' + d.pet.stage + '.blurb') }));
   const track = N.el('div', { class: 'journey' });
   for (const s2 of NookProgress.PET_STAGES) {
     const reached = d.pet.stage >= s2.id;

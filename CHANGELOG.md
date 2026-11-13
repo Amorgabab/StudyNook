@@ -7,6 +7,24 @@ extension has its own version number (see `studynook/extension/manifest.json`).
 The commit history before 1.5.1 is rough (bulk uploads and auto-generated titles). This file is
 the readable version of it.
 
+## 1.5.17
+
+- **Removing a blocked app or website now has to be earned.** Adding is always allowed, but removing
+  (or switching off) a blocked app or site only works for 30 minutes after you finish a focus session of
+  2 hours or more. The session has to run to its end: ending early doesn't count. This applies in the
+  app and from the extension popup. The allowed lists keep their old rules.
+- **Completing a task rewards it once.** Ticking a task asks "Mark as done?" (with a "Don't ask
+  again" option, which you can turn back on in Settings), gives +5 XP and removes the task. Un-ticking
+  and re-ticking a task no longer earns XP again.
+- **Simpler task time.** A task is either free time (minutes) or Pomodoros (a count), not both.
+- **Ambience:** an on/off switch in the card's corner, and the volume slider only appears while a
+  sound is playing (it is no longer in Settings).
+- **Cleaner screens:** captions that added nothing (the companion's mood line, stage blurbs, "keep it
+  going" on the streak) are gone. Site chips are evenly padded. The companion was redrawn. Pages and
+  dialogs fade in smoothly (turned off when Windows asks for reduced motion).
+- **No guard pause during Iron:** the "Pause 5 min" buttons are hidden while an Iron session or promise
+  runs (they were already refused).
+
 ## 1.5.16
 
 - **Fixed: a normal focus session could close your browser.** In 1.5.15, if the browser extension went

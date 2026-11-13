@@ -238,6 +238,13 @@ app.whenReady().then(() => {
       if (!on) watchdogAsked = false;
     },
     onPhaseEnd: (info) => handlePhaseEnd(info),
+    /* A long session that ran to its end opens a short window to remove blocked apps and sites. */
+    onSessionComplete: ({ focusMin }) => {
+      if (focusMin < Iron.UNLOCK_SESSION_MIN) return;
+      const until = Date.now() + Iron.UNLOCK_MIN * 60000;
+      store.mutate((dd) => { dd.listsUnlockUntil = until; addFeed(dd, { kind: 'good', text: T('main.feed.unlocked') }); });
+      lifeLog('lists-unlocked', { focusMin, until });
+    },
     persist: (st) => {
       try {
         const f = SESSION_FILE();

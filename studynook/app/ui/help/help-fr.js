@@ -32,6 +32,8 @@
           ['Pomodoro', 'Des tours de concentration (25 min par défaut) séparés par des pauses courtes, avec une pause longue après un certain nombre de tours. Modifiez les durées dans **Réglages → Minuteur**.'],
           ['Concentration libre', 'Un seul bloc continu. Choisissez 15 à 90 minutes avec les boutons, ou saisissez une durée jusqu’à 600 minutes.']
         ] } },
+        { h: 'Ambiance' },
+        { p: 'Sur la page Concentration, utilisez l’interrupteur de la carte **Ambiance** pour lancer ou arrêter le son. Il joue le dernier son choisi (la pluie au début). Choisir un son le lance aussi. Le curseur de volume apparaît pendant la lecture.' },
         { h: 'Pause et arrêt' },
         { ul: [
           '**Pause** arrête le chrono. Le blocage des applis et des sites continue.',
@@ -65,6 +67,8 @@
           '**En cours** : liste tous les programmes ouverts pour les bloquer ou les autoriser.',
           '**Par nom** : saisissez un nom et les noms de processus (trouvez-les dans **En cours**).'
         ] },
+        { h: 'Supprimer des applis et sites bloqués' },
+        { p: 'Ajouter est toujours permis. Supprimer ou désactiver une appli bloquée, ou supprimer un site bloqué, est verrouillé. Cela se débloque 30 minutes après une session de concentration complète de 2 heures (tous les tours terminés, sans arrêt anticipé). Cela reste verrouillé pendant un tour de concentration et pendant le verrou Iron.' },
         { h: 'Liste de blocage ou d’autorisation' },
         { table: { head: ['Mode', 'Ce qui est fermé'], rows: [
           ['Liste de blocage', 'Uniquement les applis de votre liste **Bloquées**.'],
@@ -113,11 +117,11 @@
         { h: 'Tâches' },
         { ul: [
           '**Matière** : choisissez parmi les matières de **Réglages → Général**.',
-          '**Temps prévu** : la durée que vous prévoyez. En concentration libre, choisir la tâche règle la durée de la session.',
-          '**Estimation** : le nombre de Pomodoros prévu. Les tours terminés y sont comptés.',
+          '**Temps libre** : indiquez les minutes prévues (5–600). En concentration libre, choisir la tâche règle la durée de la session.',
+          '**Pomodoro** : indiquez le nombre de tours prévu (1–8). Les tours terminés y sont comptés.',
           '**Sources** : joignez des liens vers des vidéos de cours, des articles ou des pages de manuel et ouvrez-les en un clic.'
         ] },
-        { p: 'Choisissez une tâche dans la liste **Tâche** de la page Concentration avant de commencer, et la session lui sera comptée. Terminer une tâche rapporte 5 XP.' },
+        { p: 'Choisissez une tâche dans la liste **Tâche** de la page Concentration avant de commencer, et la session lui sera comptée. Cocher une tâche demande une confirmation (vous pouvez cocher **Ne plus demander** et réactiver la question dans **Réglages → Général**). Terminer une tâche rapporte 5 XP une seule fois et la supprime.' },
         { h: 'Notes' },
         { p: 'Les notes sont en texte brut et s’enregistrent automatiquement pendant que vous tapez. Elles sont stockées avec le reste de vos données sur cet ordinateur.' },
         { ul: [
@@ -156,7 +160,7 @@
           ['Minuteur', 'Durées des tours et des pauses, tours avant une pause longue, démarrage automatique, mode strict, session Iron et durée du verrouillage.'],
           ['Blocage', 'Quand la garde fonctionne, liste de blocage ou d’autorisation, ce qui se passe quand une appli bloquée s’ouvre, délai d’avertissement, fréquence de vérification, quand le blocage des sites fonctionne, pause d’urgence.'],
           ['Notifications', 'Concentration terminée, pause terminée, alertes de blocage.'],
-          ['Son', 'Sons de l’interface, carillons, volume de l’ambiance, fichiers d’ambiance personnalisés.'],
+          ['Son', 'Sons de l’interface, carillons, fichiers d’ambiance personnalisés.'],
           ['Données et confidentialité', 'Sauvegardes, export, import, dossier des données, réinitialisation.'],
           ['À propos', 'Version, visite guidée, aide.']
         ] } },

@@ -34,6 +34,8 @@
           ['Pomodoro', 'Focus rounds (25 min by default) separated by short breaks, with a long break after a set number of rounds. Change the lengths in **Settings → Focus timer**.'],
           ['Free focus', 'One continuous block. Pick 15–90 minutes with the chips, or type any length up to 600 minutes.']
         ] } },
+        { h: 'Ambience' },
+        { p: 'On the Focus page, use the switch on the **Ambience** card to start or stop sound. It plays the last sound you chose (Rain at first). Choosing a sound also turns it on. The volume slider appears while a sound is playing.' },
         { h: 'Pausing and ending' },
         { ul: [
           '**Pause** stops the clock. App and website blocking keep running.',
@@ -67,6 +69,8 @@
           '**Running now**: lists every program that is open, so you can block or allow it.',
           '**By name**: type a display name and the process names (find them on **Running now**).'
         ] },
+        { h: 'Removing blocked apps and sites' },
+        { p: 'Adding is always allowed. Removing or turning off a blocked app, or removing a blocked site, is locked. It unlocks for 30 minutes after you finish a full 2-hour focus session (every round done, not ended early). It stays locked during a focus round and while the Iron lock runs.' },
         { h: 'Blocklist or allowlist' },
         { table: { head: ['Mode', 'What gets closed'], rows: [
           ['Blocklist', 'Only the apps on your **Blocked** list.'],
@@ -115,11 +119,11 @@
         { h: 'Tasks' },
         { ul: [
           '**Subject**: choose from the subjects in **Settings → General**.',
-          '**Planned time**: how long you expect the task to take. In Free focus, picking the task sets the session length.',
-          '**Estimate**: how many Pomodoros you expect. Completed rounds are counted against it.',
+          '**Free time**: set the minutes you expect (5–600). In Free focus, picking the task sets the session length.',
+          '**Pomodoro**: set how many rounds you expect (1–8). Completed rounds are counted against it.',
           '**Sources**: attach links to lecture videos, papers or textbook pages and open them with one click.'
         ] },
-        { p: 'Select a task in the **Task** list on the Focus page before you start, and the session is counted against it. Completing a task earns 5 XP.' },
+        { p: 'Select a task in the **Task** list on the Focus page before you start, and the session is counted against it. Ticking a task asks you to confirm (you can tick **Don’t ask again**, and turn the question back on in **Settings → General**). Completing a task earns 5 XP once and deletes the task.' },
         { h: 'Notes' },
         { p: 'Notes are plain text and save automatically as you type. They are stored with the rest of your data on this computer.' },
         { ul: [
@@ -158,7 +162,7 @@
           ['Focus timer', 'Round and break lengths, rounds before a long break, auto-start, strict mode, Iron session and its lock length.'],
           ['Blocking', 'When the app guard runs, blocklist or allowlist, what happens when a blocked app opens, warning time, check interval, when website blocking runs, emergency pause.'],
           ['Notifications', 'Focus finished, break finished, blocker warnings.'],
-          ['Sound', 'Interface sounds, chimes, ambience volume, custom ambience files.'],
+          ['Sound', 'Interface sounds, chimes, custom ambience files.'],
           ['Data & privacy', 'Backups, export, import, data folder, reset.'],
           ['About', 'Version, welcome tour, Help.']
         ] } },

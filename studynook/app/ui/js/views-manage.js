@@ -12,25 +12,32 @@ Views.tasks = function (c) {
   /* --- add form --- */
   const form = N.card(t('tasks.new'), 'plus');
   const txt = N.el('input', { class: 'input', id: 'task-text', placeholder: t('tasks.placeholder'), 'aria-label': t('tasks.field.task'), 'data-draft': 'tasks:text' });
-  const subj = N.el('select', { class: 'input', 'aria-label': t('tasks.field.subject'), 'data-draft': 'tasks:subject' });
-  subj.appendChild(N.el('option', { value: '', text: t('tasks.subject.none') }));
-  for (const s of (d.subjects || [])) subj.appendChild(N.el('option', { value: s, text: s }));
-  let minVal = 0;
-  const est = N.el('select', { class: 'input', 'aria-label': t('tasks.field.estimate'), 'data-draft': 'tasks:estimate' });
-  for (let i = 1; i <= 8; i++) est.appendChild(N.el('option', { value: String(i), text: t(i === 1 ? 'tasks.pomodoro.one' : 'tasks.pomodoro.many', { n: i }) }));
+  const fx = App.taskFx = App.taskFx || { added: null, leaving: {}, swapIn: false };   // one-shot motion state, outlives page rebuilds
+  const subj = N.select([['', t('tasks.subject.none')], ...(d.subjects || []).map((s) => [s, s])], '', null, { label: t('tasks.field.subject'), draft: 'tasks:subject' });
+  let minVal = 30, estVal = 1;
+  const kind = App.taskKind === 'pomodoro' ? 'pomodoro' : 'free';
   const add = () => {
     const v = txt.value.trim();
     if (!v) { txt.focus(); return; }
-    nook.invoke('tasks:add', { text: v, subject: subj.value, min: minVal, est: est.value })
-      .then((r) => { if (!r) App.toast(t('tasks.addFailed.t'), t('tasks.addFailed.d'), { kind: 'warning' }); });
+    nook.invoke('tasks:add', { text: v, subject: subj.value, kind, min: kind === 'free' ? minVal : 0, est: kind === 'pomodoro' ? estVal : 1 })
+      .then((r) => {
+        if (!r) { App.toast(t('tasks.addFailed.t'), t('tasks.addFailed.d'), { kind: 'warning' }); return; }
+        // play the entrance once: remember the id (a redraw inside the window rebuilds the row mid-animation) and mark the live row if it is already there
+        fx.added = { id: r.id, t0: Date.now() };
+        const live = document.querySelector('.task-row[data-id="' + r.id + '"]');
+        if (live && !live.classList.contains('task-new')) live.classList.add('task-new');
+      });
     txt.value = '';   // sent: the redraw must not restore it as a draft
     Audio2.pop();
   };
   txt.addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
   form.appendChild(N.el('div', { class: 'task-form' },
     field(t('tasks.field.task'), txt), field(t('tasks.field.subject'), subj),
-    field(t('tasks.field.planned'), N.el('span', { class: 'row' }, N.stepper(0, 0, 600, (v) => { minVal = v; }, 5, t('tasks.field.planned'), 'tasks:planned'), N.el('span', { class: 'stepper-unit', text: t('unit.min') }))),
-    field(t('tasks.field.estimate'), est),
+    field(t('tasks.kind'), N.seg([['free', t('tasks.kind.free'), 'clock'], ['pomodoro', t('tasks.kind.pomodoro'), 'timer']], kind, (v) => { App.taskKind = v; fx.swapIn = true; App.render(); },
+      { label: t('tasks.kind'), onSlide: () => { const w = form.querySelector('[data-swap]'); if (w) w.classList.add('swap-out'); } })),
+    swapField(kind === 'free'
+      ? field(t('tasks.field.planned'), N.el('span', { class: 'row' }, N.stepper(minVal, 5, 600, (v) => { minVal = v; }, 5, t('tasks.field.planned'), 'tasks:planned'), N.el('span', { class: 'stepper-unit', text: t('unit.min') })))
+      : field(t('tasks.field.estimate'), N.stepper(estVal, 1, 8, (v) => { estVal = v; }, 1, t('tasks.field.estimate'), 'tasks:estimate'))),
     N.btn(t('tasks.add'), { cls: 'btn-primary', icon: 'plus', onclick: add })));
   c.appendChild(form);
 
@@ -45,17 +52,32 @@ Views.tasks = function (c) {
     list.appendChild(App.taskFilter === 'done' ? N.empty('circle-check', t('tasks.empty.done.t'), t('tasks.empty.done.d')) : N.empty('list-checks', t('tasks.empty.open.t'), t('tasks.empty.open.d')));
   }
   for (const tk of rows) {
-    const row = N.el('div', { class: 'task-row' + (tk.done ? ' done' : '') });
+    const row = N.el('div', { class: 'task-row' + (tk.done ? ' done' : ''), 'data-id': tk.id });
+    const lv = fx.leaving[tk.id];
+    if (lv) {
+      const el = Date.now() - lv.t0;
+      if (el > 900) delete fx.leaving[tk.id];
+      else if (el >= 0) { row.classList.add('leaving'); row.style.setProperty('--h', lv.h + 'px'); row.style.animationDelay = -el + 'ms'; }
+    }
+    if (fx.added && fx.added.id === tk.id) {
+      const el = Date.now() - fx.added.t0;
+      if (el < 450) { row.classList.add('task-new'); row.style.animationDelay = -el + 'ms'; } else fx.added = null;
+    }
     row.appendChild(N.el('button', {
-      class: 'check', role: 'checkbox', type: 'button', 'aria-checked': tk.done ? 'true' : 'false',
+      class: 'check', role: 'checkbox', type: 'button', 'aria-checked': tk.done || lv ? 'true' : 'false',
       'aria-label': tk.done ? t('tasks.reopen') : t('tasks.complete'), title: tk.done ? t('tasks.reopen') : t('tasks.complete'),
-      onclick: () => { nook.invoke('tasks:toggle', { id: tk.id }); if (!tk.done) Audio2.pop(); }
+      onclick: () => (tk.done ? nook.invoke('tasks:toggle', { id: tk.id }) : completeTask(tk))
     }, N.icon('check', 14)));
     const body = N.el('div', { class: 'grow' }, N.el('div', { class: 'task-title', text: tk.text }));
     const meta = N.el('div', { class: 'task-meta' });
     if (tk.subject) meta.appendChild(N.el('span', { class: 'badge accent', text: tk.subject }));
-    if (tk.min) meta.appendChild(N.el('span', { class: 'badge', title: t('tasks.meta.planned.tip') }, N.icon('clock', 12), N.el('span', { text: NookI18n.minutes(tk.min) })));
-    meta.appendChild(N.el('span', { class: 'badge', title: t('tasks.meta.pomos.tip') }, N.icon('timer', 12), N.el('span', { text: t('tasks.meta.pomos', { done: tk.pomosDone || 0, est: tk.est }) })));
+    const free = tk.kind ? tk.kind === 'free' : tk.min > 0;   // old tasks have no kind: free if they had planned minutes
+    if (free) meta.appendChild(N.el('span', { class: 'badge', title: t('tasks.meta.planned.tip') }, N.icon('clock', 12), N.el('span', { text: NookI18n.minutes(tk.min) })));
+    else {
+      const n = tk.est || 1;
+      meta.appendChild(N.el('span', { class: 'badge', title: t('tasks.meta.pomos.tip') }, N.icon('timer', 12),
+        N.el('span', { text: tk.pomosDone ? t('tasks.meta.pomos', { done: tk.pomosDone, est: n }) : t(n === 1 ? 'tasks.pomodoro.one' : 'tasks.pomodoro.many', { n }) })));
+    }
     body.appendChild(meta);
 
     const srcs = N.el('div', { class: 'sources' });
@@ -72,11 +94,46 @@ Views.tasks = function (c) {
     srcs.appendChild(N.btn(t('tasks.source.add'), { cls: 'btn-ghost btn-sm', icon: 'link', title: t('tasks.source.tip'), onclick: () => { srcForm.classList.toggle('hidden'); if (!srcForm.classList.contains('hidden')) sInp.focus(); } }));
     body.append(srcs, srcForm);
     row.appendChild(body);
-    row.appendChild(N.iconBtn('trash', t('tasks.delete'), () => App.confirm(t('tasks.delete.confirm'), tk.text, () => nook.invoke('tasks:remove', { id: tk.id }), t('common.delete')), 'danger'));
+    row.appendChild(N.iconBtn('trash', t('tasks.delete'), () => App.confirm(t('tasks.delete.confirm'), tk.text, () => vanish(tk.id, 0, () => nook.invoke('tasks:remove', { id: tk.id })), t('common.delete')), 'danger'));
     list.appendChild(row);
   }
   c.appendChild(list);
 
+  /** Ticking a task gives the XP once and deletes it, so ask first unless the person turned that off. */
+  function completeTask(tk) {
+    const go = () => { Audio2.pop(); vanish(tk.id, 140, () => nook.invoke('tasks:complete', { id: tk.id }), true); };
+    if (d.settings.confirmTaskDone === false) return go();
+    const never = N.el('input', { type: 'checkbox', id: 'task-never' });
+    const body = N.el('div', {}, N.el('p', { class: 'small', text: t('tasks.confirm.d') }),
+      N.el('label', { class: 'row small', style: 'margin-top:var(--s-4);gap:var(--s-2)' }, never, N.el('span', { text: t('tasks.confirm.never') })));
+    App.modal(t('tasks.confirm.t'), body, [
+      { label: t('common.cancel'), cls: 'btn-ghost', fn: () => App.closeModal() },
+      { label: t('tasks.confirm.yes'), cls: 'btn-primary', fn: () => {
+        if (never.checked) nook.invoke('settings:set', { section: 'confirmTaskDone', values: false });
+        App.closeModal(); go();
+      } }
+    ]);
+  }
+  /** Play the row's exit, then run the IPC call: the snapshot it triggers would otherwise cut the animation.
+      The row is looked up fresh (a redraw may have replaced it while a confirm modal was open). */
+  function vanish(id, lead, then, ticked) {
+    const row = document.querySelector('.task-row[data-id="' + id + '"]');
+    if (!row || N.reduced()) { then(); return; }
+    const ck = row.querySelector('.check');
+    if (ticked && ck) { ck.setAttribute('aria-checked', 'true'); ck.classList.add('pop'); }
+    fx.leaving[id] = { t0: Date.now() + lead, h: row.offsetHeight };
+    setTimeout(() => {
+      const live = document.querySelector('.task-row[data-id="' + id + '"]');
+      if (live && !live.classList.contains('leaving')) { live.style.setProperty('--h', live.offsetHeight + 'px'); live.classList.add('leaving'); }
+    }, lead);
+    setTimeout(() => { Promise.resolve(then()).then(() => { delete fx.leaving[id]; }, () => { delete fx.leaving[id]; }); }, lead + 290);
+  }
+  /** The kind-dependent field fades in once after the segment switch (flag set by the click, consumed here). */
+  function swapField(node) {
+    node.setAttribute('data-swap', '');
+    if (fx.swapIn) { fx.swapIn = false; node.classList.add('swap-in'); }
+    return node;
+  }
   function field(label, control) { return N.el('label', { class: 'field' }, N.el('span', { class: 'field-label', text: label }), control); }
 };
 
@@ -252,7 +309,7 @@ Views.apps = function (c) {
     N.el('span', { class: 'item-icon' }, N.icon(g.enabled ? 'shield-check' : 'shield-off', 20)),
     N.el('div', { class: 'grow' }, N.el('b', { text: g.enabled ? t('apps.state.on') : t('apps.state.off') }), N.el('span', { class: 'small', text: sub + ' · ' + t('apps.mode.' + g.mode) + ' · ' + t('apps.action.' + g.action) })),
     paused ? N.btn(t('apps.resume'), { cls: 'btn-sm', icon: 'play', onclick: () => nook.invoke('guardian:pause', { min: 0 }) })
-      : g.enabled ? N.btn(t('apps.pause5'), { cls: 'btn-sm btn-ghost', icon: 'pause', onclick: () => nook.invoke('guardian:pause', { min: 5 }) }) : null,
+      : g.enabled && !App.pauseHidden() ? N.btn(t('apps.pause5'), { cls: 'btn-sm btn-ghost', icon: 'pause', onclick: () => nook.invoke('guardian:pause', { min: 5 }) }) : null,
     N.btn(t('apps.fineTune'), { cls: 'btn-sm btn-ghost', icon: 'sliders-horizontal', onclick: () => App.go('settings', { section: 'blocking' }) }),
     N.toggle(g.enabled, (v) => nook.invoke('settings:set', { section: 'guardian', values: { enabled: v } }), { label: t('apps.toggle') })));
   if (g.mode === 'allow') {
@@ -275,9 +332,18 @@ Views.apps = function (c) {
   lists.appendChild(tabs);
   const frozen = App.listsFrozen();
   const fz = App.frozenSuffix();   // Iron wording, or the neutral "locked during focus" one
+  const canRm = App.canRemove();
+  function trashBtn(e, ok) {
+    const b = N.iconBtn('trash', t('apps.entry.remove', { app: e.label }), () => nook.invoke('apps:remove', { list: App.appsTab || 'block', id: e.id }), 'danger');
+    if (!ok) { b.disabled = true; b.title = rmTip; b.onclick = null; }
+    return b;
+  }
+  const rmTip = t(frozen ? 'apps.frozen.short' + fz : 'lists.removeLocked');
 
   if (tab === 'block' || tab === 'allow') {
     if (frozen) lists.appendChild(N.callout('warning', 'lock', t('apps.frozen' + fz)));
+    const uc = tab === 'block' ? App.unlockCallout() : null;
+    if (uc) { uc.style.marginBottom = 'var(--s-4)'; lists.appendChild(uc); }
     const entries = d.apps[tab];
     if (!entries.length) lists.appendChild(N.empty(tab === 'block' ? 'ban' : 'circle-check', t('apps.empty.' + tab + '.t'), t('apps.empty.d')));
     const list = N.el('div', { class: 'list' });
@@ -285,8 +351,10 @@ Views.apps = function (c) {
       list.appendChild(N.el('div', { class: 'item' },
         N.el('span', { class: 'item-icon' }, N.icon(APP_ICON[e.catalogId] || 'app-window', 18)),
         N.el('div', { class: 'grow' }, N.el('div', { class: 'item-title', text: e.label }), N.el('div', { class: 'row wrap', style: 'margin-top:4px;gap:4px' }, ...e.procs.map((p) => N.el('span', { class: 'mono', text: p })))),
-        N.toggle(e.enabled !== false, () => nook.invoke('apps:toggle', { list: tab, id: e.id }), { label: t('apps.entry.toggle', { app: e.label }), disabled: frozen, title: frozen ? t('apps.frozen.short' + fz) : null }),
-        frozen ? null : N.iconBtn('trash', t('apps.entry.remove', { app: e.label }), () => nook.invoke('apps:remove', { list: tab, id: e.id }), 'danger')));
+        N.toggle(e.enabled !== false, () => nook.invoke('apps:toggle', { list: tab, id: e.id }), tab === 'allow'
+          ? { label: t('apps.entry.toggle', { app: e.label }), disabled: frozen, title: frozen ? t('apps.frozen.short' + fz) : null }
+          : { label: t('apps.entry.toggle', { app: e.label }), disabled: e.enabled !== false && !canRm, title: e.enabled !== false && !canRm ? rmTip : null }),
+        tab === 'allow' ? (frozen ? null : trashBtn(e, true)) : trashBtn(e, canRm)));
     }
     lists.appendChild(list);
     const lbl = N.el('input', { class: 'input', placeholder: t('apps.add.name'), 'aria-label': t('apps.add.name'), 'data-draft': 'apps:name:' + tab });
@@ -373,7 +441,10 @@ Views.sites = function (c) {
   /* --- lists --- */
   const frozen = App.listsFrozen();   // a focus round or the Iron lock: sites can be added to the blocked list, never removed
   const fz = App.frozenSuffix();
+  const canRm = App.canRemove();
   if (frozen) { const fc = N.callout('warning', 'lock', t('sites.frozen' + fz)); fc.style.marginTop = 'var(--s-6)'; c.appendChild(fc); }
+  const uc = App.unlockCallout();
+  if (uc) { uc.style.marginTop = 'var(--s-6)'; c.appendChild(uc); }
   const grid = N.el('div', { class: 'grid-2', style: 'margin-top:var(--s-6)' });
   grid.appendChild(domainList('block', t('sites.blocked'), t('sites.blocked.sub'), 'ban', s.block, 'youtube.com/shorts'));
   grid.appendChild(domainList('allow', t('sites.allowed'), t('sites.allowed.sub'), 'circle-check', s.allow, 'wikipedia.org'));
@@ -408,7 +479,7 @@ Views.sites = function (c) {
     const chips = N.el('div', { class: 'chips' });
     for (const dom of arr) {
       chips.appendChild(N.el('span', { class: 'chip', title: dom }, N.el('span', { text: dom }),
-        frozen ? null : N.el('button', { type: 'button', 'aria-label': t('sites.remove', { site: dom }), onclick: () => setS({ [key]: arr.filter((x) => x !== dom) }) }, N.icon('x', 14))));
+        frozen ? null : N.el('button', { type: 'button', 'aria-label': t('sites.remove', { site: dom }), disabled: key === 'block' && !canRm, title: key === 'block' && !canRm ? t('lists.removeLocked') : null, onclick: () => setS({ [key]: arr.filter((x) => x !== dom) }) }, N.icon('x', 14))));
     }
     if (!arr.length) chips.appendChild(N.el('span', { class: 'small', text: t('sites.empty') }));
     card.appendChild(chips);

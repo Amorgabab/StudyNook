@@ -28,7 +28,7 @@ function createSnapshots(ctx) {
         streak: d.streak, settings: d.settings, apps: d.apps, sites: d.sites,
         subjects: d.subjects, notes: d.notes,
         tasks: d.tasks, sessions: d.sessions.slice(0, 60), daily: d.daily,
-        counters: d.counters, achievements: d.achievements, onboarded: d.onboarded,
+        counters: d.counters, achievements: d.achievements, onboarded: d.onboarded, listsUnlockUntil: d.listsUnlockUntil || 0,
         feed: d.feed || []
       },
       session: session.publicState(),

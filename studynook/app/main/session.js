@@ -431,6 +431,7 @@ class SessionEngine {
 
     /* ---- advance to the next phase ---- */
     if (s.mode === 'free') {
+      if (completed) this._sessionComplete(s);
       this.s = null;
       this._stopLoop();
       // free mode ends with the first focus → delete session.json (null
@@ -456,6 +457,7 @@ class SessionEngine {
       beginPhase(isLong ? 'long' : 'short', (isLong ? t.longMin : t.shortMin) * 60);
     } else {
       if (s.roundIdx >= s.rounds) {          // whole plan finished 🎉
+        this._sessionComplete(s);
         this.s = null;
         this._stopLoop();
         this._persist();                     // delete session.json — done for good
@@ -472,6 +474,14 @@ class SessionEngine {
     this._persist();
     this.hooks.onState && this.hooks.onState();
     return this.publicState();
+  }
+
+  /** The session ran to its natural end (free round done, or every Pomodoro round done). Main uses this
+      for the "remove blocked items after a long session" window. Early ends never reach here. */
+  _sessionComplete(s) {
+    if (this.hooks.onSessionComplete) {
+      try { this.hooks.onSessionComplete({ startedAt: s.startedAt, focusMin: Math.floor((s.sessionFocusSec || 0) / 60) }); } catch (e) { /* reporting only */ }
+    }
   }
 
   publicState() {
