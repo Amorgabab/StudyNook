@@ -24,6 +24,10 @@ the readable version of it.
   dialogs fade in smoothly (turned off when Windows asks for reduced motion).
 - **No guard pause during Iron:** the "Pause 5 min" buttons are hidden while an Iron session or promise
   runs (they were already refused).
+- **"Are you still here?"** If the PC has no mouse or keyboard input for 15 minutes during a running focus
+  round, a small card asks. Any input closes it; with no answer within a minute the timer pauses, and
+  blocking stays on. Change the delay or switch it off in Settings → Focus timer.
+- **The ambience volume slider only changes the ambience**, not the chimes and clicks.
 
 ## 1.5.16
 

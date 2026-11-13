@@ -7,22 +7,26 @@
    ============================================================ */
 'use strict';
 window.Audio2 = (function () {
-  let ctx = null, master = null, amb = null, volume = 0.6;
+  let ctx = null, master = null, ambBus = null, amb = null, volume = 0.6;
   let crackleTimer = null, ambToken = 0;
 
   function ac() {
     if (!ctx) {
       ctx = new (window.AudioContext || window.webkitAudioContext)();
-      master = ctx.createGain();
-      master.gain.value = volume;
+      master = ctx.createGain();   // chimes and clicks: fixed level
+      master.gain.value = 0.6;
       master.connect(ctx.destination);
+      ambBus = ctx.createGain();   // ambience only: the volume slider drives this
+      ambBus.gain.value = volume;
+      ambBus.connect(master);
     }
     if (ctx.state === 'suspended') ctx.resume();
     return ctx;
   }
+  /** The ambience volume (Focus page slider). Chimes and clicks keep their own level. */
   function setVolume(v) {
     volume = Math.max(0, Math.min(1, v));
-    if (master) master.gain.setTargetAtTime(volume, ac().currentTime, 0.1);
+    if (ambBus) ambBus.gain.setTargetAtTime(volume, ac().currentTime, 0.1);
   }
 
   function noiseBuffer(kind) {
@@ -117,7 +121,7 @@ window.Audio2 = (function () {
     const my = ++ambToken;
     const nodes = [], osc = [];
     const out = gain(0);
-    out.connect(master);
+    out.connect(ambBus);
 
     let started = false;
     try {

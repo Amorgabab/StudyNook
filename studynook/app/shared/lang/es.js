@@ -250,6 +250,7 @@
   'tour.skip': 'Omitir', 'tour.finish': 'Empezar',
 
   'mini.open': 'Abrir StudyNook',
+  'here.title': "¿Sigues ahí?", 'here.sub': "Mueve el ratón o pulsa una tecla para seguir. Si no, el temporizador se pausa en {n} s (el bloqueo sigue activo).", 'here.btn': "Estoy aquí", 'set.idle': "Comprobar que sigues ahí", 'set.idle.desc': "Tras un rato sin usar el ratón ni el teclado durante la concentración, te lo pregunta. Sin respuesta en un minuto, el temporizador se pausa; el bloqueo sigue activo.", 'set.idle.after': "Preguntar después de", 'set.idle.after.desc': "Minutos sin usar el ratón ni el teclado.", 'main.feed.idlePaused': "Temporizador en pausa: sin uso del ratón ni del teclado durante un rato. El bloqueo sigue activo.", 'main.n.idlePaused.t': "Temporizador en pausa", 'main.n.idlePaused.d': "Parecías ausente. Reanuda cuando vuelvas; el bloqueo siguió activo.",
   'rem.title': '{app} está abierta', 'rem.gentle': 'Está en tu lista de bloqueo y se cerrará pronto. Guarda tu trabajo.',
   'rem.remind': '{app} está en tu lista de bloqueo.', 'rem.seconds': 'segundos restantes',
   'rem.keep': 'Mantener 5 min', 'rem.close': 'Cerrar ahora', 'rem.self': 'La cierro yo',

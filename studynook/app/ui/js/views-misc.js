@@ -80,6 +80,11 @@ Views.settings = function (c) {
           App.confirm(t('set.t.iron.confirm.t'), t('set.t.iron.confirm.d', { n: tm.ironLockDays || 4 }), () => setT({ iron: true }), t('set.t.iron.confirm.yes'));
         }, { label: t('set.t.iron') })));
     card.appendChild(row(t('set.t.ironDays'), t('set.t.ironDays.desc'), num(tm.ironLockDays || 4, 1, 30, (v) => setT({ ironLockDays: v }), t('unit.days'), 1, t('set.t.ironDays'))));
+    /* "Are you still here?" check */
+    const idle = d.settings.idle || { enabled: true, afterMin: 15 };
+    const setIdle = (values) => nook.invoke('settings:set', { section: 'idle', values });
+    card.appendChild(row(t('set.idle'), t('set.idle.desc'), N.toggle(idle.enabled !== false, (v) => setIdle({ enabled: v }), { label: t('set.idle') })));
+    if (idle.enabled !== false) card.appendChild(row(t('set.idle.after'), t('set.idle.after.desc'), num(idle.afterMin || 15, 2, 60, (v) => setIdle({ afterMin: v }), t('unit.min'), 1, t('set.idle.after'))));
   }
 
   if (cur === 'blocking') {

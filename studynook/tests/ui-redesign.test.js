@@ -12,7 +12,7 @@ const Prefs = require('../app/shared/uiprefs.js');
 const Iron = require('../app/shared/iron.js');
 const { sanitizeData, defaultData } = require('../app/main/store.js');
 
-const UI_FILES = ['app/ui/js/app.js', 'app/ui/js/views-home.js', 'app/ui/js/views-manage.js', 'app/ui/js/views-garden.js', 'app/ui/js/views-misc.js', 'app/ui/js/util.js', 'app/ui/mini.js', 'app/ui/reminder.js', 'app/main/main.js'];
+const UI_FILES = ['app/ui/js/app.js', 'app/ui/js/views-home.js', 'app/ui/js/views-manage.js', 'app/ui/js/views-garden.js', 'app/ui/js/views-misc.js', 'app/ui/js/util.js', 'app/ui/mini.js', 'app/ui/reminder.js', 'app/ui/here.js', 'app/main/main.js'];
 const placeholders = (s) => (String(s).match(/\{\w+\}/g) || []).sort().join(',');
 
 suite('ui · translations', () => {

@@ -33,6 +33,7 @@ function defaultData() {
       closeToTray: false,  // false: the X quits when nothing needs to keep running
       dailyGoalMin: 120,   // 0 = no daily goal
       notify: { focusEnd: true, breakEnd: true, blocker: true },
+      idle: { enabled: true, afterMin: 15 },   // "Are you still here?" after this many minutes without input
       miniWindow: true,
       bridgeAllowOrigins: false   // SECURITY: cross-origin access to the localhost bridge (off = extension-only)
     },
@@ -134,6 +135,7 @@ function sanitizeData(d) {
   s.confirmTaskDone = s.confirmTaskDone !== false;
   s.closeToTray = s.closeToTray === true;
   s.dailyGoalMin = num(s.dailyGoalMin, 120, 0, 720);
+  s.idle = require('./idle.js').normCfg(s.idle);
   const nt = obj(s.notify); s.notify = nt;
   for (const k of ['focusEnd', 'breakEnd', 'blocker']) nt[k] = nt[k] !== false;
   s.miniWindow = s.miniWindow !== false;

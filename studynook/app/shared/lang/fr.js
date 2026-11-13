@@ -250,6 +250,7 @@
   'tour.skip': 'Passer', 'tour.finish': 'Commencer',
 
   'mini.open': 'Ouvrir StudyNook',
+  'here.title': "Êtes-vous toujours là ?", 'here.sub': "Bougez la souris ou appuyez sur une touche pour continuer. Sinon le minuteur se met en pause dans {n} s (le blocage reste actif).", 'here.btn': "Je suis là", 'set.idle': "Vérifier que vous êtes toujours là", 'set.idle.desc': "Après un moment sans souris ni clavier pendant la concentration, on vous le demande. Sans réponse en une minute, le minuteur se met en pause ; le blocage reste actif.", 'set.idle.after': "Demander après", 'set.idle.after.desc': "Minutes sans souris ni clavier.", 'main.feed.idlePaused': "Minuteur en pause : aucune activité souris ou clavier depuis un moment. Le blocage reste actif.", 'main.n.idlePaused.t': "Minuteur en pause", 'main.n.idlePaused.d': "Vous sembliez absent. Reprenez à votre retour ; le blocage est resté actif.",
   'rem.title': '{app} est ouvert', 'rem.gentle': 'Cette appli est dans votre liste de blocage et va bientôt se fermer. Enregistrez votre travail.',
   'rem.remind': '{app} est dans votre liste de blocage.', 'rem.seconds': 'secondes restantes',
   'rem.keep': 'Garder 5 min', 'rem.close': 'Fermer maintenant', 'rem.self': 'Je la ferme moi-même',

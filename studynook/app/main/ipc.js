@@ -109,6 +109,10 @@ function registerIpc(ctx) {
           } else if (p.section === 'sound') {
             if (k === 'ui' || k === 'chimes') v = !!v;
             else if (k === 'volume') v = num(v, 0.6, 0, 1);
+          } else if (p.section === 'idle') {
+            if (k === 'enabled') v = !!v;
+            else if (k === 'afterMin') v = num(v, 15, 2, 60);
+            else continue;
           } else if (p.section === 'notify') {
             if (!['focusEnd', 'breakEnd', 'blocker'].includes(k)) continue;
             v = !!v;
@@ -537,6 +541,7 @@ function registerIpc(ctx) {
   /* ---- reminder window buttons ---- */
   H('reminder:allowOnce', (p) => { guardian.allowOnce(String(p.norm || ''), 5); pushSnapshot(); return true; });
   H('reminder:killNow', (p) => guardian.killNow(String(p.norm || '')));
+  H('here:dismiss', () => { if (ctx.idle) ctx.idle.dismiss(); return true; });   // "I'm here" button
   H('reminder:dismiss', () => { ctx.hideReminderWindow(); broadcast('reminder', null); return true; });
 }
 

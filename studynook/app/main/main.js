@@ -13,7 +13,8 @@
    ============================================================ */
 'use strict';
 
-const { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell, dialog, nativeImage, nativeTheme, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell, dialog, nativeImage, nativeTheme, screen, powerMonitor } = require('electron');
+const { IdleWatch } = require('./idle.js');
 const path = require('path');
 const fs = require('fs');
 
@@ -48,7 +49,8 @@ const ASSET = (f) => path.join(APP_ROOT, 'assets', f);
 const lifeLog = Lifecycle.makeLogger(path.join(DATA_DIR, 'lifecycle.log'), 'app');
 
 let store, session, guardian, server;
-let win = null, miniWin = null, remindWin = null, tray = null;
+let win = null, miniWin = null, remindWin = null, hereWin = null, tray = null;
+let idleWatch = null;
 let rendererReloads = 0;     // crash-reload budget for the main window
 const START_HIDDEN = process.argv.includes('--hidden');   // launched at Windows sign-in → stay in the tray
 
@@ -270,6 +272,24 @@ app.whenReady().then(() => {
   });
   guardian.start();
 
+  /* "Are you still here?": no mouse/keyboard input anywhere for settings.idle.afterMin minutes during a running
+     focus → a small card; no answer within a minute → the timer pauses (blocking stays on). */
+  idleWatch = new IdleWatch({
+    session,
+    getIdleSec: () => powerMonitor.getSystemIdleTime(),
+    getCfg: () => store.data.settings.idle,
+    show: (prompt) => showHereWindow(prompt),
+    hide: () => hideHereWindow(),
+    log: (ev, data) => lifeLog(ev, data),
+    onPaused: () => {
+      store.mutate((dd) => addFeed(dd, { kind: 'info', text: T('main.feed.idlePaused') }));
+      notify(T('main.n.idlePaused.t'), T('main.n.idlePaused.d'), 'focusEnd');
+      pushSnapshot();
+    }
+  });
+  ctx.idle = idleWatch;
+  idleWatch.start();
+
   server = new SyncServer({
     store, session,
     guardianArmed: () => guardian.isArmed(),
@@ -422,6 +442,21 @@ function showReminderWindow(payload) {
   if (!remindWin.isVisible()) remindWin.show();
   remindWin.focus();
 }
+/** The "Are you still here?" card. Shown WITHOUT taking focus, so whatever the student is doing keeps the
+    keyboard; any input anywhere closes it (IdleWatch sees the OS idle time drop). */
+function showHereWindow(prompt) {
+  if (!hereWin || hereWin.isDestroyed()) {
+    hereWin = new BrowserWindow(baseWindowOpts({
+      width: 380, height: 190, frame: false, alwaysOnTop: true, resizable: false, focusable: true,
+      skipTaskbar: true, show: false, backgroundColor: resolvedTheme() === 'dark' ? '#211E1B' : '#FFFFFF'
+    }));
+    hereWin.loadFile(UI('here.html'));
+    hereWin.on('closed', () => { hereWin = null; });
+    hereWin.once('ready-to-show', () => { if (idleWatch && idleWatch.prompt && alive(hereWin)) hereWin.showInactive(); });
+  } else if (!hereWin.isVisible()) hereWin.showInactive();
+  if (alive(hereWin)) hereWin.webContents.send('here', prompt);
+}
+function hideHereWindow() { if (hereWin && !hereWin.isDestroyed() && hereWin.isVisible()) hereWin.hide(); }
 function hideReminderWindow() { if (remindWin && !remindWin.isDestroyed() && remindWin.isVisible()) remindWin.hide(); }
 
 function createTray() {
@@ -596,6 +631,7 @@ function pushSnapshot() {
     if (alive(win) && win.isVisible() && !win.isMinimized()) win.webContents.send('snapshot', ctx.snapshots.full());
     if (alive(miniWin)) miniWin.webContents.send('snapshot', ctx.snapshots.mini());
     if (alive(remindWin)) remindWin.webContents.send('snapshot', ctx.snapshots.reminder());
+    if (alive(hereWin)) hereWin.webContents.send('snapshot', ctx.snapshots.here());
   }, 120);
 }
 function broadcast(channel, payload) {
@@ -607,5 +643,6 @@ function broadcast(channel, payload) {
 function snapshotFor(sender) {
   if (alive(miniWin) && sender === miniWin.webContents) return ctx.snapshots.mini();
   if (alive(remindWin) && sender === remindWin.webContents) return ctx.snapshots.reminder();
+  if (alive(hereWin) && sender === hereWin.webContents) return ctx.snapshots.here();
   return ctx.snapshots.full();
 }

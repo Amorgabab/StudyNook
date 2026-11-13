@@ -58,7 +58,12 @@ function createSnapshots(ctx) {
     };
   }
 
-  return { full, mini, reminder };
+  /** "Are you still here?" card: its prompt (deadline), theme + language. */
+  function here() {
+    return { systemDark: nativeTheme.shouldUseDarkColors, data: { settings: look() }, here: ctx.idle ? ctx.idle.prompt : null };
+  }
+
+  return { full, mini, reminder, here };
 }
 
 module.exports = { createSnapshots };

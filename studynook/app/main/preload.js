@@ -22,7 +22,7 @@ const INVOKE = new Set([
   'data:export', 'data:import', 'data:reset', 'data:openFolder',
   'ambient:minute', 'onboarding:done', 'iron:passed',
   'win:min', 'win:close', 'win:show-main',
-  'reminder:allowOnce', 'reminder:killNow', 'reminder:dismiss'
+  'reminder:allowOnce', 'reminder:killNow', 'reminder:dismiss', 'here:dismiss'
 ]);
 
 // Synchronous calls, used only while the window is closing: an async save could still be in flight
@@ -31,7 +31,7 @@ const SYNC = new Set(['notes:saveNow']);
 
 // Events the UI may listen to ← main process
 const ON = new Set([
-  'snapshot', 'tick', 'session-event', 'reward', 'guard', 'reminder', 'ext-status', 'iron-gate',
+  'snapshot', 'tick', 'session-event', 'reward', 'guard', 'reminder', 'ext-status', 'iron-gate', 'here',
   'close-blocked', 'data-blocked', 'list-frozen', 'toast'
 ]);
 

@@ -263,6 +263,7 @@
 
   /* small windows */
   'mini.open': 'Open StudyNook',
+  'here.title': "Are you still here?", 'here.sub': "Move the mouse or press a key to keep going. Otherwise the timer pauses in {n} s (blocking stays on).", 'here.btn': "I'm here", 'set.idle': "Check that you are still here", 'set.idle.desc': "After a stretch with no mouse or keyboard use during focus, ask. No answer within a minute pauses the timer; blocking stays on.", 'set.idle.after': "Ask after", 'set.idle.after.desc': "Minutes without mouse or keyboard use.", 'main.feed.idlePaused': "Paused the timer: no mouse or keyboard use for a while. Blocking stays on.", 'main.n.idlePaused.t': "Timer paused", 'main.n.idlePaused.d': "You seemed to be away. Resume when you are back; blocking stayed on.",
   'rem.title': '{app} is open', 'rem.gentle': 'It is on your blocked list and will close soon. Save your work.',
   'rem.remind': '{app} is on your blocked list.', 'rem.seconds': 'seconds left',
   'rem.keep': 'Keep open 5 min', 'rem.close': 'Close now', 'rem.self': 'I’ll close it',
